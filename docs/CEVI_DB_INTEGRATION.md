@@ -1,76 +1,92 @@
 # Cevi-DB (Hitobito) Schnittstellen- & Integrationsleitfaden
 
+> Offizielle CeviWiki Referenz: [wiki.cevi.ch/index.php/Cevi.DB_API](https://wiki.cevi.ch/index.php/Cevi.DB_API)
+
+---
+
 ## 1. Überblick: Was ist die Cevi-DB?
 Die **Cevi-DB** ([db.cevi.ch](https://db.cevi.ch)) ist die zentrale Mitglieder-, Gruppen- und Kursverwaltungsplattform des **Cevi Schweiz**.
-Sie basiert auf der Schweizer Open-Source-Plattform **Hitobito** (entwickelt u. a. von Puzzle ITC), welche auch von anderen Jugendverbänden (z. B. Pfadi MiData / Jubla JublaNet) eingesetzt wird.
+Sie basiert auf der Schweizer Open-Source-Plattform **Hitobito** (entwickelt von Puzzle ITC), welche auch von anderen Jugendverbänden (z. B. Pfadi MiData / Jubla JublaNet) eingesetzt wird.
+
+> [!IMPORTANT]
+> **Aktueller Status: Vorbereitungsmodus (`CEVI_DB_PREPARATION_MODE=true`)**
+> Die Cevi-DB Anbindung im Kurstracker ist als modulare Vorbereitung gebaut. Da die offizielle OAuth2-Applikation auf `db.cevi.ch` erst noch durch die Cevi.DB Steuergruppe eingerichtet werden muss, läuft die Anwendung standardmässig in einer robusten Simulation mit realistischen Kurs- und Leitungsdaten. So kann die gesamte Logik und das Dashboard ohne externe Abhängigkeiten entwickelt und getestet werden.
 
 ---
 
-## 2. Authentifizierung: OAuth 2.0 & OpenID Connect (OIDC)
-Hitobito fungiert als standardkonformer **OAuth 2.0 Provider** (mittels *Doorkeeper*). Externe Anwendungen wie der *Cevi Kurstracker* können Benutzer über die Cevi-DB anmelden lassen (Single Sign-On).
+## 2. Authentifizierungsmöglichkeiten gemäss CeviWiki
 
-### 2.1 OAuth Endpoints auf db.cevi.ch
-| Funktion | Endpoint URL | Methode | Beschreibung |
-| :--- | :--- | :--- | :--- |
-| **Authorization Endpoint** | `https://db.cevi.ch/oauth/authorize` | `GET` | Leitet den Benutzer zur Cevi-DB Login-Maske |
-| **Token Endpoint** | `https://db.cevi.ch/oauth/token` | `POST` | Tauscht `code` gegen `access_token` ein |
-| **Userinfo Endpoint** | `https://db.cevi.ch/oauth/userinfo` | `GET` | Liefert Benutzeridentität (OpenID Connect) |
+Die Cevi-DB bietet zwei Authentifizierungsmodelle:
 
-### 2.2 Scopes (Berechtigungen)
-Bei der Autorisierung müssen folgende Scopes angefordert werden:
-- `openid`: Standard OpenID Connect Token & Userinfo Endpoint
-- `email`: E-Mail-Adresse des Cevi-Mitglieds
-- `name`: Vorname, Nachname und Ceviname/Pfadiname (Nickname)
-- `with_roles`: Abteilungszugehörigkeiten, Rollen (z. B. Abteilungsleiter, Kursleiter)
-- `events`: Zugriff auf Kurse und Anlässe
-- `people`: Zugriff auf Personendaten & Qualifikationen
+### 2.1 Modell A: OAuth 2.0 Provider (Für Benutzer-Login / SSO)
+Exklusiv für Web-Anwendungen, bei denen sich Cevi-Leitende mit ihrem persönlichen Cevi-DB Account einloggen.
+- **Zuständigkeit**: Cevi.DB Steuergruppe (`cevidb@cevi.ch`)
+- **Endpunkte auf db.cevi.ch**:
+  | Funktion | Endpoint URL | Methode | Beschreibung |
+  | :--- | :--- | :--- | :--- |
+  | **Authorization** | `https://db.cevi.ch/oauth/authorize` | `GET` | Weiterleitung zur Cevi-DB Login-Maske |
+  | **Token Exchange** | `https://db.cevi.ch/oauth/token` | `POST` | Tauscht `code` gegen `access_token` ein |
+  | **Userinfo / OIDC** | `https://db.cevi.ch/oauth/userinfo` | `GET` | Liefert Benutzeridentität, Rollen & Ceviname |
+- **Angeforderte Scopes**:
+  `openid email name with_roles events people`
 
-### 2.3 Beantragung der OAuth-Credentials
-Um Kurstracker im echten Betrieb an die Cevi-DB anzubinden:
-1. Kontaktiere den **Cevi Schweiz DB-Administrator** (oder den zuständigen Verbands-IT-Support).
-2. Beantrage eine neue **OAuth2 Application** mit:
-   - **Name**: `Cevi Kurstracker`
-   - **Redirect URIs**:
-     - Lokal: `http://localhost:3000/api/auth/callback`
-     - Dev: `https://dev.kurstracker.ch/api/auth/callback`
-     - Live: `https://kurstracker.ch/api/auth/callback`
-   - **Scopes**: `openid email name with_roles events people`
-3. Du erhältst:
-   - `Client UID` (entspricht `CEVI_DB_CLIENT_ID`)
-   - `Application Secret` (entspricht `CEVI_DB_CLIENT_SECRET`)
+### 2.2 Modell B: Service-Tokens / API-Keys (Für Datenabfragen / Hintergrunddienste)
+Für automatisierte Datenabrufe (wie in [cevi/event-overview-cevidb](https://github.com/cevi/event-overview-cevidb) oder [cevi-versand](https://github.com/lucidBrot/cevi-versand)):
+- **Erstellung**: Kann durch Abteilungsleiter direkt auf der Ortsgruppe im Reiter *Einstellungen &rarr; API-Keys* erstellt werden:
+  `https://db.cevi.ch/groups/{GRUPPENID}/service_tokens`
+- **Rechte/Scopes**: Ebene und Rechte (z. B. Anlässe lesen, Personen lesen, Rollen lesen).
+- **Übergabe**:
+  - Im Header: `X-Token: <dein-token>`
+  - Oder als Query-Parameter: `?token=<dein-token>`
 
 ---
 
-## 3. Hitobito REST & JSON:API Schnittstellen
+## 3. Hitobito JSON:API Spezifikation (v1.1)
 
-Hitobito stellt eine moderne **JSON:API (v1.0)** sowie REST-Endpunkte zur Verfügung.
+Hitobito setzt auf den offenen Standard **JSON:API (v1.1)**:
+- **Erforderlicher Content-Type**: `application/vnd.api+json`
+- **Erforderlicher Accept-Header**: `application/vnd.api+json`
+- **Swagger / OpenAPI Dokumentation**: Einsehbar unter `https://db.cevi.ch/api-docs` bzw. [Hitobito JSON:API Doku](https://github.com/hitobito/hitobito/blob/master/doc/developer/common/api/json_api.md).
 
-### 3.1 Kurse & Anlässe (`/api/events`)
-- **GET `/api/events?filter[type]=Course`**: Liefert alle publizierten Kurse (GLK, SLK, Sicherheitsmodule, etc.).
-- **GET `/groups/{group_id}/events.json`**: Liefert Kurse einer spezifischen Cevi-Region oder Abteilung.
-- **Wichtige Kursattribute**:
-  - `name` / `title`: Name des Kurses (z. B. "Gruppenleiterkurs Herbst 2026")
-  - `start_date` / `end_date`: Kursdauer
-  - `location`: Kursort (z. B. Hasliberg, Vaumarcus)
-  - `application_deadline`: Anmeldeschluss
-  - `state`: Status (`open_for_application`, `closed`, `fully_booked`)
-
-### 3.2 Kursteilnahmen (`/api/event_participations`)
-- **GET `/api/event_participations?filter[person_id]={id}`**:
-  Zeigt alle Kurse, an denen die angemeldete Person teilgenommen hat oder angemeldet ist.
-- **Rollen in Kursen**: `Teilnehmer`, `Kursleiter`, `Küchenteam`, `Gast`.
-
-### 3.3 Qualifikationen (`/api/qualifications` / `/people/{id}/qualifications.json`)
-- Zeigt J+S-Leiterrechte (Lagersport/Trekking Jugendsport/Kindersport) sowie Verbandsanerkennungen (Scharleiter, SLRG Brevet, etc.).
-- **Felder**:
-  - `valid_until`: Datum, an dem die J+S Anerkennung verfällt (alle 2 Jahre Fortbildungspflicht!).
-  - `status`: `gültig`, `weggefallen`, `suspendiert`.
+### 3.1 Für den Kurstracker relevante Endpunkte:
+| Ressource | Endpunkt | Zweck im Kurstracker |
+| :--- | :--- | :--- |
+| **Kurse & Events** | `GET /api/events/` | Liste aller Kurse (GLK, SLK, Sicherheitsmodule) |
+| **Kurs-Details** | `GET /api/events/:id` | Daten, Zeiten, Ort, Kosten, Anmeldefrist |
+| **Kursteilnahmen** | `GET /api/event_participations/` | Werdegang, bisherige Teilnahmen, Status (bestanden) |
+| **Qualifikationen** | `GET /api/qualifications/` | J+S-Leiterrechte, BASPO-Anerkennung, Verfallsdaten |
+| **Personen & Rollen** | `GET /api/people/:id`, `/api/roles/` | Ceviname, Abteilung, Leiterfunktion |
 
 ---
 
-## 4. Lokaler Mock-Modus für Entwicklung
-Solange noch keine offiziellen Credentials von Cevi Schweiz vorliegen, unterstützt der Kurstracker einen **Mock-Modus**:
-```env
-CEVI_DB_USE_MOCK=true
-```
-In diesem Modus werden realistische Kurs- und Personendaten simuliert, inklusive Cevi-Rollen und J+S Gültigkeitsfristen.
+## 4. Referenz-Projekte aus der Cevi-Community
+Im CeviWiki werden folgende bestehende Open-Source-Tools aufgeführt, die als technische Referenz dienen:
+1. **[Anlass- und Kursübersicht (event-overview-cevidb)](https://github.com/cevi/event-overview-cevidb)**:
+   - Live-Webseite: [events.cevi.tools](https://events.cevi.tools/)
+   - Führt die öffentlichen Anlässe und Kurse aus der Cevi.DB zusammen.
+2. **[Cevi-Versand (Couvertgenerator)](https://github.com/lucidBrot/cevi-versand)**:
+   - Open-Source Tool zur automatisierten Couvert-Bedruckung mit Cevinamen via Cevi-DB API.
+3. **[cevidbtool](https://github.com/nchiapol/cevidbtool)**:
+   - Python-CLI für Spender- und Mitgliederverwaltung.
+
+---
+
+## 5. Umstellung von Vorbereitungsmodus auf Live-Betrieb
+
+Sobald die OAuth-Applikation bei `cevidb@cevi.ch` genehmigt wurde oder ein Service-Token vorliegt:
+
+1. In `.env.local` (oder auf dem Server in `.env`):
+   ```env
+   # Vorbereitungsmodus deaktivieren:
+   CEVI_DB_PREPARATION_MODE=false
+   CEVI_DB_USE_MOCK=false
+
+   # Erhaltene Zugangsdaten eintragen:
+   CEVI_DB_CLIENT_ID=deine_offizielle_client_id
+   CEVI_DB_CLIENT_SECRET=dein_offizielles_client_secret
+
+   # Optional für Hintergrund-Sync von Kursen:
+   CEVI_DB_SERVICE_TOKEN=dein_ortsruppen_service_token
+   ```
+2. Server neu starten (`npm run dev` bzw. `npm start`).
+3. Die Anwendung schaltet automatisch von der lokalen Simulation auf die echte Schnittstelle zu `db.cevi.ch` um.

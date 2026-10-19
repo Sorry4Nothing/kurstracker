@@ -46,8 +46,12 @@ export const envConfig = {
     clientId: process.env.CEVI_DB_CLIENT_ID || '',
     clientSecret: process.env.CEVI_DB_CLIENT_SECRET || '',
     redirectUri: process.env.CEVI_DB_REDIRECT_URI || `${process.env.APP_URL || 'http://localhost:3000'}/api/auth/callback`,
-    scopes: process.env.CEVI_DB_SCOPES || 'openid email name with_roles events',
-    useMock: process.env.CEVI_DB_USE_MOCK === 'true' || normalizedAppEnv === 'local' && (!process.env.CEVI_DB_CLIENT_ID || process.env.CEVI_DB_CLIENT_ID === 'local_dev_client_id')
+    scopes: process.env.CEVI_DB_SCOPES || 'openid email name with_roles events people',
+    // Cevi.DB API-Keys / Service Token (aus CeviWiki: https://wiki.cevi.ch/index.php/Cevi.DB_API)
+    serviceToken: process.env.CEVI_DB_SERVICE_TOKEN || '',
+    // Vorbereitungsmodus: Standardmässig TRUE, da offizielle OAuth-Applikation noch bei cevidb@cevi.ch registriert werden muss
+    preparationMode: process.env.CEVI_DB_PREPARATION_MODE !== 'false',
+    useMock: process.env.CEVI_DB_USE_MOCK !== 'false' || process.env.CEVI_DB_PREPARATION_MODE !== 'false' || !process.env.CEVI_DB_CLIENT_ID || process.env.CEVI_DB_CLIENT_ID.startsWith('local_')
   },
   auth: {
     sessionSecret: process.env.SESSION_SECRET || 'dev-insecure-secret-key-change-in-production',
@@ -60,17 +64,24 @@ export const envConfig = {
 
 /**
  * Validiert die Umgebungsvariablen entsprechend der Zielumgebung.
- * @returns {{ valid: boolean, errors: string[] }}
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
  */
 export function validateEnv() {
   const errors = [];
+  const warnings = [];
+
+  if (envConfig.ceviDb.preparationMode) {
+    warnings.push('VORBEREITUNGSMODUS: Cevi-DB OAuth-Registrierung ist noch nicht live aktiv. Lokale Simulation/Mock ist aktiv.');
+  }
 
   if (envConfig.app.isProduction) {
-    if (!envConfig.ceviDb.clientId || envConfig.ceviDb.clientId === 'official_live_cevi_db_client_id') {
-      errors.push('PRODUKTION: CEVI_DB_CLIENT_ID fehlt oder ist noch der Platzhalter.');
-    }
-    if (!envConfig.ceviDb.clientSecret || envConfig.ceviDb.clientSecret === 'official_live_cevi_db_client_secret') {
-      errors.push('PRODUKTION: CEVI_DB_CLIENT_SECRET fehlt oder ist noch der Platzhalter.');
+    if (!envConfig.ceviDb.preparationMode) {
+      if (!envConfig.ceviDb.clientId || envConfig.ceviDb.clientId === 'official_live_cevi_db_client_id') {
+        errors.push('PRODUKTION: CEVI_DB_CLIENT_ID fehlt oder ist noch der Platzhalter.');
+      }
+      if (!envConfig.ceviDb.clientSecret || envConfig.ceviDb.clientSecret === 'official_live_cevi_db_client_secret') {
+        errors.push('PRODUKTION: CEVI_DB_CLIENT_SECRET fehlt oder ist noch der Platzhalter.');
+      }
     }
     if (envConfig.auth.sessionSecret.includes('change-in-production') || envConfig.auth.sessionSecret.length < 32) {
       errors.push('PRODUKTION: SESSION_SECRET muss mindestens 32 Zeichen lang und kryptografisch sicher sein.');
@@ -80,14 +91,15 @@ export function validateEnv() {
     }
   }
 
-  if (envConfig.app.isDevelopment && !envConfig.ceviDb.useMock) {
+  if (envConfig.app.isDevelopment && !envConfig.ceviDb.preparationMode && !envConfig.ceviDb.useMock) {
     if (!envConfig.ceviDb.clientId || !envConfig.ceviDb.clientSecret) {
-      errors.push('DEVELOPMENT: Entweder Cevi-DB Credentials eintragen oder CEVI_DB_USE_MOCK=true setzen.');
+      errors.push('DEVELOPMENT: Entweder Cevi-DB Credentials eintragen oder CEVI_DB_PREPARATION_MODE=true setzen.');
     }
   }
 
   return {
     valid: errors.length === 0,
-    errors
+    errors,
+    warnings
   };
 }

@@ -5,278 +5,651 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cevi Kurstracker - Ausbildung & Qualifikationen</title>
   <meta name="description" content="Verwaltung und Nachverfolgung von Cevi- und Jugend+Sport-Ausbildungen mit direkter Cevi-DB (Hitobito) Anbindung.">
+  <meta name="color-scheme" content="dark light">
   
-  <!-- Modern Google Font: Outfit & Inter -->
+  <!-- Official Cevi Favicons -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <!-- Typography: Inter & Plus Jakarta Sans (Swiss Precision) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css">
+  <!-- Font Awesome 6 Pro Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body class="dark-theme">
-  <!-- Hintergrund-Lichteffekt -->
-  <div class="bg-glow bg-glow-1"></div>
-  <div class="bg-glow bg-glow-2"></div>
 
-  <!-- Header / Navigation -->
-  <header class="navbar" id="mainNavbar">
-    <div class="nav-container">
-      <div class="brand">
-        <div class="brand-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+  <!-- Background Ambient Glows -->
+  <div class="bg-glow bg-glow-1" aria-hidden="true"></div>
+  <div class="bg-glow bg-glow-2" aria-hidden="true"></div>
+
+  <!-- Modern Full-App Layout with Left Sidebar Navigation -->
+  <div class="app-layout">
+    
+    <!-- Linke Navigation Sidebar -->
+    <aside class="app-sidebar" id="appSidebar">
+      <!-- Brand & Logo -->
+      <div class="sidebar-header">
+        <a href="/" class="brand-link" aria-label="Cevi Kurstracker Home">
+          <svg class="brand-logo-svg" viewBox="0 0 160 160" width="34" height="34" aria-hidden="true">
+            <g transform="translate(10, 8) scale(0.98) translate(-320, -10)">
+              <path fill="#323394" d="M334.931,73.371c-0.181-0.641-0.267-1.301-0.327-1.85l12.602,12.581 C340.397,81.64,336.158,81.975,334.931,73.371"/>
+              <path fill="#C41333" d="M415.722,115.954c-8.831,2.554-17.685,4.158-26.022,4.703l31.227,31.223l11.095-41.367 C427.111,112.417,421.689,114.222,415.722,115.954"/>
+              <path fill="#C41333" d="M443.51,64.399c-11.379,7.401-25.311,13.781-38.275,17.489c-17.806,5.161-35.959,6.776-49.823,4.384 l-21.157-21.185l117.507-31.565L443.51,64.399"/>
+              <path fill="#323394" d="M460.756,86.589c-8.896,10.981-23.162,18.734-46.193,25.432c-23.495,6.697-46.936,6.516-59.736-0.58 c-4.496-2.516-7.312-5.601-8.392-9.293l-6.739-16.765c0.268,0.129,0.535,0.267,0.766,0.5c13.803,7.585,39.672,7.634,65.947,0.128 c21.021-6.073,43.057-18.351,54.348-30.131V86.589"/>
+              <path fill="#323394" d="M420.924,37.621l-82.082,21.879c8.453-12.008,28.283-23.847,51.221-30.49 c6.447-1.871,20.849-4.191,30.861-3.807V37.621"/>
+            </g>
           </svg>
-        </div>
-        <div class="brand-text">
-          <span class="brand-title">CEVI <span class="highlight">KURSTRACKER</span></span>
-          <span class="brand-subtitle">Ausbildung & J+S Management</span>
-        </div>
+          <div class="brand-text">
+            <span class="brand-title">CEVI <span class="highlight">KURSTRACKER</span></span>
+          </div>
+        </a>
       </div>
 
-      <div class="nav-center">
-        <div class="env-pill" id="envBadge" title="Aktuelle Laufzeit-Umgebung">
-          <span class="env-dot"></span>
-          <span id="envLabel">LÄDT...</span>
+      <!-- Hauptnavigation Items -->
+      <nav class="sidebar-nav" role="navigation" aria-label="Hauptnavigation">
+        <div class="sidebar-nav-group-title">Navigation</div>
+        
+        <button class="sidebar-nav-item active" id="tabTree" onclick="switchTab('tree')">
+          <i class="fa-solid fa-sitemap nav-icon" aria-hidden="true"></i>
+          <span class="nav-text">Ausbildungsbaum</span>
+        </button>
+
+        <button class="sidebar-nav-item" id="tabProfile" onclick="switchTab('profile')">
+          <i class="fa-solid fa-id-card-clip nav-icon" aria-hidden="true"></i>
+          <span class="nav-text">Mein Profil</span>
+        </button>
+
+        <button class="sidebar-nav-item" id="tabPlanner" onclick="switchTab('planner')" style="display: none;">
+          <i class="fa-solid fa-users-gear nav-icon" aria-hidden="true"></i>
+          <span class="nav-text">Stufenleiter-Planer</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer mit Theme Dropup & Kokonut UI Pro Profile Card -->
+      <div class="sidebar-footer">
+        
+        <!-- Custom Radix Theme Dropup (Opens Upwards!) -->
+        <div class="custom-dropdown custom-dropup sidebar-theme-dropdown" id="themeDropdown">
+          <button type="button" class="custom-dropdown-trigger custom-dropup-trigger" id="themeDropdownTrigger" aria-haspopup="listbox" aria-expanded="false" title="Farbschema wählen">
+            <span class="trigger-left">
+              <i class="fa-solid fa-palette trigger-icon" aria-hidden="true"></i>
+              <span id="themeDropdownLabel">Cevi CD (Offiziell)</span>
+            </span>
+            <i class="fa-solid fa-chevron-up trigger-chevron" aria-hidden="true"></i>
+          </button>
+          <div class="custom-dropdown-menu custom-dropup-menu" id="themeDropdownMenu" role="listbox">
+            <div class="dropup-header-title">Farbschema wählen</div>
+            <div class="custom-dropdown-item active" data-value="cevi-tools" role="option">
+              <i class="fa-solid fa-check check-icon" aria-hidden="true"></i>
+              <span>Cevi CD (Offiziell)</span>
+            </div>
+            <div class="custom-dropdown-item" data-value="midnight" role="option">
+              <i class="fa-solid fa-check check-icon" aria-hidden="true"></i>
+              <span>Midnight (Dark)</span>
+            </div>
+            <div class="custom-dropdown-item" data-value="alpine-light" role="option">
+              <i class="fa-solid fa-check check-icon" aria-hidden="true"></i>
+              <span>Alpine Pure (Light)</span>
+            </div>
+            <div class="custom-dropdown-item" data-value="campfire" role="option">
+              <i class="fa-solid fa-check check-icon" aria-hidden="true"></i>
+              <span>Campfire (Dark)</span>
+            </div>
+          </div>
         </div>
-        <div class="db-pill" id="dbStatusBadge" title="Status der Cevi-DB Anbindung">
-          <span class="db-icon">🌲</span>
-          <span id="dbStatusText">Cevi-DB: Bereit</span>
+
+        <!-- Kokonut UI Pro Official Profile Card -->
+        <div class="kokonut-pro-card" id="userNavActions" onclick="switchTab('profile')" role="button" tabindex="0" title="Mein Profil &amp; Qualifikationen öffnen">
+          <div class="koko-photo-container">
+            <span class="koko-initials-fallback" id="navUserInitials">RN</span>
+            <img src="" 
+                 alt="Profilfoto" 
+                 class="koko-photo-img" 
+                 id="navUserPhoto"
+                 style="display: none;"
+                 onerror="this.style.display='none'">
+            <div class="koko-photo-ring"></div>
+            <span class="koko-online-badge" title="Cevi-DB Synchronisiert"></span>
+          </div>
+
+          <div class="koko-body">
+            <div class="koko-name-row">
+              <span class="koko-name" id="navUserRealname">Robin Notter</span>
+              <span class="koko-ceviname" id="navUserCeviname">«Siro»</span>
+              <span class="koko-verified" title="Cevi-DB Verifiziert">
+                <i class="fa-solid fa-circle-check"></i>
+              </span>
+            </div>
+            <p class="koko-title" id="navUserRole">Abteilungsleiter • Cevi Winti</p>
+
+            <div class="koko-stats-grid">
+              <div class="koko-stat-col">
+                <span class="koko-stat-number" id="kokoStatCourses">7</span>
+                <span class="koko-stat-label">Kurse</span>
+              </div>
+              <div class="koko-stat-col">
+                <span class="koko-stat-number text-accent" id="kokoStatQuals">3</span>
+                <span class="koko-stat-label">Qualis</span>
+              </div>
+              <div class="koko-stat-col">
+                <span class="koko-stat-number text-success" id="kokoStatJs">Aktiv</span>
+                <span class="koko-stat-label">J+S</span>
+              </div>
+            </div>
+
+            <button type="button" class="koko-action-btn" onclick="switchTab('profile'); event.stopPropagation();">
+              <span>Profil &amp; Cockpit</span>
+            </button>
+          </div>
         </div>
+
+      </div>
+    </aside>
+
+    <!-- Hauptbereich (Rechte Seite - nimmt die volle Bildschirmbreite & Höhe ein) -->
+    <div class="app-main">
+      
+      <!-- Topbar Header mit Hamburger Toggle, Breadcrumb & Metriken -->
+      <header class="app-topbar">
+        <div class="topbar-left">
+          <button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()" aria-label="Menü ein-/ausblenden">
+            <i class="fa-solid fa-bars" aria-hidden="true"></i>
+          </button>
+          <div class="topbar-titles">
+            <h1 class="topbar-page-title" id="topbarPageTitle">Ausbildungsbaum</h1>
+            <span class="topbar-page-subtitle" id="topbarPageSubtitle">Interaktive Pfadplanung & Voraussetzungen (Cevi Region Zürich & J+S)</span>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="topbar-stats">
+            <span class="topbar-badge badge-courses"><i class="fa-solid fa-award text-success"></i> 7 Absolviert</span>
+            <span class="topbar-badge badge-quals"><i class="fa-solid fa-id-card text-accent"></i> 3 Anerkennungen</span>
+            <span class="topbar-badge badge-region"><i class="fa-solid fa-location-dot text-gold"></i> Region Zürich</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- App Content Area (Vollbild-Ansichten für jede Seite) -->
+      <div class="app-content-area">
+
+        <!-- ===================================================================
+             1. AUSBILDUNGSBAUM (Nimmt den gesamten Bildschirm ein!)
+             =================================================================== -->
+        <section class="tab-panel active" id="panel-tree" role="tabpanel">
+          <div class="panel-header">
+            <div>
+              <h2>Interaktiver Cevi & J+S Ausbildungsbaum</h2>
+              <p class="section-subtitle">Visualisierung deiner Position in der Ausbildungshierarchie. Klicke auf einen beliebigen Zielkurs, um den optimalen Pfad und Voraussetzungen zu berechnen.</p>
+            </div>
+            <div class="tree-legend">
+              <span class="legend-item"><span class="legend-dot status-completed"></span> Abgeschlossen</span>
+              <span class="legend-item"><span class="legend-dot status-in_progress"></span> Angemeldet</span>
+              <span class="legend-item"><span class="legend-dot status-available"></span> Bereit / Freigeschaltet</span>
+              <span class="legend-item"><span class="legend-dot status-locked"></span> Gesperrt</span>
+            </div>
+          </div>
+
+          <!-- Tree Toolbar: Canvas Zoom & Ansicht -->
+          <div class="tree-toolbar">
+            <div class="tree-toolbar-info">
+              <i class="fa-solid fa-circle-info text-accent" aria-hidden="true"></i>
+              <span>Klicke auf einen Kursknoten, um Details und Voraussetzungen im Inspektor anzuzeigen.</span>
+            </div>
+
+            <div class="tree-zoom-group">
+              <span style="font-size: 0.75rem; color: var(--text-dim); margin-right: 0.25rem;">Ansicht:</span>
+              <button class="btn btn-secondary btn-sm" onclick="zoomMap(-0.15)" title="Verkleinern" aria-label="Baum verkleinern">
+                <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
+              </button>
+              <span id="treeZoomLabel" style="font-size: 0.78rem; font-weight: 700; min-width: 44px; text-align: center; color: var(--text-main);">100%</span>
+              <button class="btn btn-secondary btn-sm" onclick="zoomMap(0.15)" title="Vergrössern" aria-label="Baum vergrössern">
+                <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="resetMapTransform()" title="Standardgrösse" aria-label="Zoom zurücksetzen">
+                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tree & Inspector Workspace -->
+          <div class="tree-workspace">
+            <div class="tree-canvas-container" id="treeCanvasWrapper">
+              <div class="tree-map-viewport" id="treeMapViewport">
+                <div class="tree-map-canvas" id="treeMapCanvas">
+                  <svg class="tree-lines-svg" id="treeSvgLines" aria-hidden="true"></svg>
+                  <div id="treeLevelsContainer">
+                    <div class="loading-placeholder">Lade Ausbildungsbaum...</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Floating Map Controls -->
+              <div class="map-floating-controls">
+                <button type="button" class="map-ctrl-btn" onclick="zoomMap(0.15)" title="Vergrössern"><i class="fa-solid fa-plus"></i></button>
+                <button type="button" class="map-ctrl-btn" onclick="zoomMap(-0.15)" title="Verkleinern"><i class="fa-solid fa-minus"></i></button>
+                <button type="button" class="map-ctrl-btn" onclick="resetMapTransform()" title="Ansicht zentrieren (100%)"><i class="fa-solid fa-arrows-to-dot"></i></button>
+                <button type="button" class="map-ctrl-btn" onclick="fitMapToScreen()" title="Ganzen Pfad einpassen"><i class="fa-solid fa-expand"></i></button>
+              </div>
+            </div>
+
+            <!-- Zielkurs Inspektor Sidebar Panel -->
+            <aside class="tree-inspector-panel" id="treeInspector">
+              <div class="inspector-header">
+                <div class="inspector-badge" id="inspectorLevelBadge">Zielkurs-Inspektor</div>
+                <h3 id="inspectorTitle">Kurs auswählen</h3>
+                <p id="inspectorCategory" class="inspector-meta-text">Klicke auf einen Kurs im Baum, um Voraussetzungen und Pfad zu berechnen.</p>
+              </div>
+
+              <!-- Pathfinding Summary -->
+              <div class="inspector-section">
+                <h4 class="inspector-section-title">
+                  <i class="fa-solid fa-route text-accent" aria-hidden="true"></i>
+                  <span>Pfad & Voraussetzungen</span>
+                </h4>
+                <div class="inspector-path-summary" id="inspectorPathSummary">
+                  Wähle einen Zielkurs aus, um den nächsten Ausbildungsschritt zu berechnen.
+                </div>
+              </div>
+
+              <!-- Voraussetzungen & Checklist -->
+              <div class="inspector-section">
+                <h4 class="inspector-section-title">
+                  <i class="fa-solid fa-list-check text-accent" aria-hidden="true"></i>
+                  <span>Voraussetzungen im Detail</span>
+                </h4>
+                <div class="inspector-checks" id="inspectorChecks">
+                  <div class="check-item"><span class="check-icon">--</span><span>Kein Kurs gewählt</span></div>
+                </div>
+              </div>
+
+              <!-- Nächste Schritte / Aktionen -->
+              <div class="inspector-actions" id="inspectorActions">
+                <button class="btn btn-primary btn-block" disabled>
+                  <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
+                  <span>Kurs auswählen</span>
+                </button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             2. STUFENLEITER-PLANER (Vollwertiges Planungs-Cockpit)
+             =================================================================== -->
+        <section class="tab-panel" id="panel-planner" role="tabpanel">
+          <div class="panel-header">
+            <div>
+              <h2>Stufenleiter & Abteilungs-Planer</h2>
+              <p class="section-subtitle">Übersicht der Ausbildungsreife deiner Teilnehmenden und Leitenden. Plane Kurse für die nächste Saison und erkenne verfallende J+S-Anerkennungen frühzeitig.</p>
+            </div>
+            <div class="planner-actions">
+              <button class="btn btn-secondary" onclick="loadPlannerData()">
+                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Aktualisieren
+              </button>
+            </div>
+          </div>
+
+          <!-- Stufenleiter KPI-Karten -->
+          <div class="stats-grid planner-stats-grid">
+            <div class="stat-card">
+              <span class="stat-num text-info" id="statPlannerTotal">0</span>
+              <span class="stat-label">Erfasste Teilnehmende / Leitende</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-num text-success" id="statPlannerHlk">0</span>
+              <span class="stat-label">Bereit für Einstieg (Voku / Heku)</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-num text-accent" id="statPlannerGlk">0</span>
+              <span class="stat-label">Bereit für GLK 3 (J+S Leiter)</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-num text-danger" id="statPlannerUrgent">0</span>
+              <span class="stat-label">Dringender J+S Fortbildungsbedarf</span>
+            </div>
+          </div>
+
+          <!-- Tabelle & Vorschläge Split Layout -->
+          <div class="planner-workspace">
+            <div class="card planner-table-card">
+              <div class="card-header-flex">
+                <h3><i class="fa-solid fa-users text-accent" aria-hidden="true"></i> Gruppe: Fröschli & Jungschar Flaach</h3>
+                <span class="badge badge-info">Stufe Jungschar</span>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Name / Ceviname</th>
+                      <th>Alter</th>
+                      <th>Aktuelle Rolle</th>
+                      <th>Bisherige Kurse</th>
+                      <th>Automatische Kursempfehlung</th>
+                      <th>Aktion</th>
+                    </tr>
+                  </thead>
+                  <tbody id="plannerTableBody">
+                    <tr><td colspan="6" class="loading-placeholder">Lade Gruppenmitglieder...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card planner-nominations-card">
+              <div class="card-header-flex">
+                <h3><i class="fa-solid fa-list-check text-success" aria-hidden="true"></i> Erfasste Kursvorschläge</h3>
+                <span class="badge badge-success" id="nominationsCountBadge">0</span>
+              </div>
+              <div class="nominations-list" id="nominationsList">
+                <p class="empty-text">Noch keine Kursvorschläge erfasst. Klicke bei einem Teilnehmer auf &laquo;Vorschlagen&raquo;.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             3. MEIN PROFIL & QUALIFIKATIONEN COCKPIT (Vollbild-Cockpit)
+             =================================================================== -->
+        <section class="tab-panel" id="panel-profile" role="tabpanel">
+          
+          <!-- Hero Cockpit Header -->
+          <div class="profile-page-hero">
+            <div class="profile-hero-left">
+              <div class="profile-hero-avatar-wrap" id="profileHeroAvatarWrap">
+                <span class="profile-hero-avatar-initials" id="profileHeroInitials">RN</span>
+                <img src="" 
+                     alt="Profilfoto" 
+                     class="profile-hero-avatar-img"
+                     id="profileHeroPhoto"
+                     style="display: none;"
+                     onerror="this.style.display='none'">
+              </div>
+              <div class="profile-hero-titles">
+                <div class="profile-badge-pill" id="profileHeroDbBadge">
+                  <i class="fa-solid fa-circle-check text-success"></i> Cevi-DB Hitobito Synchronisiert (#10842)
+                </div>
+                <h2>
+                  <span id="profileHeroName">Robin Notter</span>
+                  <span class="text-accent" id="profileHeroCeviname">«Siro»</span>
+                </h2>
+                <div class="profile-hero-badges">
+                  <span class="profile-badge-pill"><i class="fa-solid fa-location-dot text-danger"></i> Abteilung Cevi Winti</span>
+                  <span class="profile-badge-pill"><i class="fa-solid fa-shield-halved text-accent"></i> Region Zürich</span>
+                  <span class="profile-badge-pill"><i class="fa-solid fa-id-card text-gold"></i> J+S Leiter Lagersport/Trekking</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Metric Cards -->
+            <div class="profile-hero-metrics">
+              <div class="profile-metric-card">
+                <span class="profile-metric-value text-success" id="profileMetricCourses">7</span>
+                <span class="profile-metric-label">Kurse</span>
+              </div>
+              <div class="profile-metric-card">
+                <span class="profile-metric-value text-accent" id="profileMetricQuals">3</span>
+                <span class="profile-metric-label">Anerkennungen</span>
+              </div>
+              <div class="profile-metric-card">
+                <span class="profile-metric-value text-gold" id="profileMetricNext">MF / LLM</span>
+                <span class="profile-metric-label">Nächster Meilenstein</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kokonut Pro Learning Track Banner -->
+          <div class="continue-learning-section" id="continueLearningSection">
+            <div class="continue-learning-banner">
+              <div class="cl-main">
+                <div class="cl-header">
+                  <span><i class="fa-solid fa-route text-accent" aria-hidden="true"></i> Aktiver Ausbildungs-Meilenstein</span>
+                  <span class="badge badge-success" id="clMilestoneBadge">Meilenstein: Lagerleiter &amp; Kader</span>
+                </div>
+                <h2 class="cl-title" id="clTitle">GLK 3 &amp; Stufenleiterkurs (SLK) absolviert &ndash; Nächster Schritt: Lagerleiter (LLM) oder Fortbildung (MF)</h2>
+                <p class="cl-desc" id="clDesc">
+                  Du besitzt die J+S-Anerkennung <strong>Leiter Lagersport/Trekking</strong> und das <strong>SLRG Brevet Pool</strong>. Um Gesamtlagerleiter/in zu werden oder deine J+S-Anerkennung aktiv zu halten, wählst du als Nächstes das Lagerleiter-Modul (LLM) oder das Modul Fortbildung (MF).
+                </p>
+                <div class="cl-modules-progress">
+                  <div class="cl-progress-bar-bg">
+                    <div class="cl-progress-bar-fill" id="clProgressBarFill" style="width: 75%;"></div>
+                  </div>
+                  <div class="cl-modules-ticks">
+                    <span>Voku &amp; Heku <i class="fa-solid fa-check text-success" aria-hidden="true"></i></span>
+                    <span>GLK 1-3 (J+S) <i class="fa-solid fa-check text-success" aria-hidden="true"></i></span>
+                    <span>SLK &amp; SLRG <i class="fa-solid fa-check text-success" aria-hidden="true"></i></span>
+                    <span class="text-accent font-bold">MF / LLM <i class="fa-solid fa-hourglass-half" aria-hidden="true"></i></span>
+                    <span class="text-muted">J+S Experte <i class="fa-solid fa-lock" aria-hidden="true"></i></span>
+                  </div>
+                </div>
+              </div>
+              <div class="cl-side-panel">
+                <span class="cl-side-badge">Kokonut Learning Track</span>
+                <h4 id="clNextCourseName">MF Lagersport 2026</h4>
+                <p class="cl-side-meta">Empfohlener Kursblock Cevi Region Zürich</p>
+                <button class="btn btn-primary btn-block btn-sm" onclick="switchTab('tree'); selectTargetCourse('mf_lst');">
+                  <i class="fa-solid fa-sitemap" aria-hidden="true"></i>
+                  <span>Pfad im Baum anzeigen</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Cockpit Subnavigation Bar -->
+          <div class="profile-subnav">
+            <button type="button" class="profile-subnav-btn active" id="subtabBtnQuals" onclick="switchProfileSubtab('quals')">
+              <i class="fa-solid fa-certificate"></i>
+              <span>Anerkannte Qualifikationen</span>
+            </button>
+            <button type="button" class="profile-subnav-btn" id="subtabBtnHistory" onclick="switchProfileSubtab('history')">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              <span>Kurshistorie &amp; Werdegang</span>
+            </button>
+            <button type="button" class="profile-subnav-btn" id="subtabBtnStammdaten" onclick="switchProfileSubtab('stammdaten')">
+              <i class="fa-solid fa-address-card"></i>
+              <span>Cevi-DB Stammdaten</span>
+            </button>
+            <button type="button" class="profile-subnav-btn" id="subtabBtnCourses" onclick="switchProfileSubtab('courses')">
+              <i class="fa-solid fa-graduation-cap"></i>
+              <span>Offizielles Kursangebot</span>
+            </button>
+          </div>
+
+          <!-- 4 Subpanels -->
+          <!-- Subpanel 1: Qualifikationen -->
+          <div class="profile-subpanel active" id="profileSubpanelQuals">
+            <div class="cards-grid" id="qualsContainer">
+              <div class="loading-placeholder">Lade Qualifikationen aus der Cevi-DB...</div>
+            </div>
+          </div>
+
+          <!-- Subpanel 2: Kurshistorie -->
+          <div class="profile-subpanel" id="profileSubpanelHistory">
+            <div class="timeline-container" id="historyContainer">
+              <div class="loading-placeholder">Lade Kurshistorie...</div>
+            </div>
+          </div>
+
+          <!-- Subpanel 3: Cevi-DB Stammdaten -->
+          <div class="profile-subpanel" id="profileSubpanelStammdaten">
+            <div class="stammdaten-grid" id="stammdatenContainer">
+              <div class="stammdaten-card">
+                <span class="stammdaten-label">Vollständiger Name</span>
+                <span class="stammdaten-value" id="profileDbRealName">Robin Notter</span>
+              </div>
+              <div class="stammdaten-card">
+                <span class="stammdaten-label">Ceviname</span>
+                <span class="stammdaten-value text-accent" id="profileDbCeviname">Siro</span>
+              </div>
+              <div class="stammdaten-card">
+                <span class="stammdaten-label">Cevi-DB Person ID</span>
+                <span class="stammdaten-value" id="profileDbPersonId">#10842</span>
+              </div>
+              <div class="stammdaten-card">
+                <span class="stammdaten-label">J+S Personennummer</span>
+                <span class="stammdaten-value text-gold" id="profileDbJsNumber">JS-CH-948120</span>
+              </div>
+              <div class="stammdaten-card">
+                <span class="stammdaten-label">Abteilung &amp; Region</span>
+                <span class="stammdaten-value" id="profileDbAbteilung">Cevi Winti (Region Zürich)</span>
+              </div>
+              <div class="stammdaten-card">
+                <span class="stammdaten-label">Geburtsdatum &amp; Alter</span>
+                <span class="stammdaten-value" id="profileDbBirthdate">14.08.2001 (25 Jahre)</span>
+              </div>
+              <div class="stammdaten-card">
+                <span class="stammdaten-label">E-Mail Adresse</span>
+                <span class="stammdaten-value" id="profileDbEmail">siro@cevi-winti.ch</span>
+              </div>
+              <div class="stammdaten-card">
+                <span class="stammdaten-label">Telefonnummer</span>
+                <span class="stammdaten-value" id="profileDbPhone">+41 79 123 45 67</span>
+              </div>
+              <div class="stammdaten-card">
+                <span class="stammdaten-label">Notfallkontakt</span>
+                <span class="stammdaten-value">M. Notter (+41 79 987 65 43)</span>
+              </div>
+              <div class="stammdaten-card">
+                <span class="stammdaten-label">Aktuelle Rollen im Cevi</span>
+                <span class="stammdaten-value">Gruppenleiter, J+S Leiter LS/T</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subpanel 4: Kursangebot -->
+          <div class="profile-subpanel" id="profileSubpanelCourses">
+            <div class="filter-bar" style="margin-bottom: 1.25rem;">
+              <div class="search-input-wrapper">
+                <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
+                <input type="text" id="courseSearchInput" class="search-input" placeholder="Kurs suchen (z.B. GLK, SLK, Berg)..." oninput="filterCourses()">
+              </div>
+              <div class="custom-dropdown" id="categoryDropdown">
+                <button type="button" class="custom-dropdown-trigger" id="categoryDropdownTrigger" aria-haspopup="listbox" aria-expanded="false" title="Kategorie filtern">
+                  <i class="fa-solid fa-filter trigger-icon" aria-hidden="true"></i>
+                  <span id="categoryDropdownLabel">Alle Kategorien</span>
+                  <i class="fa-solid fa-chevron-down trigger-chevron" aria-hidden="true"></i>
+                </button>
+                <div class="custom-dropdown-menu" id="categoryDropdownMenu" role="listbox">
+                  <div class="custom-dropdown-item active" data-value="all" role="option">
+                    <i class="fa-solid fa-check check-icon" aria-hidden="true"></i>
+                    <span>Alle Kategorien</span>
+                  </div>
+                  <div class="custom-dropdown-item" data-value="Jungschar" role="option">
+                    <i class="fa-solid fa-check check-icon" aria-hidden="true"></i>
+                    <span>Jungschar Kurse</span>
+                  </div>
+                  <div class="custom-dropdown-item" data-value="Jugend+Sport" role="option">
+                    <i class="fa-solid fa-check check-icon" aria-hidden="true"></i>
+                    <span>Jugend+Sport (J+S)</span>
+                  </div>
+                  <div class="custom-dropdown-item" data-value="Kaderbildung" role="option">
+                    <i class="fa-solid fa-check check-icon" aria-hidden="true"></i>
+                    <span>Kaderbildung</span>
+                  </div>
+                  <div class="custom-dropdown-item" data-value="Sicherheit" role="option">
+                    <i class="fa-solid fa-check check-icon" aria-hidden="true"></i>
+                    <span>Sicherheit &amp; SLRG</span>
+                  </div>
+                  <div class="custom-dropdown-item" data-value="Expertenbildung" role="option">
+                    <i class="fa-solid fa-check check-icon" aria-hidden="true"></i>
+                    <span>Expertenbildung</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="cards-grid" id="coursesContainer">
+              <div class="loading-placeholder">Lade Kursangebot...</div>
+            </div>
+          </div>
+        </section>
+
       </div>
 
-      <div class="nav-actions" id="userNavActions">
-        <!-- Dynamischer Inhalt durch app.js -->
-        <button class="btn btn-outline" id="btnLogin" onclick="initiateLogin()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
-          </svg>
-          Mit Cevi-DB anmelden
+      <!-- Globaler Footer unter allem (Git Version, Umgebung & Cevi-DB Status) -->
+      <footer class="app-global-footer" id="appGlobalFooter">
+        <div class="footer-left">
+          <span class="footer-item"><i class="fa-solid fa-code-branch text-accent" aria-hidden="true"></i> Git: <strong id="footerGit">develop (17197fd)</strong></span>
+          <span class="footer-dot">&bull;</span>
+          <span class="footer-item"><i class="fa-solid fa-server text-info" aria-hidden="true"></i> <span id="footerEnv">Umgebung: LOCAL</span></span>
+        </div>
+        <div class="footer-center">
+          <span class="footer-item" id="footerDbStatus"><i class="fa-solid fa-circle-check text-success" aria-hidden="true"></i> Cevi-DB: Verbunden (Mock-Modus &bull; 0 Fehler)</span>
+        </div>
+        <div class="footer-right">
+          <span class="footer-item text-dim">Cevi Region Zürich &bull; J+S Lagersport/Trekking &bull; v1.2.0</span>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Modal für Kursvorschlag (Radix UI Dialog Pattern) -->
+  <div class="modal-backdrop" id="nominationModal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalTitle">Kurs vorschlagen</h3>
+        <button class="modal-close" onclick="closeNominationModal()" aria-label="Schliessen">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
       </div>
-    </div>
-  </header>
-
-  <!-- Hauptinhalt -->
-  <main class="main-content">
-    
-    <!-- Hero / Status Banner -->
-    <section class="hero-section">
-      <div class="hero-card">
-        <div class="hero-content">
-          <div class="hero-tag" id="userGreetingTag">Cevi Ausbildungs-Cockpit</div>
-          <h1 class="hero-title" id="heroGreeting">Behalte deine Cevi- & J+S-Kurse im Überblick</h1>
-          <p class="hero-desc" id="heroDescription">
-            Automatische Synchronisation mit der Cevi-DB (Hitobito). Verfolge deine Qualifikationen, Gültigkeiten und anstehende Kurse ohne manuelle Listen.
-          </p>
-
-          <!-- Quick Stats Bar -->
-          <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-              <span class="stat-num" id="statCompleted">-</span>
-              <span class="stat-label">Absolvierte Kurse</span>
-            </div>
-            <div class="stat-card">
-              <span class="stat-num text-success" id="statValidQuals">-</span>
-              <span class="stat-label">Gültige Anerkennungen</span>
-            </div>
-            <div class="stat-card">
-              <span class="stat-num text-warning" id="statNextCourse">-</span>
-              <span class="stat-label">Nächste Weiterbildung</span>
-            </div>
-            <div class="stat-card">
-              <span class="stat-num text-accent" id="statOpenOffer">-</span>
-              <span class="stat-label">Kurse im Angebot</span>
-            </div>
-          </div>
+      <form id="nominationForm" onsubmit="submitNomination(event)">
+        <input type="hidden" id="modalPersonId">
+        <div class="form-group">
+          <label for="modalPersonName">Teilnehmer / Leiter:</label>
+          <input type="text" id="modalPersonName" class="form-input" readonly>
         </div>
-
-        <div class="hero-sidebar" id="heroUserCard">
-          <div class="quick-login-card">
-            <div class="quick-login-icon">🏕️</div>
-            <h3>Lokaler Schnellstart</h3>
-            <p>Teste den Kurstracker direkt mit simulierten Cevi-Daten oder verbinde dich mit der echten Cevi-DB.</p>
-            <div class="quick-btn-group">
-              <button class="btn btn-primary btn-block" id="btnQuickMock" onclick="loginWithMock()">
-                🚀 Demo-Profil (Siro) laden
-              </button>
-              <button class="btn btn-secondary btn-block" id="btnLiveConnect" onclick="initiateLogin()">
-                🔗 Cevi-DB Login (OAuth)
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Tabs Navigation -->
-    <nav class="content-tabs">
-      <button class="tab-btn active" id="tabQuals" onclick="switchTab('quals')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"/>
-        </svg>
-        Meine Qualifikationen & J+S
-      </button>
-      <button class="tab-btn" id="tabHistory" onclick="switchTab('history')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/>
-        </svg>
-        Kurshistorie & Anmeldungen
-      </button>
-      <button class="tab-btn" id="tabCourses" onclick="switchTab('courses')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
-        Kursangebot Cevi & Regionen
-      </button>
-      <button class="tab-btn" id="tabSystem" onclick="switchTab('system')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
-        </svg>
-        Schnittstelle & Architektur
-      </button>
-    </nav>
-
-    <!-- Tab Panels -->
-
-    <!-- 1. Qualifikationen Panel -->
-    <section class="tab-panel active" id="panel-quals">
-      <div class="panel-header">
-        <div>
-          <h2>Anerkannte Qualifikationen</h2>
-          <p class="section-subtitle">Übersicht deiner J+S-Leiterrechte, Scharleiterbefugnisse und Sicherheitszertifikate.</p>
-        </div>
-      </div>
-      <div class="cards-grid" id="qualsContainer">
-        <!-- Dynamischer Inhalt durch app.js -->
-        <div class="loading-placeholder">Lade Qualifikationen aus der Cevi-DB...</div>
-      </div>
-    </section>
-
-    <!-- 2. Kurshistorie Panel -->
-    <section class="tab-panel" id="panel-history">
-      <div class="panel-header">
-        <div>
-          <h2>Besuchte Kurse & Werdegang</h2>
-          <p class="section-subtitle">Vollständiger Ausbildungsnachweis der Cevi-Laufbahn.</p>
-        </div>
-      </div>
-      <div class="timeline-container" id="historyContainer">
-        <!-- Dynamischer Inhalt durch app.js -->
-        <div class="loading-placeholder">Lade Kurshistorie...</div>
-      </div>
-    </section>
-
-    <!-- 3. Kursangebot Panel -->
-    <section class="tab-panel" id="panel-courses">
-      <div class="panel-header">
-        <div>
-          <h2>Offizielle Cevi Kurse & Weiterbildungen</h2>
-          <p class="section-subtitle">Verfügbare Angebote von Cevi Schweiz und den Regionalverbänden.</p>
-        </div>
-        <div class="filter-bar">
-          <input type="text" id="courseSearchInput" class="search-input" placeholder="Kurs suchen (z.B. GLK, SLK, Berg)..." oninput="filterCourses()">
-          <select id="courseCategoryFilter" class="select-input" onchange="filterCourses()">
-            <option value="all">Alle Kategorien</option>
-            <option value="Grundausbildung">Grundausbildung</option>
-            <option value="Kaderbildung">Kaderbildung</option>
-            <option value="Weiterbildung">Weiterbildung (MF)</option>
-            <option value="Sicherheit">Sicherheitsmodule</option>
+        <div class="form-group">
+          <label for="modalCourseSelect">Zielkurs (Cevi Region Zürich):</label>
+          <select id="modalCourseSelect" class="form-input">
+            <optgroup label="Level 0: Jungschar Einstieg">
+              <option value="voku">Vorkurs (Voku) - ab 12 J.</option>
+              <option value="heku">Helferkurs (Heku) / Römerlager - ab 13 J.</option>
+              <option value="glk1">Gruppenleiterkurs 1 (GLK 1) - ab 14 J.</option>
+              <option value="glk2">Gruppenleiterkurs 2 (GLK 2) - ab 15 J.</option>
+            </optgroup>
+            <optgroup label="Level 1: J+S Leiterstufe">
+              <option value="glk3">Gruppenleiterkurs 3 (GLK 3 / J+S Leiterkurs) - ab 17 J.</option>
+            </optgroup>
+            <optgroup label="Level 2: Stufenleitung, Weiterbildung & Sicherheit">
+              <option value="slk">Stufenleitenden-Kurs (SLK) - ab 17 J.</option>
+              <option value="mf_lst">Modul Fortbildung Lagersport/Trekking (MF) - ab 18 J.</option>
+              <option value="slrg_pool">SLRG Brevet Basis Pool + BLS-AED - ab 14 J.</option>
+              <option value="pionier">Pioniertechnik Kurs - ab 15 J.</option>
+              <option value="sec_berg">J+S Sicherheitsmodul Berg - ab 18 J.</option>
+              <option value="sec_wasser">J+S Sicherheitsmodul Wasser - ab 18 J.</option>
+              <option value="sec_winter">J+S Sicherheitsmodul Winter - ab 18 J.</option>
+            </optgroup>
+            <optgroup label="Level 3: Kaderstufe">
+              <option value="llm">Lagerleiter-Modul (LLM) - ab 19 J.</option>
+              <option value="al_seminar">Abteilungsleiter-Seminar (AL) - ab 18 J.</option>
+              <option value="js_coach">J+S Coach Kurs - ab 20 J.</option>
+            </optgroup>
+            <optgroup label="Level 4: Expertenstufe">
+              <option value="experte">J+S Expertenkurs Lagersport/Trekking - ab 21 J.</option>
+            </optgroup>
           </select>
         </div>
-      </div>
-      <div class="cards-grid" id="coursesContainer">
-        <!-- Dynamischer Inhalt durch app.js -->
-        <div class="loading-placeholder">Lade Kursangebot...</div>
-      </div>
-    </section>
-
-    <!-- 4. Schnittstelle & System Panel -->
-    <section class="tab-panel" id="panel-system">
-      <div class="panel-header">
-        <div>
-          <h2>Cevi-DB (Hitobito) API & Systemarchitektur</h2>
-          <p class="section-subtitle">Technische Diagnose der Schnittstelle, Umgebungsstatus und Git-Branching.</p>
+        <div class="form-group">
+          <label for="modalSeason">Geplante Saison / Jahr:</label>
+          <input type="text" id="modalSeason" class="form-input" value="Herbst 2026">
         </div>
-        <button class="btn btn-secondary" onclick="loadSystemStatus()">🔄 Status neu laden</button>
-      </div>
-
-      <div class="system-grid">
-        <div class="card system-card">
-          <div class="system-card-header">
-            <h3>🌲 Cevi-DB / Hitobito Schnittstelle</h3>
-            <span class="badge badge-success">Aktiv</span>
-          </div>
-          <table class="specs-table">
-            <tr>
-              <td><strong>Plattform:</strong></td>
-              <td>Hitobito (Open Source Community ERP)</td>
-            </tr>
-            <tr>
-              <td><strong>Basis-URL:</strong></td>
-              <td id="sysDbBaseUrl">https://db.cevi.ch</td>
-            </tr>
-            <tr>
-              <td><strong>Auth-Verfahren:</strong></td>
-              <td>OAuth 2.0 / OpenID Connect (Doorkeeper)</td>
-            </tr>
-            <tr>
-              <td><strong>Angeforderte Scopes:</strong></td>
-              <td><code>openid</code>, <code>email</code>, <code>name</code>, <code>with_roles</code>, <code>events</code></td>
-            </tr>
-            <tr>
-              <td><strong>JSON:API Endpoints:</strong></td>
-              <td><code>/api/events</code>, <code>/api/event_participations</code>, <code>/api/qualifications</code></td>
-            </tr>
-          </table>
+        <div class="form-group">
+          <label for="modalNotes">Bemerkungen / Motivation:</label>
+          <textarea id="modalNotes" class="form-input" rows="2" placeholder="z.B. Ist sehr engagiert in der Stufe und bereit für mehr Verantwortung."></textarea>
         </div>
-
-        <div class="card system-card">
-          <div class="system-card-header">
-            <h3>⚙️ Laufzeit-Umgebung (.env)</h3>
-            <span class="badge badge-info" id="sysEnvBadge">LOCAL</span>
-          </div>
-          <table class="specs-table">
-            <tr>
-              <td><strong>APP_ENV:</strong></td>
-              <td id="sysAppEnv">local</td>
-            </tr>
-            <tr>
-              <td><strong>NODE_ENV:</strong></td>
-              <td id="sysNodeEnv">development</td>
-            </tr>
-            <tr>
-              <td><strong>Server-Modus:</strong></td>
-              <td id="sysMockStatus">Mock-Modus (Lokale Entwicklung)</td>
-            </tr>
-            <tr>
-              <td><strong>Git Repository:</strong></td>
-              <td><code>github.com/Sorry4Nothing/kurstracker.git</code></td>
-            </tr>
-            <tr>
-              <td><strong>Git Branching:</strong></td>
-              <td><code>main</code> (Live/Master) & <code>develop</code> (Dev)</td>
-            </tr>
-          </table>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeNominationModal()">Abbrechen</button>
+          <button type="submit" class="btn btn-primary">Vorschlag speichern</button>
         </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="footer-container">
-      <div class="footer-brand">
-        <p><strong>Cevi Kurstracker</strong> – Entwickelt für Leiterinnen und Leiter der Cevi Schweiz.</p>
-        <p class="footer-sub">Kompatibel mit Hitobito JSON:API & Jugend+Sport (BASPO).</p>
-      </div>
-      <div class="footer-meta">
-        <span>Git Branches: <code>main</code> / <code>develop</code></span>
-        <span>Umgebung: <strong id="footerEnvText">local</strong></span>
-      </div>
+      </form>
     </div>
-  </footer>
+  </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js?v=20"></script>
 </body>
 </html>

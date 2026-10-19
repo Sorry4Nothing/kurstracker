@@ -1,0 +1,329 @@
+/* ==============================================================================
+   CEVI KURSTRACKER - APP SHELL & LAYOUT
+   Sidebar, Continuous 64px Header Line, Responsive Drawer, Footer
+   ============================================================================== */
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  background-color: var(--bg-main);
+}
+
+/* Sidebar Navigation */
+.app-sidebar {
+  width: 275px;
+  flex-shrink: 0;
+  min-height: 100vh;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 100;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.app-sidebar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.sidebar-header {
+  height: 64px;
+  max-height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-decoration: none;
+}
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-decoration: none;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.brand-logo-svg {
+  display: block;
+  flex-shrink: 0;
+}
+.brand-title {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+  display: block;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+.brand-title .highlight {
+  color: var(--cevi-accent);
+}
+
+.sidebar-nav {
+  padding: 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sidebar-nav-group-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar-nav-item .nav-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+  color: var(--text-dim);
+  transition: color 0.15s ease;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--bg-surface-elevated);
+  color: var(--text-main);
+}
+.sidebar-nav-item:hover .nav-icon {
+  color: var(--text-main);
+}
+
+.sidebar-nav-item.active {
+  background: rgba(196, 19, 51, 0.12);
+  color: var(--text-main);
+  border-color: rgba(196, 19, 51, 0.25);
+  border-left: 3px solid var(--cevi-red);
+}
+.sidebar-nav-item.active .nav-icon {
+  color: var(--cevi-red);
+}
+
+.nav-permission-pill {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-full);
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--cevi-gold);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sidebar-footer {
+  padding: 1rem 1rem;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--bg-surface);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* App Main Content Area */
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-main);
+}
+
+.app-topbar {
+  height: 64px;
+  max-height: 64px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 90;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sidebar-toggle-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  font-size: 1rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.topbar-titles {
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar-page-title {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.topbar-page-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.topbar-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.topbar-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.topbar-badge .text-gold {
+  color: var(--cevi-gold);
+}
+
+.app-content-area {
+  flex: 1;
+  padding: 1.75rem 2rem;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 64px);
+}
+
+/* Responsive Navigation & Breakpoints */
+@media (max-width: 1024px) {
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: -290px;
+    bottom: 0;
+    width: 280px;
+    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.6);
+    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .app-sidebar.open {
+    left: 0;
+  }
+  .sidebar-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .app-topbar {
+    padding: 0 1rem;
+  }
+  .app-content-area {
+    padding: 1rem;
+  }
+  .topbar-stats {
+    display: none;
+  }
+}
+
+/* App Global Footer (Git Version, Environment, Cevi-DB Status) */
+.app-global-footer {
+  width: 100%;
+  min-height: 38px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 1.75rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  z-index: 10;
+}
+.app-global-footer .footer-left,
+.app-global-footer .footer-center,
+.app-global-footer .footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.footer-dot {
+  color: var(--text-dim);
+}
