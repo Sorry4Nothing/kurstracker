@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 520" width="100%" height="100%">
+  <!-- Window Base -->
+  <rect x="0" y="0" width="1100" height="520" rx="8" fill="#090D1A"/>
+  <rect x="0.5" y="0.5" width="1099" height="519" rx="7.5" fill="none" stroke="#1E293B" stroke-width="1"/>
+
+  <!-- Top App Navigation Bar -->
+  <g transform="translate(24, 18)">
+    <!-- Official Cevi Logo -->
+    <g transform="translate(0, 0) scale(0.24)">
+      <path fill="#FFFFFF" d="M88.09 129.04Q75.99 129.04 66.36 123.92Q56.74 118.81 51.24 109.68Q45.74 100.55 45.74 89L45.74 89Q45.74 77.45 51.24 68.32Q56.74 59.19 66.36 54.08Q75.99 48.96 88.09 48.96L88.09 48.96Q98.65 48.96 107.12 52.70Q115.59 56.44 121.20 63.48L121.20 63.48L107.34 76.02Q99.86 67 89.19 67L89.19 67Q82.92 67 78.03 69.75Q73.13 72.50 70.44 77.50Q67.74 82.51 67.74 89L67.74 89Q67.74 95.49 70.44 100.50Q73.13 105.50 78.03 108.25Q82.92 111 89.19 111L89.19 111Q99.86 111 107.34 101.98L107.34 101.98L121.20 114.52Q115.59 121.56 107.12 125.30Q98.65 129.04 88.09 129.04L88.09 129.04ZM152.44 110.67L192.70 110.67L192.70 127.50L130.88 127.50L130.88 50.50L191.27 50.50L191.27 67.33L152.44 67.33L152.44 80.31L186.65 80.31L186.65 96.59L152.44 96.59L152.44 110.67ZM260.24 50.50L281.80 50.50L248.80 127.50L227.35 127.50L194.46 50.50L218.00 50.50L238.90 100.66L260.24 50.50ZM286.31 127.50L286.31 50.50L308.09 50.50L308.09 127.50L286.31 127.50Z"/>
+      <g>
+        <path fill="#323394" d="M334.931,73.371c-0.181-0.641-0.267-1.301-0.327-1.85l12.602,12.581 C340.397,81.64,336.158,81.975,334.931,73.371"/>
+        <path fill="#C41333" d="M415.722,115.954c-8.831,2.554-17.685,4.158-26.022,4.703l31.227,31.223l11.095-41.367 C427.111,112.417,421.689,114.222,415.722,115.954"/>
+        <path fill="#C41333" d="M443.51,64.399c-11.379,7.401-25.311,13.781-38.275,17.489c-17.806,5.161-35.959,6.776-49.823,4.384 l-21.157-21.185l117.507-31.565L443.51,64.399"/>
+        <path fill="#323394" d="M460.756,86.589c-8.896,10.981-23.162,18.734-46.193,25.432c-23.495,6.697-46.936,6.516-59.736-0.58 c-4.496-2.516-7.312-5.601-8.392-9.293l-6.739-16.765c0.268,0.129,0.535,0.267,0.766,0.5c13.803,7.585,39.672,7.634,65.947,0.128 c21.021-6.073,43.057-18.351,54.348-30.131V86.589"/>
+        <path fill="#323394" d="M420.924,37.621l-82.082,21.879c8.453-12.008,28.283-23.847,51.221-30.49 c6.447-1.871,20.849-4.191,30.861-3.807V37.621"/>
+      </g>
+    </g>
+    <text x="125" y="24" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="900" font-size="16" fill="#38BDF8">KURSTRACKER</text>
+
+    <!-- Navigation Tabs -->
+    <rect x="250" y="4" width="134" height="28" rx="5" fill="#131B2E" stroke="#38BDF8" stroke-width="1"/>
+    <text x="317" y="22" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11.5" font-weight="700" fill="#38BDF8" text-anchor="middle">Ausbildungsbaum</text>
+
+    <text x="450" y="22" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11.5" font-weight="500" fill="#94A3B8" text-anchor="middle">Stufenleiter-Planer</text>
+    <text x="580" y="22" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11.5" font-weight="500" fill="#94A3B8" text-anchor="middle">Hitobito Sync</text>
+
+    <!-- Right Header Tag -->
+    <g transform="translate(900, 4)">
+      <rect x="0" y="0" width="152" height="28" rx="5" fill="#111827" stroke="#1E293B" stroke-width="1"/>
+      <circle cx="14" cy="14" r="3.5" fill="#108A43"/>
+      <text x="26" y="18" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" font-weight="600" fill="#CBD5E1">Cevi Schweiz // J+S</text>
+    </g>
+  </g>
+
+  <line x1="24" y1="62" x2="1076" y2="62" stroke="#1E293B" stroke-width="1"/>
+
+  <!-- DASHBOARD 3-PANEL VIEW -->
+
+  <!-- Panel 1: Left Overview (250px) -->
+  <g transform="translate(24, 76)">
+    <rect x="0" y="0" width="250" height="420" rx="6" fill="#0D1322" stroke="#1E293B" stroke-width="1"/>
+    <text x="16" y="26" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12.5" font-weight="800" fill="#FFFFFF">Ausbildungsübersicht</text>
+
+    <!-- Status Metric 1 -->
+    <g transform="translate(16, 48)">
+      <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" fill="#94A3B8">J+S Leiterstatus</text>
+      <text x="218" y="0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" font-weight="700" fill="#86EFAC" text-anchor="end">Aktiv</text>
+      <rect x="0" y="8" width="218" height="5" rx="2.5" fill="#1A2234"/>
+      <rect x="0" y="8" width="190" height="5" rx="2.5" fill="#108A43"/>
+    </g>
+
+    <!-- Status Metric 2 -->
+    <g transform="translate(16, 86)">
+      <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" fill="#94A3B8">Fortbildungspflicht</text>
+      <text x="218" y="0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" font-weight="700" fill="#FCD34D" text-anchor="end">Ausstehend</text>
+      <rect x="0" y="8" width="218" height="5" rx="2.5" fill="#1A2234"/>
+      <rect x="0" y="8" width="120" height="5" rx="2.5" fill="#F59E0B"/>
+    </g>
+
+    <!-- Status Metric 3 -->
+    <g transform="translate(16, 124)">
+      <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" fill="#94A3B8">Kaderempfehlung</text>
+      <text x="218" y="0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" font-weight="700" fill="#93C5FD" text-anchor="end">SLK bereit</text>
+      <rect x="0" y="8" width="218" height="5" rx="2.5" fill="#1A2234"/>
+      <rect x="0" y="8" width="165" height="5" rx="2.5" fill="#38BDF8"/>
+    </g>
+
+    <line x1="16" y1="160" x2="234" y2="160" stroke="#1E293B" stroke-width="1"/>
+
+    <!-- Early Warnings / Stufenleiter Notizen -->
+    <text x="16" y="184" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="800" fill="#CBD5E1">Stufenleiter Früherkennung</text>
+
+    <g transform="translate(16, 202)">
+      <rect x="0" y="0" width="218" height="48" rx="4" fill="#1C141E" stroke="#581C26" stroke-width="1"/>
+      <circle cx="14" cy="24" r="3.5" fill="#EF4444"/>
+      <text x="26" y="21" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" font-weight="700" fill="#FCA5A5">1 Anerkennung verfällt</text>
+      <text x="26" y="34" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="9.5" fill="#FDA4AF">Modul Fortbildung bis Dez 2026</text>
+    </g>
+
+    <g transform="translate(16, 260)">
+      <rect x="0" y="0" width="218" height="48" rx="4" fill="#0E211B" stroke="#14532D" stroke-width="1"/>
+      <circle cx="14" cy="24" r="3.5" fill="#108A43"/>
+      <text x="26" y="21" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" font-weight="700" fill="#86EFAC">2 Leitende für GLK</text>
+      <text x="26" y="34" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="9.5" fill="#BBF7D0">Mindestalter 18 J. erfüllt</text>
+    </g>
+
+    <g transform="translate(16, 318)">
+      <rect x="0" y="0" width="218" height="48" rx="4" fill="#111B30" stroke="#1E3A8A" stroke-width="1"/>
+      <circle cx="14" cy="24" r="3.5" fill="#38BDF8"/>
+      <text x="26" y="21" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" font-weight="700" fill="#93C5FD">1 Kandidat für SLK</text>
+      <text x="26" y="34" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="9.5" fill="#BAE6FD">Voraussetzungen geprüft</text>
+    </g>
+  </g>
+
+  <!-- Panel 2: Center Interactive Tree (530px) -->
+  <g transform="translate(290, 76)">
+    <rect x="0" y="0" width="530" height="420" rx="6" fill="#0D1322" stroke="#1E293B" stroke-width="1"/>
+
+    <!-- Panel Header -->
+    <rect x="0" y="0" width="530" height="36" rx="6" fill="#11182B"/>
+    <text x="18" y="23" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="700" fill="#E2E8F0">AUSBILDUNGSBAUM // PATHFINDING</text>
+    <circle cx="510" cy="18" r="4" fill="#108A43"/>
+
+    <!-- Exact Vector Paths -->
+    <!-- 1. GLK (90, 200) -> LLM (230, 120) -->
+    <path d="M 116 200 C 170 200, 170 120, 230 120" stroke="#38BDF8" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+
+    <!-- 2. LLM (324, 120) -> Experte (374, 120) [DIRECT BRANCH FROM LLM TO EXPERTE] -->
+    <path d="M 324 120 L 374 120" stroke="#64748B" stroke-width="1.8" stroke-dasharray="4 3" fill="none"/>
+
+    <!-- 3. GLK (90, 200) -> SLK (230, 260) -->
+    <path d="M 116 200 C 170 200, 170 260, 230 260" stroke="#C41333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+    <!-- Center Node: GLK -->
+    <g transform="translate(90, 200)">
+      <circle cx="0" cy="0" r="26" fill="#0C2518" stroke="#108A43" stroke-width="2"/>
+      <circle cx="0" cy="0" r="14" fill="#108A43"/>
+      <circle cx="0" cy="0" r="5" fill="#FFFFFF"/>
+      <text x="0" y="42" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11.5" font-weight="800" fill="#FFFFFF" text-anchor="middle">GLK</text>
+      <text x="0" y="55" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="9.5" font-weight="600" fill="#86EFAC" text-anchor="middle">J+S Leiter</text>
+    </g>
+
+    <!-- Top Branch: LLM -->
+    <g transform="translate(230, 98)">
+      <rect x="0" y="0" width="94" height="44" rx="6" fill="#111B30" stroke="#38BDF8" stroke-width="1.5"/>
+      <text x="47" y="23" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13" font-weight="800" fill="#38BDF8" text-anchor="middle">LLM</text>
+      <text x="47" y="36" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="9" font-weight="600" fill="#93C5FD" text-anchor="middle">Lagerleiter</text>
+    </g>
+
+    <!-- Far Right Branch: Experte (From LLM!) -->
+    <g transform="translate(374, 98)">
+      <rect x="0" y="0" width="94" height="44" rx="6" fill="#111726" stroke="#475569" stroke-width="1.2" stroke-dasharray="3 3"/>
+      <text x="47" y="23" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="700" fill="#94A3B8" text-anchor="middle">Experte</text>
+      <text x="47" y="36" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="9" font-weight="500" fill="#64748B" text-anchor="middle">J+S Experte</text>
+    </g>
+
+    <!-- Bottom Branch: SLK (Target) -->
+    <g transform="translate(230, 238)">
+      <rect x="0" y="0" width="94" height="44" rx="6" fill="#C41333" stroke="#DC2626" stroke-width="1.5"/>
+      <text x="47" y="23" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13" font-weight="800" fill="#FFFFFF" text-anchor="middle">SLK</text>
+      <text x="47" y="36" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="9" font-weight="600" fill="#FEE2E2" text-anchor="middle">Scharleitung</text>
+    </g>
+
+    <!-- Active Route Feedback -->
+    <g transform="translate(18, 362)">
+      <rect x="0" y="0" width="494" height="34" rx="4" fill="#111827" stroke="#1E293B" stroke-width="1"/>
+      <circle cx="16" cy="17" r="4" fill="#C41333"/>
+      <text x="28" y="21" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="600" fill="#FCA5A5">
+        Ausgewählter Pfad: GLK → SLK (Voraussetzungen erfüllt)
+      </text>
+    </g>
+  </g>
+
+  <!-- Panel 3: Right Inspector (216px) -->
+  <g transform="translate(836, 76)">
+    <rect x="0" y="0" width="240" height="420" rx="6" fill="#0D1322" stroke="#1E293B" stroke-width="1"/>
+
+    <text x="16" y="26" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12.5" font-weight="800" fill="#FFFFFF">Zielkurs-Inspektor</text>
+    <text x="16" y="42" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" font-weight="600" fill="#38BDF8">SLK Scharleiterkurs</text>
+
+    <!-- Clean Progress Display -->
+    <g transform="translate(120, 114)">
+      <circle cx="0" cy="0" r="38" fill="none" stroke="#1A2234" stroke-width="6"/>
+      <circle cx="0" cy="0" r="38" fill="none" stroke="#C41333" stroke-width="6" stroke-dasharray="238" stroke-dashoffset="60" stroke-linecap="round"/>
+      <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="17" font-weight="900" fill="#FFFFFF" text-anchor="middle">75%</text>
+      <text x="0" y="22" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="8.5" fill="#94A3B8" text-anchor="middle">Voraussetzungen</text>
+    </g>
+
+    <!-- Requirements Checklist -->
+    <g transform="translate(16, 185)">
+      <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="9.5" font-weight="700" fill="#64748B" letter-spacing="0.5">VORAUSSETZUNGEN</text>
+
+      <g transform="translate(0, 16)">
+        <circle cx="6" cy="6" r="4.5" fill="#108A43"/>
+        <text x="18" y="9.5" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" fill="#E2E8F0">Grundstufe (GLK)</text>
+      </g>
+      <g transform="translate(0, 42)">
+        <circle cx="6" cy="6" r="4.5" fill="#108A43"/>
+        <text x="18" y="9.5" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" fill="#E2E8F0">Leiterpraxis (1 Jahr)</text>
+      </g>
+      <g transform="translate(0, 68)">
+        <circle cx="6" cy="6" r="4.5" fill="#F59E0B"/>
+        <text x="18" y="9.5" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" fill="#FCD34D">Empfehlung Leitung</text>
+      </g>
+    </g>
+
+    <!-- Action Button -->
+    <g transform="translate(16, 356)">
+      <rect x="0" y="0" width="208" height="38" rx="4" fill="#C41333"/>
+      <text x="104" y="23" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11.5" font-weight="800" fill="#FFFFFF" text-anchor="middle">Kandidat vormerken</text>
+    </g>
+  </g>
+</svg>

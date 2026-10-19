@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="100%" height="100%">
+  <!-- Background Canvas -->
+  <rect width="1200" height="320" rx="8" fill="#090D1A"/>
+  <rect x="0.5" y="0.5" width="1199" height="319" rx="7.5" fill="none" stroke="#1E293B" stroke-width="1"/>
+
+  <!-- Left: Brand & Information -->
+  <g transform="translate(56, 44)">
+    <!-- Official Cevi Logo & Wordmark (from logo.cevi.ch) -->
+    <g transform="translate(0, 0) scale(0.68)">
+      <path fill="#FFFFFF" d="M88.09 129.04Q75.99 129.04 66.36 123.92Q56.74 118.81 51.24 109.68Q45.74 100.55 45.74 89L45.74 89Q45.74 77.45 51.24 68.32Q56.74 59.19 66.36 54.08Q75.99 48.96 88.09 48.96L88.09 48.96Q98.65 48.96 107.12 52.70Q115.59 56.44 121.20 63.48L121.20 63.48L107.34 76.02Q99.86 67 89.19 67L89.19 67Q82.92 67 78.03 69.75Q73.13 72.50 70.44 77.50Q67.74 82.51 67.74 89L67.74 89Q67.74 95.49 70.44 100.50Q73.13 105.50 78.03 108.25Q82.92 111 89.19 111L89.19 111Q99.86 111 107.34 101.98L107.34 101.98L121.20 114.52Q115.59 121.56 107.12 125.30Q98.65 129.04 88.09 129.04L88.09 129.04ZM152.44 110.67L192.70 110.67L192.70 127.50L130.88 127.50L130.88 50.50L191.27 50.50L191.27 67.33L152.44 67.33L152.44 80.31L186.65 80.31L186.65 96.59L152.44 96.59L152.44 110.67ZM260.24 50.50L281.80 50.50L248.80 127.50L227.35 127.50L194.46 50.50L218.00 50.50L238.90 100.66L260.24 50.50ZM286.31 127.50L286.31 50.50L308.09 50.50L308.09 127.50L286.31 127.50Z"/>
+      <g>
+        <path fill="#323394" d="M334.931,73.371c-0.181-0.641-0.267-1.301-0.327-1.85l12.602,12.581 C340.397,81.64,336.158,81.975,334.931,73.371"/>
+        <path fill="#C41333" d="M415.722,115.954c-8.831,2.554-17.685,4.158-26.022,4.703l31.227,31.223l11.095-41.367 C427.111,112.417,421.689,114.222,415.722,115.954"/>
+        <path fill="#C41333" d="M443.51,64.399c-11.379,7.401-25.311,13.781-38.275,17.489c-17.806,5.161-35.959,6.776-49.823,4.384 l-21.157-21.185l117.507-31.565L443.51,64.399"/>
+        <path fill="#323394" d="M460.756,86.589c-8.896,10.981-23.162,18.734-46.193,25.432c-23.495,6.697-46.936,6.516-59.736-0.58 c-4.496-2.516-7.312-5.601-8.392-9.293l-6.739-16.765c0.268,0.129,0.535,0.267,0.766,0.5c13.803,7.585,39.672,7.634,65.947,0.128 c21.021-6.073,43.057-18.351,54.348-30.131V86.589"/>
+        <path fill="#323394" d="M420.924,37.621l-82.082,21.879c8.453-12.008,28.283-23.847,51.221-30.49 c6.447-1.871,20.849-4.191,30.861-3.807V37.621"/>
+      </g>
+    </g>
+
+    <!-- Sub-Brand: KURSTRACKER -->
+    <text x="340" y="65" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="34" fill="#38BDF8" letter-spacing="1">KURSTRACKER</text>
+
+    <!-- Description -->
+    <text x="0" y="125" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="600" font-size="16" fill="#F8FAFC">
+      Ausbildungs- und Kursmanagement für Cevi Schweiz &amp; J+S Lagersport/Trekking
+    </text>
+    <text x="0" y="150" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="400" font-size="14" fill="#94A3B8">
+      Interaktiver Ausbildungsbaum, Stufenleiter-Cockpit und Hitobito (Cevi-DB) Vorbereitung.
+    </text>
+
+    <!-- Tags -->
+    <g transform="translate(0, 182)">
+      <rect x="0" y="0" width="76" height="26" rx="4" fill="#131B2E" stroke="#25324D" stroke-width="1"/>
+      <text x="38" y="17" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="600" fill="#CBD5E1" text-anchor="middle">Node.js</text>
+
+      <rect x="86" y="0" width="80" height="26" rx="4" fill="#131B2E" stroke="#25324D" stroke-width="1"/>
+      <text x="126" y="17" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="600" fill="#CBD5E1" text-anchor="middle">Express</text>
+
+      <rect x="176" y="0" width="134" height="26" rx="4" fill="#0C2518" stroke="#108A43" stroke-width="1"/>
+      <text x="243" y="17" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="700" fill="#86EFAC" text-anchor="middle">J+S Lagersport</text>
+
+      <rect x="320" y="0" width="124" height="26" rx="4" fill="#141B3B" stroke="#323394" stroke-width="1"/>
+      <text x="382" y="17" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="700" fill="#93C5FD" text-anchor="middle">Hitobito Ready</text>
+    </g>
+  </g>
+
+  <!-- Right: Crisp Ausbildungsbaum Vector Graphic -->
+  <g transform="translate(690, 36)">
+    <!-- Diagram Card -->
+    <rect x="0" y="0" width="454" height="248" rx="8" fill="#0D1322" stroke="#1E293B" stroke-width="1"/>
+
+    <!-- Diagram Header -->
+    <rect x="0" y="0" width="454" height="32" rx="8" fill="#11182B"/>
+    <text x="16" y="21" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="700" fill="#94A3B8" letter-spacing="0.5">AUSBILDUNGSBAUM // LAGERSPORT &amp; TREKKING</text>
+    <circle cx="434" cy="16" r="4" fill="#108A43"/>
+
+    <!-- Vector Paths -->
+    <!-- 1. GLK (80, 136) -> LLM (204, 88) -->
+    <path d="M 104 136 C 150 136, 150 88, 204 88" fill="none" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <!-- 2. LLM (294, 88) -> Experte (344, 88) [DIRECT FROM LLM TO EXPERTE] -->
+    <path d="M 294 88 L 344 88" fill="none" stroke="#64748B" stroke-width="1.8" stroke-dasharray="4 3"/>
+
+    <!-- 3. GLK (80, 136) -> SLK (204, 184) -->
+    <path d="M 104 136 C 150 136, 150 184, 204 184" fill="none" stroke="#C41333" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- Node 1: GLK (Grundstufe / J+S Leiter) -->
+    <g transform="translate(80, 136)">
+      <circle cx="0" cy="0" r="24" fill="#0C2518" stroke="#108A43" stroke-width="2"/>
+      <circle cx="0" cy="0" r="13" fill="#108A43"/>
+      <circle cx="0" cy="0" r="4.5" fill="#FFFFFF"/>
+      <text x="0" y="38" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="800" fill="#FFFFFF" text-anchor="middle">GLK</text>
+      <text x="0" y="50" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="9" font-weight="600" fill="#86EFAC" text-anchor="middle">J+S Leiter</text>
+    </g>
+
+    <!-- Node 2: LLM (Lagerleiter) -->
+    <g transform="translate(204, 68)">
+      <rect x="0" y="0" width="90" height="40" rx="6" fill="#111B30" stroke="#38BDF8" stroke-width="1.5"/>
+      <text x="45" y="21" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="800" fill="#38BDF8" text-anchor="middle">LLM</text>
+      <text x="45" y="32" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="8.5" font-weight="600" fill="#93C5FD" text-anchor="middle">Lagerleiter</text>
+    </g>
+
+    <!-- Node 3: Experte (Only from LLM!) -->
+    <g transform="translate(344, 68)">
+      <rect x="0" y="0" width="86" height="40" rx="6" fill="#111726" stroke="#475569" stroke-width="1.2" stroke-dasharray="3 3"/>
+      <text x="43" y="21" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="700" fill="#94A3B8" text-anchor="middle">Experte</text>
+      <text x="43" y="32" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="8.5" font-weight="500" fill="#64748B" text-anchor="middle">J+S Experte</text>
+    </g>
+
+    <!-- Node 4: SLK (Scharleiterkurs) -->
+    <g transform="translate(204, 164)">
+      <rect x="0" y="0" width="90" height="40" rx="6" fill="#C41333" stroke="#DC2626" stroke-width="1"/>
+      <text x="45" y="21" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="800" fill="#FFFFFF" text-anchor="middle">SLK</text>
+      <text x="45" y="32" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="8.5" font-weight="600" fill="#FEE2E2" text-anchor="middle">Scharleitung</text>
+    </g>
+  </g>
+</svg>

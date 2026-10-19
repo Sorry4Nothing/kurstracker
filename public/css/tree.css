@@ -1,0 +1,435 @@
+/* ==============================================================================
+   CEVI KURSTRACKER - AUSBILDUNGSBAUM (INTERACTIVE 2D MAP & INSPECTOR)
+   Pan & Zoom Canvas, Glowing Cubic Bézier Curves, Node Cards, Checklist
+   ============================================================================== */
+
+.tree-legend {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.legend-dot.status-completed { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
+.legend-dot.status-in_progress { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
+.legend-dot.status-available { background: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.6); }
+.legend-dot.status-locked { background: #64748b; }
+
+/* Tree Toolbar */
+.tree-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1.15rem;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.tree-toolbar-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.tree-zoom-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tree-workspace {
+  display: grid;
+  grid-template-columns: 1fr 330px;
+  gap: 1.25rem;
+  margin-top: 1rem;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .tree-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Interactive Map Canvas Container (Pan & Drag, Zoom) */
+.tree-canvas-container {
+  position: relative;
+  background: var(--bg-surface-elevated);
+  background-image: 
+    radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 24px 24px, 120px 120px, 120px 120px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  height: 720px;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+}
+
+.tree-canvas-container.is-panning {
+  cursor: grabbing;
+}
+
+.tree-map-viewport {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.tree-map-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2360px;
+  height: 840px;
+  transform-origin: 0 0;
+  transition: transform 0.04s ease-out;
+}
+
+.tree-lines-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2360px;
+  height: 840px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tree-path-line {
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 2.5px;
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke 0.2s, stroke-width 0.2s;
+}
+.tree-path-line.active-path {
+  stroke: #38bdf8;
+  stroke-width: 3.5px;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8));
+  stroke-dasharray: 6 3;
+  animation: treeDash 1.2s linear infinite;
+}
+@keyframes treeDash {
+  to { stroke-dashoffset: -18; }
+}
+
+.tree-map-track-badge {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-full);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Floating Map Controls */
+.map-floating-controls {
+  position: absolute;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--bg-surface);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.35rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+}
+
+.map-ctrl-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: all 0.15s ease;
+}
+.map-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  border-color: var(--border-subtle);
+}
+
+/* Kursknoten-Karten */
+.tree-node-card {
+  position: absolute;
+  width: 220px;
+  box-sizing: border-box;
+  background: var(--bg-surface);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s, box-shadow 0.18s;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  user-select: none;
+  z-index: 10;
+}
+.tree-node-card:hover {
+  transform: translateY(-3px) scale(1.02);
+  z-index: 20;
+}
+
+.tree-node-card.status-completed {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.05);
+}
+.tree-node-card.status-in_progress {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.05);
+}
+.tree-node-card.status-available {
+  border-color: rgba(56, 189, 248, 0.6);
+  background: rgba(56, 189, 248, 0.08);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.15);
+}
+.tree-node-card.status-locked {
+  border-color: rgba(255, 255, 255, 0.04);
+  background: rgba(17, 24, 39, 0.5);
+  opacity: 0.65;
+}
+.tree-node-card.is-path-highlight {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.5) !important;
+  transform: scale(1.03) !important;
+}
+.tree-node-card.is-selected {
+  outline: 2px solid var(--cevi-gold);
+  outline-offset: 2px;
+}
+
+.node-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.node-code {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.node-status-pill {
+  font-size: 0.68rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+}
+.node-status-pill.status-completed { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.node-status-pill.status-in_progress { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.node-status-pill.status-available { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+.node-status-pill.status-locked { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
+
+.node-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-main);
+  margin-bottom: 0.35rem;
+}
+.node-meta {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Zielkurs Inspektor Sidebar Panel */
+.tree-inspector-panel {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  position: sticky;
+  top: 1.5rem;
+}
+
+.inspector-header {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.inspector-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--cevi-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.35rem;
+}
+.inspector-header h3 {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.inspector-meta-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+}
+
+.inspector-section {
+  margin-bottom: 1.25rem;
+}
+.inspector-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.65rem;
+}
+
+.inspector-path-summary {
+  background: rgba(2, 132, 199, 0.08);
+  border-left: 3px solid var(--cevi-accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.75rem 0.95rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.inspector-path-summary.eligible {
+  background: rgba(16, 138, 67, 0.08);
+  border-left-color: #108a43;
+  color: var(--text-main);
+}
+
+/* Kokonut Pro Checklist */
+.checklist-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.progress-ring-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--cevi-accent);
+}
+.progress-ring-svg {
+  width: 24px;
+  height: 24px;
+  transform: rotate(-90deg);
+}
+.progress-ring-bg {
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 3;
+  fill: none;
+}
+.progress-ring-fill {
+  stroke: var(--cevi-accent);
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  transition: var(--transition);
+  margin-bottom: 0.5rem;
+}
+.check-item.check-fulfilled {
+  border-color: rgba(16, 138, 67, 0.35);
+  background: rgba(16, 138, 67, 0.08);
+}
+.check-item.check-unfulfilled {
+  border-color: rgba(196, 19, 51, 0.35);
+  background: rgba(196, 19, 51, 0.08);
+}
+.check-step-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.check-fulfilled .check-step-badge {
+  background: var(--cevi-emerald);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(16, 138, 67, 0.4);
+}
+.check-unfulfilled .check-step-badge {
+  background: var(--cevi-red);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(196, 19, 51, 0.4);
+}
+.check-text-content {
+  flex: 1;
+}
+.check-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+.check-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
