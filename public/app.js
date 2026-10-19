@@ -42,17 +42,17 @@ async function loadConfig() {
     envLabel.textContent = envNameDisplay;
     footerEnvText.textContent = `${currentConfig.appEnv} (${currentConfig.nodeEnv})`;
 
-    dbStatusText.textContent = currentConfig.isMock
-      ? 'Cevi-DB: Mock-Modus'
-      : 'Cevi-DB: db.cevi.ch';
+    dbStatusText.textContent = currentConfig.isPreparationMode
+      ? 'Cevi-DB: In Vorbereitung'
+      : (currentConfig.isMock ? 'Cevi-DB: Simulation' : 'Cevi-DB: db.cevi.ch');
 
     // System-Panel Daten befüllen
     document.getElementById('sysDbBaseUrl').textContent = currentConfig.ceviDbBaseUrl;
     document.getElementById('sysAppEnv').textContent = currentConfig.appEnv;
     document.getElementById('sysNodeEnv').textContent = currentConfig.nodeEnv;
-    document.getElementById('sysMockStatus').textContent = currentConfig.isMock
-      ? 'Mock-Modus aktiviert (Lokale Simulation)'
-      : 'Echte Verbindung zu db.cevi.ch';
+    document.getElementById('sysMockStatus').textContent = currentConfig.isPreparationMode
+      ? 'Vorbereitungsmodus (Schnittstelle vorbereitet, Registrierung ausstehend)'
+      : (currentConfig.isMock ? 'Mock-Modus aktiviert (Lokale Simulation)' : 'Echte Verbindung zu db.cevi.ch');
     document.getElementById('sysEnvBadge').textContent = currentConfig.appEnv.toUpperCase();
 
   } catch (err) {

@@ -61,8 +61,11 @@ app.get('/api/config', (req, res) => {
     isDevelopment: envConfig.app.isDevelopment,
     isProduction: envConfig.app.isProduction,
     isMock: envConfig.ceviDb.useMock,
+    isPreparationMode: ceviDbService.isPreparationMode(),
+    serviceTokenConfigured: Boolean(envConfig.ceviDb.serviceToken),
     ceviDbBaseUrl: envConfig.ceviDb.baseUrl,
-    ceviDbRedirectUri: envConfig.ceviDb.redirectUri
+    ceviDbRedirectUri: envConfig.ceviDb.redirectUri,
+    ceviWikiUrl: 'https://wiki.cevi.ch/index.php/Cevi.DB_API'
   });
 });
 

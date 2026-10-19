@@ -3,9 +3,18 @@ import { envConfig } from '../config/env.js';
 /**
  * Cevi-DB (Hitobito) API & OAuth2 Service
  *
- * Die Cevi-DB basiert auf der Open-Source-Plattform "Hitobito" (hitobito.ch).
- * Diese Schnittstelle stellt sowohl echte OAuth 2.0 / REST/JSON:API Aufrufe bereit,
- * als auch einen vollständigen Mock-Modus für lokale Entwicklung ohne Credentials.
+ * Basierend auf der offiziellen CeviWiki Dokumentation:
+ * https://wiki.cevi.ch/index.php/Cevi.DB_API
+ *
+ * WICHTIG (Vorbereitungsmodus):
+ * Die offizielle OAuth2-Applikation muss erst bei der Cevi.DB Steuergruppe
+ * (cevidb@cevi.ch) eingerichtet werden. Bis dahin läuft dieser Service
+ * standardmässig im "Vorbereitungsmodus (Simulation/Mock)", damit Kurstracker
+ * ohne Unterbrüche entwickelt und getestet werden kann.
+ *
+ * Neben OAuth2 unterstützt die Cevi.DB auch Service-Tokens (API-Keys),
+ * welche von Abteilungsleitern auf der Ortsgruppe erstellt werden können:
+ * https://db.cevi.ch/groups/GRUPPENID/service_tokens (Header: X-Token)
  */
 export class CeviDbService {
   constructor(config = envConfig.ceviDb) {
@@ -14,16 +23,48 @@ export class CeviDbService {
     this.clientSecret = config.clientSecret;
     this.redirectUri = config.redirectUri;
     this.scopes = config.scopes;
-    this.useMock = config.useMock;
+    this.serviceToken = config.serviceToken || '';
+    this.preparationMode = config.preparationMode !== false;
+    this.useMock = config.useMock || this.preparationMode;
+  }
+
+  /**
+   * Prüft, ob der Service im Vorbereitungsmodus (Simulation) läuft
+   * @returns {boolean}
+   */
+  isPreparationMode() {
+    return this.preparationMode || this.useMock;
+  }
+
+  /**
+   * Liefert standardisierte JSON:API Header für Cevi.DB / Hitobito
+   * @param {string} [token] - Optionales OAuth Bearer Token oder Service Token
+   */
+  getHeaders(token) {
+    const headers = {
+      'Accept': 'application/vnd.api+json, application/json',
+      'Content-Type': 'application/vnd.api+json'
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    } else if (this.serviceToken) {
+      // Gemäss CeviWiki: Header "X-Token" für Gruppen-Service-Tokens
+      headers['X-Token'] = this.serviceToken;
+    }
+
+    return headers;
   }
 
   /**
    * Generiert die OAuth 2.0 Autorisierungs-URL für den Cevi-DB Login
    * @param {string} state - CSRF Token
-   * @returns {string} Vollständige Redirect-URL zu db.cevi.ch
+   * @returns {string} Vollständige Redirect-URL zu db.cevi.ch oder lokaler Mock
    */
   getAuthorizationUrl(state = 'cevi_auth_state') {
-    if (this.useMock) {
+    // Im Vorbereitungsmodus oder Mock-Modus wird auf den lokalen Sandbox-Login verwiesen,
+    // um Fehlermeldungen wegen nicht registrierter OAuth-Clients auf db.cevi.ch zu verhindern!
+    if (this.isPreparationMode()) {
       return `/api/auth/mock-login?state=${encodeURIComponent(state)}`;
     }
 
@@ -44,7 +85,7 @@ export class CeviDbService {
    * @returns {Promise<{ access_token: string, token_type: string, expires_in: number, refresh_token?: string }>}
    */
   async exchangeCodeForToken(code) {
-    if (this.useMock || code === 'mock_auth_code_cevi') {
+    if (this.isPreparationMode() || code === 'mock_auth_code_cevi') {
       return {
         access_token: 'mock_token_cevi_' + Date.now(),
         token_type: 'Bearer',
@@ -82,15 +123,12 @@ export class CeviDbService {
    * @returns {Promise<object>}
    */
   async getUserInfo(accessToken) {
-    if (this.useMock || accessToken?.startsWith('mock_token')) {
+    if (this.isPreparationMode() || accessToken?.startsWith('mock_token')) {
       return this.getMockUser();
     }
 
     const response = await fetch(`${this.baseUrl}/oauth/userinfo`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json'
-      }
+      headers: this.getHeaders(accessToken)
     });
 
     if (!response.ok) {
@@ -108,16 +146,13 @@ export class CeviDbService {
    * @returns {Promise<Array>}
    */
   async getCourses(accessToken, filters = {}) {
-    if (this.useMock || !accessToken || accessToken.startsWith('mock_token')) {
+    if (this.isPreparationMode() || !accessToken || accessToken.startsWith('mock_token')) {
       return this.getMockCourses();
     }
 
     try {
       const response = await fetch(`${this.baseUrl}/api/events?filter[type]=Course`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.api+json, application/json'
-        }
+        headers: this.getHeaders(accessToken)
       });
 
       if (!response.ok) {
@@ -139,7 +174,7 @@ export class CeviDbService {
    * @param {string} [personId]
    */
   async getUserParticipations(accessToken, personId) {
-    if (this.useMock || !accessToken || accessToken.startsWith('mock_token')) {
+    if (this.isPreparationMode() || !accessToken || accessToken.startsWith('mock_token')) {
       return this.getMockParticipations();
     }
 
@@ -149,10 +184,7 @@ export class CeviDbService {
         : `${this.baseUrl}/api/event_participations`;
 
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.api+json, application/json'
-        }
+        headers: this.getHeaders(accessToken)
       });
 
       if (!response.ok) {
@@ -172,7 +204,7 @@ export class CeviDbService {
    * @param {string} [personId]
    */
   async getUserQualifications(accessToken, personId) {
-    if (this.useMock || !accessToken || accessToken.startsWith('mock_token')) {
+    if (this.isPreparationMode() || !accessToken || accessToken.startsWith('mock_token')) {
       return this.getMockQualifications();
     }
 
@@ -182,10 +214,7 @@ export class CeviDbService {
         : `${this.baseUrl}/api/qualifications`;
 
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.api+json, application/json'
-        }
+        headers: this.getHeaders(accessToken)
       });
 
       if (!response.ok) {
