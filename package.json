@@ -1,0 +1,31 @@
+{
+  "name": "kurstracker",
+  "version": "1.0.0",
+  "description": "Cevi Kurstracker - Verwaltung und Nachverfolgung von Cevi- & J+S-Kursen mit Cevi-DB (Hitobito) OAuth & API Anbindung",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "env:check": "node scripts/check-env.js",
+    "git:status": "git status -s",
+    "switch:dev": "node scripts/safe-git-switch.js develop",
+    "switch:main": "node scripts/safe-git-switch.js main"
+  },
+  "keywords": [
+    "cevi",
+    "cevi-db",
+    "hitobito",
+    "kurstracker",
+    "jugend-und-sport",
+    "oauth2"
+  ],
+  "author": "Cevi Kurstracker Team",
+  "license": "ISC",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

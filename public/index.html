@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cevi Kurstracker - Ausbildung & Qualifikationen</title>
+  <meta name="description" content="Verwaltung und Nachverfolgung von Cevi- und Jugend+Sport-Ausbildungen mit direkter Cevi-DB (Hitobito) Anbindung.">
+  
+  <!-- Modern Google Font: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+  <!-- Hintergrund-Lichteffekt -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- Header / Navigation -->
+  <header class="navbar" id="mainNavbar">
+    <div class="nav-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">CEVI <span class="highlight">KURSTRACKER</span></span>
+          <span class="brand-subtitle">Ausbildung & J+S Management</span>
+        </div>
+      </div>
+
+      <div class="nav-center">
+        <div class="env-pill" id="envBadge" title="Aktuelle Laufzeit-Umgebung">
+          <span class="env-dot"></span>
+          <span id="envLabel">LÄDT...</span>
+        </div>
+        <div class="db-pill" id="dbStatusBadge" title="Status der Cevi-DB Anbindung">
+          <span class="db-icon">🌲</span>
+          <span id="dbStatusText">Cevi-DB: Bereit</span>
+        </div>
+      </div>
+
+      <div class="nav-actions" id="userNavActions">
+        <!-- Dynamischer Inhalt durch app.js -->
+        <button class="btn btn-outline" id="btnLogin" onclick="initiateLogin()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+          </svg>
+          Mit Cevi-DB anmelden
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hauptinhalt -->
+  <main class="main-content">
+    
+    <!-- Hero / Status Banner -->
+    <section class="hero-section">
+      <div class="hero-card">
+        <div class="hero-content">
+          <div class="hero-tag" id="userGreetingTag">Cevi Ausbildungs-Cockpit</div>
+          <h1 class="hero-title" id="heroGreeting">Behalte deine Cevi- & J+S-Kurse im Überblick</h1>
+          <p class="hero-desc" id="heroDescription">
+            Automatische Synchronisation mit der Cevi-DB (Hitobito). Verfolge deine Qualifikationen, Gültigkeiten und anstehende Kurse ohne manuelle Listen.
+          </p>
+
+          <!-- Quick Stats Bar -->
+          <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+              <span class="stat-num" id="statCompleted">-</span>
+              <span class="stat-label">Absolvierte Kurse</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-num text-success" id="statValidQuals">-</span>
+              <span class="stat-label">Gültige Anerkennungen</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-num text-warning" id="statNextCourse">-</span>
+              <span class="stat-label">Nächste Weiterbildung</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-num text-accent" id="statOpenOffer">-</span>
+              <span class="stat-label">Kurse im Angebot</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-sidebar" id="heroUserCard">
+          <div class="quick-login-card">
+            <div class="quick-login-icon">🏕️</div>
+            <h3>Lokaler Schnellstart</h3>
+            <p>Teste den Kurstracker direkt mit simulierten Cevi-Daten oder verbinde dich mit der echten Cevi-DB.</p>
+            <div class="quick-btn-group">
+              <button class="btn btn-primary btn-block" id="btnQuickMock" onclick="loginWithMock()">
+                🚀 Demo-Profil (Siro) laden
+              </button>
+              <button class="btn btn-secondary btn-block" id="btnLiveConnect" onclick="initiateLogin()">
+                🔗 Cevi-DB Login (OAuth)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tabs Navigation -->
+    <nav class="content-tabs">
+      <button class="tab-btn active" id="tabQuals" onclick="switchTab('quals')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"/>
+        </svg>
+        Meine Qualifikationen & J+S
+      </button>
+      <button class="tab-btn" id="tabHistory" onclick="switchTab('history')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/>
+        </svg>
+        Kurshistorie & Anmeldungen
+      </button>
+      <button class="tab-btn" id="tabCourses" onclick="switchTab('courses')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        Kursangebot Cevi & Regionen
+      </button>
+      <button class="tab-btn" id="tabSystem" onclick="switchTab('system')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+        </svg>
+        Schnittstelle & Architektur
+      </button>
+    </nav>
+
+    <!-- Tab Panels -->
+
+    <!-- 1. Qualifikationen Panel -->
+    <section class="tab-panel active" id="panel-quals">
+      <div class="panel-header">
+        <div>
+          <h2>Anerkannte Qualifikationen</h2>
+          <p class="section-subtitle">Übersicht deiner J+S-Leiterrechte, Scharleiterbefugnisse und Sicherheitszertifikate.</p>
+        </div>
+      </div>
+      <div class="cards-grid" id="qualsContainer">
+        <!-- Dynamischer Inhalt durch app.js -->
+        <div class="loading-placeholder">Lade Qualifikationen aus der Cevi-DB...</div>
+      </div>
+    </section>
+
+    <!-- 2. Kurshistorie Panel -->
+    <section class="tab-panel" id="panel-history">
+      <div class="panel-header">
+        <div>
+          <h2>Besuchte Kurse & Werdegang</h2>
+          <p class="section-subtitle">Vollständiger Ausbildungsnachweis der Cevi-Laufbahn.</p>
+        </div>
+      </div>
+      <div class="timeline-container" id="historyContainer">
+        <!-- Dynamischer Inhalt durch app.js -->
+        <div class="loading-placeholder">Lade Kurshistorie...</div>
+      </div>
+    </section>
+
+    <!-- 3. Kursangebot Panel -->
+    <section class="tab-panel" id="panel-courses">
+      <div class="panel-header">
+        <div>
+          <h2>Offizielle Cevi Kurse & Weiterbildungen</h2>
+          <p class="section-subtitle">Verfügbare Angebote von Cevi Schweiz und den Regionalverbänden.</p>
+        </div>
+        <div class="filter-bar">
+          <input type="text" id="courseSearchInput" class="search-input" placeholder="Kurs suchen (z.B. GLK, SLK, Berg)..." oninput="filterCourses()">
+          <select id="courseCategoryFilter" class="select-input" onchange="filterCourses()">
+            <option value="all">Alle Kategorien</option>
+            <option value="Grundausbildung">Grundausbildung</option>
+            <option value="Kaderbildung">Kaderbildung</option>
+            <option value="Weiterbildung">Weiterbildung (MF)</option>
+            <option value="Sicherheit">Sicherheitsmodule</option>
+          </select>
+        </div>
+      </div>
+      <div class="cards-grid" id="coursesContainer">
+        <!-- Dynamischer Inhalt durch app.js -->
+        <div class="loading-placeholder">Lade Kursangebot...</div>
+      </div>
+    </section>
+
+    <!-- 4. Schnittstelle & System Panel -->
+    <section class="tab-panel" id="panel-system">
+      <div class="panel-header">
+        <div>
+          <h2>Cevi-DB (Hitobito) API & Systemarchitektur</h2>
+          <p class="section-subtitle">Technische Diagnose der Schnittstelle, Umgebungsstatus und Git-Branching.</p>
+        </div>
+        <button class="btn btn-secondary" onclick="loadSystemStatus()">🔄 Status neu laden</button>
+      </div>
+
+      <div class="system-grid">
+        <div class="card system-card">
+          <div class="system-card-header">
+            <h3>🌲 Cevi-DB / Hitobito Schnittstelle</h3>
+            <span class="badge badge-success">Aktiv</span>
+          </div>
+          <table class="specs-table">
+            <tr>
+              <td><strong>Plattform:</strong></td>
+              <td>Hitobito (Open Source Community ERP)</td>
+            </tr>
+            <tr>
+              <td><strong>Basis-URL:</strong></td>
+              <td id="sysDbBaseUrl">https://db.cevi.ch</td>
+            </tr>
+            <tr>
+              <td><strong>Auth-Verfahren:</strong></td>
+              <td>OAuth 2.0 / OpenID Connect (Doorkeeper)</td>
+            </tr>
+            <tr>
+              <td><strong>Angeforderte Scopes:</strong></td>
+              <td><code>openid</code>, <code>email</code>, <code>name</code>, <code>with_roles</code>, <code>events</code></td>
+            </tr>
+            <tr>
+              <td><strong>JSON:API Endpoints:</strong></td>
+              <td><code>/api/events</code>, <code>/api/event_participations</code>, <code>/api/qualifications</code></td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="card system-card">
+          <div class="system-card-header">
+            <h3>⚙️ Laufzeit-Umgebung (.env)</h3>
+            <span class="badge badge-info" id="sysEnvBadge">LOCAL</span>
+          </div>
+          <table class="specs-table">
+            <tr>
+              <td><strong>APP_ENV:</strong></td>
+              <td id="sysAppEnv">local</td>
+            </tr>
+            <tr>
+              <td><strong>NODE_ENV:</strong></td>
+              <td id="sysNodeEnv">development</td>
+            </tr>
+            <tr>
+              <td><strong>Server-Modus:</strong></td>
+              <td id="sysMockStatus">Mock-Modus (Lokale Entwicklung)</td>
+            </tr>
+            <tr>
+              <td><strong>Git Repository:</strong></td>
+              <td><code>github.com/Sorry4Nothing/kurstracker.git</code></td>
+            </tr>
+            <tr>
+              <td><strong>Git Branching:</strong></td>
+              <td><code>main</code> (Live/Master) & <code>develop</code> (Dev)</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <p><strong>Cevi Kurstracker</strong> – Entwickelt für Leiterinnen und Leiter der Cevi Schweiz.</p>
+        <p class="footer-sub">Kompatibel mit Hitobito JSON:API & Jugend+Sport (BASPO).</p>
+      </div>
+      <div class="footer-meta">
+        <span>Git Branches: <code>main</code> / <code>develop</code></span>
+        <span>Umgebung: <strong id="footerEnvText">local</strong></span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
