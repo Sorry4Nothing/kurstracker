@@ -18,7 +18,8 @@ export const COURSE_NODES = {
   // ---------------------------------------------------------------------------
   voku: {
     id: 'voku',
-    code: 'CEVI-VOKU',
+    code: 'Voku',
+    org: 'Cevi',
     title: 'Vorkurs (Voku)',
     shortTitle: 'Vorkurs',
     level: 0,
@@ -34,7 +35,8 @@ export const COURSE_NODES = {
 
   heku: {
     id: 'heku',
-    code: 'CEVI-HEKU',
+    code: 'Heku',
+    org: 'Cevi',
     title: 'Helferkurs (Heku) / Romerlager',
     shortTitle: 'Helferkurs (Heku)',
     level: 0,
@@ -51,7 +53,8 @@ export const COURSE_NODES = {
 
   glk1: {
     id: 'glk1',
-    code: 'CEVI-GLK1',
+    code: 'GLK 1',
+    org: 'Cevi',
     title: 'Gruppenleiterkurs 1 (GLK 1)',
     shortTitle: 'GLK 1',
     level: 0,
@@ -68,7 +71,8 @@ export const COURSE_NODES = {
 
   glk2: {
     id: 'glk2',
-    code: 'CEVI-GLK2',
+    code: 'GLK 2',
+    org: 'Cevi',
     title: 'Gruppenleiterkurs 2 (GLK 2)',
     shortTitle: 'GLK 2',
     level: 0,
@@ -87,7 +91,8 @@ export const COURSE_NODES = {
   // ---------------------------------------------------------------------------
   glk3: {
     id: 'glk3',
-    code: 'CEVI-GLK3',
+    code: 'GLK 3',
+    org: 'J+S',
     title: 'Gruppenleiterkurs 3 (GLK 3 / J+S Leiterkurs)',
     shortTitle: 'GLK 3 (J+S Leiter)',
     level: 1,
@@ -107,7 +112,8 @@ export const COURSE_NODES = {
   // ---------------------------------------------------------------------------
   slk: {
     id: 'slk',
-    code: 'CEVI-SLK',
+    code: 'SLK',
+    org: 'Cevi',
     title: 'Stufenleitenden-Kurs (SLK)',
     shortTitle: 'Stufenleiter (SLK)',
     level: 2,
@@ -123,7 +129,8 @@ export const COURSE_NODES = {
 
   mf_lst: {
     id: 'mf_lst',
-    code: 'JS-MF',
+    code: 'MF',
+    org: 'J+S',
     title: 'Modul Fortbildung Lagersport/Trekking (MF)',
     shortTitle: 'Modul Fortbildung (MF)',
     level: 2,
@@ -139,7 +146,8 @@ export const COURSE_NODES = {
 
   slrg_pool: {
     id: 'slrg_pool',
-    code: 'SLRG-POOL',
+    code: 'Pool',
+    org: 'SLRG',
     title: 'SLRG Brevet Basis Pool + BLS-AED',
     shortTitle: 'SLRG Rettungsschwimmer',
     level: 2,
@@ -155,7 +163,8 @@ export const COURSE_NODES = {
 
   pionier: {
     id: 'pionier',
-    code: 'CEVI-PIO',
+    code: 'Pionier',
+    org: 'Cevi',
     title: 'Pioniertechnik Kurs',
     shortTitle: 'Pioniertechnik',
     level: 2,
@@ -171,7 +180,8 @@ export const COURSE_NODES = {
 
   sec_berg: {
     id: 'sec_berg',
-    code: 'JS-SEC-BERG',
+    code: 'Berg',
+    org: 'J+S',
     title: 'J+S Sicherheitsmodul Berg',
     shortTitle: 'Sicherheit Berg (T3/T4)',
     level: 2,
@@ -187,7 +197,8 @@ export const COURSE_NODES = {
 
   sec_wasser: {
     id: 'sec_wasser',
-    code: 'JS-SEC-WASSER',
+    code: 'Wasser',
+    org: 'J+S',
     title: 'J+S Sicherheitsmodul Wasser',
     shortTitle: 'Sicherheit Wasser',
     level: 2,
@@ -203,7 +214,8 @@ export const COURSE_NODES = {
 
   sec_winter: {
     id: 'sec_winter',
-    code: 'JS-SEC-WINTER',
+    code: 'Winter',
+    org: 'J+S',
     title: 'J+S Sicherheitsmodul Winter',
     shortTitle: 'Sicherheit Winter',
     level: 2,
@@ -222,7 +234,8 @@ export const COURSE_NODES = {
   // ---------------------------------------------------------------------------
   llm: {
     id: 'llm',
-    code: 'JS-LLM',
+    code: 'LLM',
+    org: 'J+S',
     title: 'Lagerleiter-Modul (LLM)',
     shortTitle: 'Lagerleiter (LLM)',
     level: 3,
@@ -239,7 +252,8 @@ export const COURSE_NODES = {
 
   al_seminar: {
     id: 'al_seminar',
-    code: 'CEVI-AL',
+    code: 'AL',
+    org: 'Cevi',
     title: 'Abteilungsleiter-Seminar (AL-Seminar)',
     shortTitle: 'Abteilungsleiter (AL)',
     level: 3,
@@ -255,7 +269,8 @@ export const COURSE_NODES = {
 
   js_coach: {
     id: 'js_coach',
-    code: 'JS-COACH',
+    code: 'Coach',
+    org: 'J+S',
     title: 'J+S Coach Kurs',
     shortTitle: 'J+S Coach',
     level: 3,
@@ -274,7 +289,8 @@ export const COURSE_NODES = {
   // ---------------------------------------------------------------------------
   experte: {
     id: 'experte',
-    code: 'JS-EXP',
+    code: 'Experte',
+    org: 'J+S',
     title: 'J+S Expertenkurs Lagersport/Trekking',
     shortTitle: 'J+S Experte',
     level: 4,

@@ -74,6 +74,8 @@ export function renderTree() {
     else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open"></i> Bereit';
 
     const isSelected = selectedTargetCourseId === node.id;
+    const org = node.org || (node.category === 'Jugend+Sport' || node.category === 'Expertenbildung' ? 'J+S' : (node.id === 'slrg_pool' ? 'SLRG' : 'Cevi'));
+    const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
 
     return `
       <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''}" 
@@ -82,9 +84,12 @@ export function renderTree() {
            onclick="selectTargetCourse('${node.id}')"
            tabindex="0"
            role="button"
-           aria-label="Kurs ${node.title} (${node.code})">
+           aria-label="Kurs ${node.title} (${org} ${node.code})">
         <div class="node-header">
-          <span class="node-code">${node.code || node.id.toUpperCase()}</span>
+          <div class="node-header-left">
+            <span class="node-org-pill org-${orgClass}">${org}</span>
+            <span class="node-code">${node.code || node.id.toUpperCase()}</span>
+          </div>
           <span class="node-status-pill status-${statusLower}">${statusLabel}</span>
         </div>
         <div class="node-title">${node.title}</div>
@@ -149,7 +154,10 @@ export function updateTreeInspector(targetNode, pathResult) {
   const checksContainer = document.getElementById('inspectorChecks');
   const actionsContainer = document.getElementById('inspectorActions');
 
-  titleEl.textContent = `${targetNode.title}${targetNode.code ? ` (${targetNode.code})` : ''}`;
+  const org = targetNode.org || (targetNode.category === 'Jugend+Sport' || targetNode.category === 'Expertenbildung' ? 'J+S' : (targetNode.id === 'slrg_pool' ? 'SLRG' : 'Cevi'));
+  const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
+
+  titleEl.innerHTML = `<span class="node-org-pill org-${orgClass}" style="vertical-align: middle; margin-right: 0.4rem;">${org}</span> <span>${targetNode.title}</span>${targetNode.code ? ` <span style="font-size: 0.85em; opacity: 0.7; font-weight: normal;">(${targetNode.code})</span>` : ''}`;
   catEl.textContent = `Kategorie: ${targetNode.category}${targetNode.js_type ? ` • ${targetNode.js_type}` : ''}`;
 
   summaryBox.textContent = summary;

@@ -246,6 +246,40 @@
   align-items: center;
   margin-bottom: 0.4rem;
 }
+.node-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.node-org-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.12rem 0.45rem;
+  border-radius: var(--radius-full);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.node-org-pill.org-cevi {
+  background: rgba(196, 19, 51, 0.16);
+  color: #fca5a5;
+  border: 1px solid rgba(196, 19, 51, 0.38);
+}
+.node-org-pill.org-js {
+  background: rgba(16, 138, 67, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 138, 67, 0.38);
+}
+.node-org-pill.org-slrg {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.38);
+}
+
 .node-code {
   font-family: var(--font-heading);
   font-weight: 800;
