@@ -161,33 +161,39 @@ app.get('/api/courses', async (req, res) => {
   }
 });
 
-// Bisherige und angemeldete Kursteilnahmen
-app.get('/api/participations', async (req, res) => {
+// Bisherige und angemeldete Kursteilnahmen (Kurshistorie)
+const handleUserHistory = async (req, res) => {
   try {
     const session = getSession(req);
     const participations = await ceviDbService.getUserParticipations(
       session?.accessToken,
       session?.user?.id || session?.user?.sub
     );
-    res.json({ participations });
+    // Unterstützt sowohl Array-Zugriff als auch Objekt-Format
+    res.json(participations);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+};
+app.get('/api/participations', handleUserHistory);
+app.get('/api/user/history', handleUserHistory);
 
 // Qualifikationen (J+S Lagersport/Trekking, Scharleiter, SLRG etc.)
-app.get('/api/qualifications', async (req, res) => {
+const handleUserQualifications = async (req, res) => {
   try {
     const session = getSession(req);
     const qualifications = await ceviDbService.getUserQualifications(
       session?.accessToken,
       session?.user?.id || session?.user?.sub
     );
-    res.json({ qualifications });
+    // Unterstützt sowohl Array-Zugriff als auch Objekt-Format
+    res.json(qualifications);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+};
+app.get('/api/qualifications', handleUserQualifications);
+app.get('/api/user/qualifications', handleUserQualifications);
 
 // -----------------------------------------------------------------------------
 // AUSBIILUNGSBAUM & PATHFINDING API
@@ -201,46 +207,48 @@ app.get('/api/tree/structure', (req, res) => {
   });
 });
 
+// Hilfsfunktion: Ermittelt das aktive Personen-Profil
+async function resolveActivePerson(req) {
+  const session = getSession(req);
+  if (session?.user) {
+    const participations = await ceviDbService.getUserParticipations(session.accessToken, session.user.id || session.user.sub).catch(() => []);
+    const qualifications = await ceviDbService.getUserQualifications(session.accessToken, session.user.id || session.user.sub).catch(() => []);
+    
+    const completed = participations
+      .filter(p => p.status === 'confirmed' || p.status === 'completed' || p.certificate_issued || p.result?.includes('bestanden'))
+      .map(p => (p.course_node_id || p.course_id || '').toLowerCase());
+
+    const inProgress = participations
+      .filter(p => p.status === 'in_progress' || p.status === 'registered' || p.result?.includes('Bevorstehend'))
+      .map(p => (p.course_node_id || p.course_id || '').toLowerCase());
+
+    return {
+      id: session.user.id || 'user_me',
+      name: `${session.user.first_name || ''} ${session.user.last_name || ''}`.trim() || 'Robin Notter',
+      ceviname: session.user.nickname || session.user.ceviname || 'Siro',
+      birthdate: session.user.birthday || '2001-08-14',
+      completedCourses: completed.length > 0 ? completed : ['voku', 'heku', 'glk1', 'glk2', 'glk3', 'slk'],
+      inProgressCourses: inProgress,
+      qualifications: qualifications.map(q => (q.key || q.id || '').toLowerCase())
+    };
+  }
+
+  // Demo-Leiter falls nicht eingeloggt
+  return {
+    id: 'demo_leader',
+    name: 'Robin Notter',
+    ceviname: 'Siro',
+    birthdate: '2001-08-14',
+    completedCourses: ['voku', 'heku', 'glk1', 'glk2', 'glk3', 'slk', 'slrg_pool'],
+    inProgressCourses: ['sec_berg'],
+    qualifications: ['js_leiter_lst', 'cevi_stufenleiter', 'slrg_basis_pool']
+  };
+}
+
 // Liefert die Bewertung des Ausbildungsbaums für den aktuellen Benutzer
 const handleTreeEvaluation = async (req, res) => {
   try {
-    const session = getSession(req);
-    let person = null;
-
-    if (session?.user) {
-      const participations = await ceviDbService.getUserParticipations(session.accessToken, session.user.id || session.user.sub).catch(() => []);
-      const qualifications = await ceviDbService.getUserQualifications(session.accessToken, session.user.id || session.user.sub).catch(() => []);
-      
-      const completed = participations
-        .filter(p => p.status === 'confirmed' || p.status === 'completed' || p.certificate_issued || p.result?.includes('bestanden'))
-        .map(p => (p.course_node_id || p.course_id || '').toLowerCase());
-
-      const inProgress = participations
-        .filter(p => p.status === 'in_progress' || p.status === 'registered' || p.result?.includes('Bevorstehend'))
-        .map(p => (p.course_node_id || p.course_id || '').toLowerCase());
-
-      person = {
-        id: session.user.id || 'user_me',
-        name: `${session.user.first_name || ''} ${session.user.last_name || ''}`.trim() || 'Robin Notter',
-        ceviname: session.user.nickname || session.user.ceviname || 'Siro',
-        birthdate: session.user.birthday || '2001-08-14',
-        completedCourses: completed.length > 0 ? completed : ['voku', 'heku', 'glk1', 'glk2', 'glk3', 'slk'],
-        inProgressCourses: inProgress,
-        qualifications: qualifications.map(q => (q.key || q.id || '').toLowerCase())
-      };
-    } else {
-      // Demo-Leiter falls nicht eingeloggt
-      person = {
-        id: 'demo_leader',
-        name: 'Robin Notter',
-        ceviname: 'Siro',
-        birthdate: '2001-08-14',
-        completedCourses: ['voku', 'heku', 'glk1', 'glk2', 'glk3', 'slk', 'slrg_pool'],
-        inProgressCourses: ['sec_berg'],
-        qualifications: ['js_leiter_lst', 'cevi_stufenleiter', 'slrg_basis_pool']
-      };
-    }
-
+    const person = await resolveActivePerson(req);
     const evaluation = courseTreeEngine.evaluatePersonInTree(person);
     res.json({
       person,
@@ -254,23 +262,27 @@ const handleTreeEvaluation = async (req, res) => {
 app.get('/api/tree/evaluation', handleTreeEvaluation);
 app.get('/api/tree/evaluate', handleTreeEvaluation);
 
-// Berechnet den Pfad zu einem beliebigen Wunschkurs
-app.post('/api/tree/pathfind', (req, res) => {
+// Berechnet den Pfad zu einem Zielkurs via GET
+app.get('/api/tree/path/:courseId', async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const person = await resolveActivePerson(req);
+    const pathResult = courseTreeEngine.findPathToTarget(person, courseId);
+    res.json(pathResult);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Berechnet den Pfad zu einem beliebigen Wunschkurs via POST
+app.post('/api/tree/pathfind', async (req, res) => {
   try {
     const { targetCourseId, person } = req.body;
     if (!targetCourseId) {
       return res.status(400).json({ error: 'targetCourseId ist erforderlich' });
     }
 
-    const activePerson = person || {
-      id: 'demo_leader',
-      name: 'Robin Notter',
-      ceviname: 'Siro',
-      birthdate: '2001-08-14',
-      completedCourses: ['hlk', 'glk'],
-      qualifications: ['js_leiter_lst', 'cevi_gruppenleiter']
-    };
-
+    const activePerson = person || await resolveActivePerson(req);
     const pathResult = courseTreeEngine.findPathToTarget(activePerson, targetCourseId);
     res.json(pathResult);
   } catch (err) {

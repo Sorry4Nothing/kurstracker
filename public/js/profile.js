@@ -19,43 +19,52 @@ export async function loadUserQualifications() {
 
   try {
     const res = await fetch('/api/user/qualifications');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const quals = await res.json();
     renderQualifications(quals);
   } catch (err) {
     console.error('Fehler beim Laden der Qualifikationen:', err);
-    if (container) container.innerHTML = `<div class="loading-placeholder text-danger">Fehler: ${err.message}</div>`;
+    if (container) container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Qualifikationen: ${err.message}</div>`;
   }
 }
 
 export function renderQualifications(quals) {
   const container = document.getElementById('qualsContainer');
   const modalContainer = document.getElementById('modalQualsContainer');
+  const list = Array.isArray(quals) ? quals : (quals?.qualifications || []);
 
-  const html = quals.map(q => {
+  const html = list.map(q => {
     let badgeClass = 'badge-success';
-    if (q.status.includes('Fortbildung')) badgeClass = 'badge-warning';
-    if (q.status.includes('Verfallen') || q.status.includes('Gesperrt')) badgeClass = 'badge-danger';
+    const status = q.status || 'Gültig';
+    if (status.includes('Fortbildung') || status.includes('In Ausbildung')) badgeClass = 'badge-warning';
+    if (status.includes('Verfallen') || status.includes('Gesperrt')) badgeClass = 'badge-danger';
+
+    const category = q.type || q.category || 'Jugend+Sport';
+    const issuer = q.issuer || 'BASPO / Cevi Schweiz';
+    const validUntil = q.valid_until ? (q.valid_until === 'Unbefristet' ? 'Unbefristet' : formatEuropeanDate(q.valid_until)) : 'Unbefristet';
 
     return `
-      <div class="card">
+      <div class="card qual-card">
         <div class="card-top">
-          <span class="card-category">${q.category}</span>
-          <span class="badge ${badgeClass}">${q.status}</span>
+          <span class="card-category">${category}</span>
+          <span class="badge ${badgeClass}">${status}</span>
         </div>
         <h3 class="card-title">${q.title}</h3>
-        <p class="card-subtitle">Ausgestellt von: ${q.issuer}</p>
+        ${q.sub_title ? `<p class="card-subtitle text-dim" style="font-size: 0.8rem; margin-bottom: 0.4rem;">${q.sub_title}</p>` : ''}
+        <p class="card-subtitle">Ausgestellt von: ${issuer}</p>
         <div class="meta-list">
           <div class="meta-item">
-            <span>Gueltig bis:</span>
-            <strong>${formatEuropeanDate(q.valid_until)}</strong>
+            <span>Gültig bis:</span>
+            <strong>${validUntil}</strong>
           </div>
+          ${q.renewal_recommended ? `
+          <div class="meta-item text-accent">
+            <span>Empfehlung:</span>
+            <strong>${q.renewal_recommended}</strong>
+          </div>` : ''}
           <div class="meta-item">
-            <span>Fortbildungs-Frist:</span>
-            <strong>${formatEuropeanDate(q.refresher_deadline)}</strong>
-          </div>
-          <div class="meta-item">
-            <span>Cevi-DB Verifiziert:</span>
-            <strong class="text-success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Ja (Hitobito)</strong>
+            <span>Cevi-DB / BASPO:</span>
+            <strong class="text-success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Bestätigt</strong>
           </div>
         </div>
       </div>
@@ -73,30 +82,41 @@ export async function loadUserHistory() {
 
   try {
     const res = await fetch('/api/user/history');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const history = await res.json();
     renderHistory(history);
   } catch (err) {
     console.error('Fehler beim Laden der Historie:', err);
-    if (container) container.innerHTML = `<div class="loading-placeholder text-danger">Fehler: ${err.message}</div>`;
+    if (container) container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Historie: ${err.message}</div>`;
   }
 }
 
 export function renderHistory(history) {
   const container = document.getElementById('historyContainer');
   const modalContainer = document.getElementById('modalHistoryContainer');
+  const list = Array.isArray(history) ? history : (history?.participations || history?.history || []);
 
-  const html = history.map(h => `
-    <div class="timeline-item">
-      <div class="timeline-header">
-        <span class="timeline-year">${formatEuropeanDate(h.year)}</span>
-        <span class="badge badge-success"><i class="fa-solid fa-check" aria-hidden="true"></i> Bestanden</span>
+  const html = list.map(h => {
+    const courseTitle = h.course_title || h.course_name || 'Cevi Kurs';
+    const dateFormatted = h.date ? formatEuropeanDate(h.date) : (h.year ? formatEuropeanDate(h.year) : '');
+    const role = h.role || 'Teilnehmer';
+    const organizer = h.organizer || (h.category ? `${h.category} Kurs` : 'Cevi Region Zürich');
+    const result = h.result || 'Erfolgreich bestanden';
+
+    return `
+      <div class="timeline-item">
+        <div class="timeline-header">
+          <span class="timeline-year">${dateFormatted}</span>
+          <span class="badge badge-success"><i class="fa-solid fa-check" aria-hidden="true"></i> ${result}</span>
+        </div>
+        <h4>${courseTitle}</h4>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">
+          ${role} • ${organizer}
+        </p>
+        ${h.notes ? `<p style="color: var(--text-dim); font-size: 0.78rem; margin-top: 0.3rem; font-style: italic;">${h.notes}</p>` : ''}
       </div>
-      <h4>${h.course_name}</h4>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">
-        ${h.role} • ${h.organizer}
-      </p>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   if (container) container.innerHTML = html;
   if (modalContainer) modalContainer.innerHTML = html;

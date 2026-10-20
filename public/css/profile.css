@@ -372,45 +372,110 @@
   margin-bottom: 1rem;
 }
 
-/* Profile Cockpit Subnav & Subpanels */
-.profile-subnav {
+/* ==============================================================================
+   PROFILE BENTO-GRID DASHBOARD (MODERN TILES)
+   ============================================================================== */
+.profile-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.bento-card {
+  background: var(--bg-surface);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.35rem 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.bento-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.bento-card-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  border-bottom: 1px solid var(--border-subtle);
+  justify-content: space-between;
   margin-bottom: 1.25rem;
-  overflow-x: auto;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.profile-subnav-btn {
-  display: flex;
+.bento-title-left {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 0.85rem;
-  padding: 0.65rem 1rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-.profile-subnav-btn:hover {
-  color: var(--text-main);
-}
-.profile-subnav-btn.active {
-  color: var(--cevi-accent);
-  border-bottom-color: var(--cevi-accent);
+  gap: 0.65rem;
 }
 
-.profile-subpanel {
-  display: none;
+.bento-title-left i {
+  font-size: 1.15rem;
 }
-.profile-subpanel.active {
-  display: block;
-  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+.bento-title-left h3 {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.bento-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+}
+
+/* Kachel-Layout / Spaltenaufteilung im Bento-Grid */
+.bento-stammdaten {
+  grid-column: span 5;
+}
+
+.bento-quals {
+  grid-column: span 7;
+}
+
+.bento-history {
+  grid-column: span 5;
+}
+
+.bento-courses {
+  grid-column: span 7;
+}
+
+@media (max-width: 1200px) {
+  .bento-stammdaten,
+  .bento-quals,
+  .bento-history,
+  .bento-courses {
+    grid-column: span 12;
+  }
+}
+
+.history-bento-scroll {
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.quals-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
 }
 
 /* Stammdaten Grid */
