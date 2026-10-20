@@ -29,12 +29,7 @@ export const COURSE_MAP_COORDS = {
   sec_winter: { x: 1740, y: 670 }
 };
 
-export const MAP_TRACK_ZONES = [
-  { label: 'Jungschar Grundausbildung', x: 60, y: 200, icon: 'fa-campground' },
-  { label: 'Scharleitung & Fuehrung', x: 1440, y: 24, icon: 'fa-sitemap' },
-  { label: 'J+S Lagerleitung & Kader', x: 1440, y: 200, icon: 'fa-award' },
-  { label: 'Sicherheit & Spezialisierung', x: 870, y: 480, icon: 'fa-shield-halved' }
-];
+export const MAP_TRACK_ZONES = [];
 
 export const mapTransform = {
   x: -250,

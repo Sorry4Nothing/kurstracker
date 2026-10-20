@@ -136,24 +136,6 @@
   to { stroke-dashoffset: -18; }
 }
 
-.tree-map-track-badge {
-  position: absolute;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 0.35rem 0.85rem;
-  border-radius: var(--radius-full);
-  pointer-events: none;
-  z-index: 2;
-}
-
 /* Floating Map Controls */
 .map-floating-controls {
   position: absolute;

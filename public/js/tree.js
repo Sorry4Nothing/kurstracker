@@ -3,7 +3,7 @@
  * Knoten-Rendering, Pfadberechnung, Onboarding-Checkliste und Interaktionen
  */
 
-import { COURSE_MAP_COORDS, MAP_TRACK_ZONES, setupInteractiveMap, renderTreeSvgLines, fitMapToScreen } from './tree-map.js';
+import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines, fitMapToScreen } from './tree-map.js';
 
 let treeStructure = null;
 let currentTreeEvaluation = null;
@@ -54,14 +54,6 @@ export function renderTree() {
     return true;
   });
 
-  // Track Badges
-  const trackBadgesHtml = MAP_TRACK_ZONES.map(z => `
-    <div class="tree-map-track-badge" style="left: ${z.x}px; top: ${z.y}px;">
-      <i class="fa-solid ${z.icon}"></i>
-      <span>${z.label}</span>
-    </div>
-  `).join('');
-
   // Node Cards (Absolute Koordinaten-Positionierung)
   const cardsHtml = nodes.map(node => {
     const coord = COURSE_MAP_COORDS[node.id] || { x: 100, y: 100 };
@@ -101,7 +93,7 @@ export function renderTree() {
     `;
   }).join('');
 
-  container.innerHTML = trackBadgesHtml + cardsHtml;
+  container.innerHTML = cardsHtml;
 
   // Render SVG Verbindungen
   setTimeout(() => {
