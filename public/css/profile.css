@@ -470,7 +470,7 @@
   max-height: 480px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0.5rem 0.6rem 0.5rem 0.25rem;
+  padding: 0.75rem 0.6rem 0.75rem 48px;
 }
 
 .quals-bento-grid {
@@ -629,15 +629,17 @@
   box-sizing: border-box;
 }
 
-.timeline-container::before {
+/* Durchgehende, scrollfeste Verbindungslinie pro Timeline-Eintrag */
+.timeline-item:not(:last-child)::after {
   content: '';
   position: absolute;
-  left: 22px;
-  top: 14px;
-  bottom: 14px;
+  left: -26px;
+  top: calc(1.25rem + 7px);
+  bottom: calc(-1.15rem - 1.25rem - 7px);
   width: 2px;
-  background: linear-gradient(180deg, var(--cevi-red) 0%, rgba(2, 132, 199, 0.6) 50%, rgba(255, 255, 255, 0.08) 100%);
-  border-radius: 2px;
+  background: rgba(2, 132, 199, 0.55);
+  box-shadow: 0 0 6px rgba(2, 132, 199, 0.3);
+  z-index: 1;
 }
 
 .timeline-item {
@@ -651,8 +653,9 @@
 }
 
 .timeline-item:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  transform: translateX(3px);
+  border-color: rgba(2, 132, 199, 0.35);
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .timeline-item::before {
@@ -671,7 +674,7 @@
 }
 
 .timeline-item:hover::before {
-  transform: scale(1.15);
+  transform: scale(1.2);
   box-shadow: 0 0 14px var(--cevi-accent);
 }
 
