@@ -7,10 +7,10 @@ import { renderTreeSvgLines, fitMapToScreen } from './tree-map.js';
 import { getTreeStructure, getSelectedTargetCourseId } from './tree.js';
 
 export function switchTab(tabId) {
-  // Navigation Buttons
+  // Navigation Buttons & Cards
   const navTree = document.getElementById('tabTree');
-  const navProfile = document.getElementById('tabProfile');
   const navPlanner = document.getElementById('tabPlanner');
+  const navUserCard = document.getElementById('userNavActions');
 
   // Panels
   const panelTree = document.getElementById('panel-tree');
@@ -22,7 +22,8 @@ export function switchTab(tabId) {
   const pageSubtitle = document.getElementById('topbarPageSubtitle');
 
   // Alles zuruecksetzen
-  [navTree, navProfile, navPlanner].forEach(btn => btn?.classList.remove('active'));
+  [navTree, navPlanner].forEach(btn => btn?.classList.remove('active'));
+  navUserCard?.classList.remove('active');
   [panelTree, panelProfile, panelPlanner].forEach(panel => panel?.classList.remove('active'));
 
   if (tabId === 'tree') {
@@ -31,7 +32,7 @@ export function switchTab(tabId) {
     if (pageTitle) pageTitle.textContent = 'Ausbildungsbaum';
     if (pageSubtitle) pageSubtitle.textContent = 'Interaktive Pfadplanung & Voraussetzungen (Cevi Region Zuerich & J+S)';
   } else if (tabId === 'profile') {
-    navProfile?.classList.add('active');
+    navUserCard?.classList.add('active');
     panelProfile?.classList.add('active');
     if (pageTitle) pageTitle.textContent = 'Mein Profil & Qualifikationen';
     if (pageSubtitle) pageSubtitle.textContent = 'Cevi-DB Hitobito Stammdaten, J+S Anerkennungen & Meilensteine';
