@@ -33,14 +33,7 @@ export class StufenleiterPlanningEngine {
     const analyzed = participants.map(tn => this.analyzeParticipant(tn));
 
     // Gruppierung nach Kurs-Kandidaten (Wer kommt für welchen Kurs in Frage?)
-    const candidatesByCourse = {
-      hlk: [],
-      glk: [],
-      slk: [],
-      sec_berg: [],
-      sec_wasser: [],
-      mf_lst: []
-    };
+    const candidatesByCourse = {};
 
     analyzed.forEach(item => {
       item.recommendedCourses.forEach(rec => {
@@ -67,9 +60,9 @@ export class StufenleiterPlanningEngine {
       candidatesByCourse,
       urgentRenewals,
       summaryStats: {
-        readyForHlk: candidatesByCourse.hlk.length,
-        readyForGlk: candidatesByCourse.glk.length,
-        readyForSlk: candidatesByCourse.slk.length,
+        readyForHlk: candidatesByCourse.heku?.length || 0,
+        readyForGlk: candidatesByCourse.glk3?.length || 0,
+        readyForSlk: candidatesByCourse.slk?.length || 0,
         urgentRenewalCount: urgentRenewals.length
       }
     };
@@ -84,9 +77,10 @@ export class StufenleiterPlanningEngine {
     const treeState = this.treeEngine.evaluatePersonInTree(participant);
     const recommendedCourses = [];
 
-    const hasHlk = (participant.completedCourses || []).some(c => ['hlk', 'heku'].includes(c.toLowerCase()));
-    const hasGlk = (participant.completedCourses || []).some(c => ['glk', 'glk3'].includes(c.toLowerCase()));
-    const hasSlk = (participant.completedCourses || []).some(c => ['slk'].includes(c.toLowerCase()));
+    const completed = this.treeEngine.normalizeCourseSet(participant.completedCourses || []);
+    const hasHlk = completed.has('heku');
+    const hasGlk = completed.has('glk3');
+    const hasSlk = completed.has('slk');
 
     // 1. Empfehlung: Helferkurs (Heku)
     if (!hasHlk && !hasGlk && age >= 14 && age <= 16) {
@@ -220,13 +214,6 @@ export class StufenleiterPlanningEngine {
    */
   getAllNominations() {
     return Array.from(this.nominations.values());
-  }
-
-  /**
-   * Löscht einen Vorschlag
-   */
-  removeNomination(participantId) {
-    return this.nominations.delete(participantId);
   }
 }
 

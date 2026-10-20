@@ -1,60 +1,69 @@
-import { COURSE_NODES, TREE_EDGES } from './courseTreeData.js';
+import { COURSE_NODES } from './courseTreeData.js';
+
+// Kurzbezeichnungen aus Altdaten und Tests auf die Baum-IDs abbilden
+const COURSE_ALIASES = { glk: 'glk3', hlk: 'heku', mf: 'mf_lst' };
 
 /**
  * CourseTreeEngine - Berechnungslogik fur den Cevi & J+S Ausbildungsbaum
  * Unterstutzt Cevi Region Zuerich Reglement & J+S Lagersport/Trekking
  */
 export class CourseTreeEngine {
-  constructor(nodes = COURSE_NODES, edges = TREE_EDGES) {
+  constructor(nodes = COURSE_NODES) {
     this.nodes = nodes;
-    this.edges = edges;
   }
 
   /**
-   * Normalisiert und erweitert ein Set von Kurs-IDs (Aliase und Vorganger)
+   * Bildet eine Kurs-ID (auch Aliase wie 'glk') auf die Baum-ID ab
+   * @param {string} courseId
+   * @returns {string}
+   */
+  resolveCourseId(courseId) {
+    const id = String(courseId || '').toLowerCase().trim();
+    return COURSE_ALIASES[id] || id;
+  }
+
+  /**
+   * Normalisiert ein Set von Kurs-IDs: Aliase auflosen und alle Pflicht-Vorganger
+   * erganzen (wer GLK 3 hat, hat auch GLK 2, GLK 1 und Heku absolviert)
    * @param {string[]|Set<string>} courses
    * @returns {Set<string>}
    */
   normalizeCourseSet(courses = []) {
-    const set = new Set(Array.from(courses || []).map(c => (c || '').toLowerCase().trim()));
-    
-    // Alias-Mappings
-    if (set.has('glk')) {
-      set.add('glk3');
-      set.add('glk2');
-      set.add('glk1');
-      set.add('heku');
-    }
-    if (set.has('glk3')) {
-      set.add('glk');
-      set.add('glk2');
-      set.add('glk1');
-    }
-    if (set.has('hlk')) {
-      set.add('heku');
-      set.add('voku');
-    }
-    if (set.has('heku')) {
-      set.add('hlk');
-    }
-    if (set.has('mf')) {
-      set.add('mf_lst');
-    }
-    if (set.has('mf_lst')) {
-      set.add('mf');
-    }
+    const set = new Set();
+    const add = (id) => {
+      if (!id || set.has(id)) return;
+      set.add(id);
+      (this.nodes[id]?.prerequisites || []).forEach(add);
+    };
+    Array.from(courses || []).forEach(c => add(this.resolveCourseId(c)));
 
+    // Aliase spiegeln, damit Abfragen mit 'glk', 'hlk' oder 'mf' weiter funktionieren
+    for (const [alias, id] of Object.entries(COURSE_ALIASES)) {
+      if (set.has(id)) set.add(alias);
+    }
     return set;
   }
 
   /**
+   * Normalisiert Qualifikationen (Strings oder Objekte mit id/key) zu einem Set von IDs
+   * @param {Array<string|object>} qualifications
+   * @returns {Set<string>}
+   */
+  normalizeQualifications(qualifications = []) {
+    return new Set((qualifications || []).map(q => {
+      const str = typeof q === 'string' ? q : (q?.id || q?.key || '');
+      return str.toLowerCase().trim();
+    }));
+  }
+
+  /**
    * Berechnet das Alter in Jahren basierend auf Geburtsdatum
-   * @param {string|Date} birthdate 
+   * @param {string|Date} birthdate
    * @param {Date} [referenceDate]
-   * @returns {number}
+   * @returns {number|null} null, wenn das Geburtsdatum fehlt oder ungultig ist
    */
   calculateAge(birthdate, referenceDate = new Date()) {
-    if (!birthdate) return 18;
+    if (!birthdate) return null;
     let birth;
     if (typeof birthdate === 'string' && /^\d{2}\.\d{2}\.\d{4}/.test(birthdate.trim())) {
       const parts = birthdate.trim().split('.');
@@ -62,7 +71,7 @@ export class CourseTreeEngine {
     } else {
       birth = new Date(birthdate);
     }
-    if (isNaN(birth.getTime())) return 18;
+    if (isNaN(birth.getTime())) return null;
 
     let age = referenceDate.getFullYear() - birth.getFullYear();
     const m = referenceDate.getMonth() - birth.getMonth();
@@ -70,6 +79,14 @@ export class CourseTreeEngine {
       age--;
     }
     return age;
+  }
+
+  /**
+   * Pruft das Mindestalter; ohne bekanntes Alter gilt es als nicht erfullt
+   * @returns {boolean}
+   */
+  meetsMinAge(personAge, minAge) {
+    return !minAge || (personAge !== null && personAge >= minAge);
   }
 
   /**
@@ -83,11 +100,8 @@ export class CourseTreeEngine {
    */
   evaluatePersonInTree(person = {}) {
     const completed = this.normalizeCourseSet(person.completedCourses || []);
-    const inProgress = this.normalizeCourseSet(person.inProgressCourses || []);
-    const quals = new Set((person.qualifications || []).map(q => {
-      const str = typeof q === 'string' ? q : (q?.id || q?.key || '');
-      return str.toLowerCase().trim();
-    }));
+    const inProgress = new Set((person.inProgressCourses || []).map(c => this.resolveCourseId(c)));
+    const quals = this.normalizeQualifications(person.qualifications);
     const personAge = this.calculateAge(person.birthdate);
 
     const evaluatedNodes = {};
@@ -103,7 +117,7 @@ export class CourseTreeEngine {
       // Voraussetzungen prufen
       const missingPrereqs = (node.prerequisites || []).filter(req => !completed.has(req));
       const missingQuals = (node.requiredQualifications || []).filter(req => !quals.has(req));
-      const ageMet = personAge >= (node.minAge || 0);
+      const ageMet = this.meetsMinAge(personAge, node.minAge);
 
       let status = 'LOCKED';
       const blockers = [];
@@ -114,7 +128,9 @@ export class CourseTreeEngine {
         status = 'IN_PROGRESS';
       } else {
         if (!ageMet) {
-          blockers.push(`Mindestalter nicht erreicht (benotigt: ${node.minAge} Jahre, aktuell: ${personAge} Jahre)`);
+          blockers.push(personAge === null
+            ? `Geburtsdatum fehlt (Mindestalter ${node.minAge} Jahre nicht prufbar)`
+            : `Mindestalter nicht erreicht (benotigt: ${node.minAge} Jahre, aktuell: ${personAge} Jahre)`);
         }
         if (missingPrereqs.length > 0) {
           const titles = missingPrereqs.map(p => this.nodes[p]?.title || p).join(', ');
@@ -150,14 +166,10 @@ export class CourseTreeEngine {
     }
 
     // Aliase auch in evaluatedNodes spiegeln
-    if (evaluatedNodes.glk3 && !evaluatedNodes.glk) {
-      evaluatedNodes.glk = { ...evaluatedNodes.glk3, id: 'glk' };
-    }
-    if (evaluatedNodes.heku && !evaluatedNodes.hlk) {
-      evaluatedNodes.hlk = { ...evaluatedNodes.heku, id: 'hlk' };
-    }
-    if (evaluatedNodes.mf_lst && !evaluatedNodes.mf) {
-      evaluatedNodes.mf = { ...evaluatedNodes.mf_lst, id: 'mf' };
+    for (const [alias, id] of Object.entries(COURSE_ALIASES)) {
+      if (evaluatedNodes[id] && !evaluatedNodes[alias]) {
+        evaluatedNodes[alias] = { ...evaluatedNodes[id], id: alias };
+      }
     }
 
     // Aktuelle Ebene im Baum ermitteln (hochste abgeschlossene Ebene)
@@ -184,21 +196,13 @@ export class CourseTreeEngine {
    * @returns {object} Pfadanalyse mit erfullten und noch fehlenden Schritten
    */
   findPathToTarget(person = {}, targetCourseId) {
-    let resolvedId = targetCourseId;
-    if (targetCourseId === 'glk') resolvedId = 'glk3';
-    if (targetCourseId === 'hlk') resolvedId = 'heku';
-    if (targetCourseId === 'mf') resolvedId = 'mf_lst';
-
-    const targetNode = this.nodes[resolvedId] || this.nodes[targetCourseId];
-    if (!targetNode) {
+    const targetNode = this.nodes[this.resolveCourseId(targetCourseId)];
+    if (!targetNode || !Object.hasOwn(this.nodes, targetNode.id)) {
       throw new Error(`Zielkurs '${targetCourseId}' existiert nicht im Ausbildungsbaum.`);
     }
 
     const completed = this.normalizeCourseSet(person.completedCourses || []);
-    const quals = new Set((person.qualifications || []).map(q => {
-      const str = typeof q === 'string' ? q : (q?.id || q?.key || '');
-      return str.toLowerCase().trim();
-    }));
+    const quals = this.normalizeQualifications(person.qualifications);
     const personAge = this.calculateAge(person.birthdate);
 
     // Alle transitiven Vorbedingungen sammeln (Topological Reverse Search)
@@ -250,7 +254,7 @@ export class CourseTreeEngine {
     const ageCheck = {
       required: targetNode.minAge || 0,
       actual: personAge,
-      isFulfilled: personAge >= (targetNode.minAge || 0)
+      isFulfilled: this.meetsMinAge(personAge, targetNode.minAge)
     };
 
     const isDirectlyEligible = missingCourses.length === 0 &&
@@ -291,7 +295,9 @@ export class CourseTreeEngine {
       messages.push(`Noch ${missingCourses.length} Kurs(e) notwendig: ${titles}`);
     }
     if (!ageCheck.isFulfilled) {
-      messages.push(`Mindestalter (${targetNode.minAge} Jahre) noch nicht erreicht (aktuell: ${ageCheck.actual} Jahre).`);
+      messages.push(ageCheck.actual === null
+        ? `Geburtsdatum fehlt, Mindestalter (${targetNode.minAge} Jahre) nicht prufbar.`
+        : `Mindestalter (${targetNode.minAge} Jahre) noch nicht erreicht (aktuell: ${ageCheck.actual} Jahre).`);
     }
     const missingQuals = qualChecks.filter(q => !q.isFulfilled);
     if (missingQuals.length > 0) {

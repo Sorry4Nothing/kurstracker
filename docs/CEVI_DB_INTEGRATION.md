@@ -79,7 +79,6 @@ Sobald die OAuth-Applikation bei `cevidb@cevi.ch` genehmigt wurde oder ein Servi
    ```env
    # Vorbereitungsmodus deaktivieren:
    CEVI_DB_PREPARATION_MODE=false
-   CEVI_DB_USE_MOCK=false
 
    # Erhaltene Zugangsdaten eintragen:
    CEVI_DB_CLIENT_ID=deine_offizielle_client_id

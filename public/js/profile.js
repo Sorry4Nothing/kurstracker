@@ -14,8 +14,7 @@ export async function loadUserProfile() {
 
 export async function loadUserQualifications() {
   const container = document.getElementById('qualsContainer');
-  const modalContainer = document.getElementById('modalQualsContainer');
-  if (!container && !modalContainer) return;
+  if (!container) return;
 
   try {
     const res = await fetch('/api/user/qualifications');
@@ -24,13 +23,12 @@ export async function loadUserQualifications() {
     renderQualifications(quals);
   } catch (err) {
     console.error('Fehler beim Laden der Qualifikationen:', err);
-    if (container) container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Qualifikationen: ${err.message}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Qualifikationen: ${err.message}</div>`;
   }
 }
 
 export function renderQualifications(quals) {
   const container = document.getElementById('qualsContainer');
-  const modalContainer = document.getElementById('modalQualsContainer');
   const list = Array.isArray(quals) ? quals : (quals?.qualifications || []);
 
   const html = list.map(q => {
@@ -72,13 +70,11 @@ export function renderQualifications(quals) {
   }).join('');
 
   if (container) container.innerHTML = html;
-  if (modalContainer) modalContainer.innerHTML = html;
 }
 
 export async function loadUserHistory() {
   const container = document.getElementById('historyContainer');
-  const modalContainer = document.getElementById('modalHistoryContainer');
-  if (!container && !modalContainer) return;
+  if (!container) return;
 
   try {
     const res = await fetch('/api/user/history');
@@ -87,13 +83,12 @@ export async function loadUserHistory() {
     renderHistory(history);
   } catch (err) {
     console.error('Fehler beim Laden der Historie:', err);
-    if (container) container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Historie: ${err.message}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Historie: ${err.message}</div>`;
   }
 }
 
 export function renderHistory(history) {
   const container = document.getElementById('historyContainer');
-  const modalContainer = document.getElementById('modalHistoryContainer');
   const list = Array.isArray(history) ? history : (history?.participations || history?.history || []);
 
   const html = list.map(h => {
@@ -119,33 +114,4 @@ export function renderHistory(history) {
   }).join('');
 
   if (container) container.innerHTML = html;
-  if (modalContainer) modalContainer.innerHTML = html;
-}
-
-export function switchProfileSubtab(subtabId) {
-  const subnavBtns = document.querySelectorAll('.profile-subnav-btn');
-  const subpanels = document.querySelectorAll('.profile-subpanel');
-
-  subnavBtns.forEach(b => b.classList.remove('active'));
-  subpanels.forEach(p => p.classList.remove('active'));
-
-  const btnMap = {
-    quals: 'subtabBtnQuals',
-    history: 'subtabBtnHistory',
-    stammdaten: 'subtabBtnStammdaten',
-    courses: 'subtabBtnCourses'
-  };
-
-  const panelMap = {
-    quals: 'profileSubpanelQuals',
-    history: 'profileSubpanelHistory',
-    stammdaten: 'profileSubpanelStammdaten',
-    courses: 'profileSubpanelCourses'
-  };
-
-  const activeBtn = document.getElementById(btnMap[subtabId]);
-  const activePanel = document.getElementById(panelMap[subtabId]);
-
-  if (activeBtn) activeBtn.classList.add('active');
-  if (activePanel) activePanel.classList.add('active');
 }

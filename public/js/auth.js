@@ -5,129 +5,69 @@
 
 import { formatEuropeanDate } from './utils.js';
 
-let currentUser = null;
-
-export function getCurrentUser() {
-  return currentUser;
+// Alter in ganzen Jahren aus einem ISO-Geburtsdatum (YYYY-MM-DD), sonst null
+function ageInYears(birthday, today = new Date()) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(birthday || ''));
+  if (!match) return null;
+  const [year, month, day] = match.slice(1).map(Number);
+  let age = today.getFullYear() - year;
+  const currentMonth = today.getMonth() + 1;
+  if (currentMonth < month || (currentMonth === month && today.getDate() < day)) {
+    age--;
+  }
+  return age;
 }
 
-export function setCurrentUser(user) {
-  currentUser = user;
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+function setPhoto(id, url) {
+  const img = document.getElementById(id);
+  if (!img) return;
+  img.src = url || '';
+  img.style.display = url ? 'block' : 'none';
 }
 
 export async function checkAuth() {
-  const navUserAvatar = document.getElementById('navUserAvatar');
-  const navUserCeviname = document.getElementById('navUserCeviname');
-  const navUserRealname = document.getElementById('navUserRealname');
-  const navUserRole = document.getElementById('navUserRole');
-  const heroGreeting = document.getElementById('heroGreeting');
-  const heroDescription = document.getElementById('heroDescription');
-  const heroUserAvatar = document.getElementById('heroUserAvatar');
-
   try {
     const res = await fetch('/api/auth/me');
-    if (res.ok) {
-      const data = await res.json();
-      if (data.authenticated && data.user) {
-        currentUser = data.user;
-        const initial = (currentUser.nickname || currentUser.first_name || 'S').charAt(0).toUpperCase();
-        const ceviname = currentUser.nickname || currentUser.first_name || 'Siro';
-        const realname = `${currentUser.first_name || 'Robin'} ${currentUser.last_name || 'Notter'}`.trim();
-        const initials = ((currentUser.first_name?.[0] || 'R') + (currentUser.last_name?.[0] || currentUser.nickname?.[0] || 'N')).toUpperCase();
-        const primaryRole = currentUser.roles?.[0] || 'Abteilungsleiter';
-        const role = currentUser.roles?.join(', ') || 'Leiter Lagersport/Trekking';
-        const group = currentUser.groups?.[0]?.name || 'Cevi Winti';
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.authenticated || !data.user) return;
 
-        if (navUserAvatar) navUserAvatar.textContent = initial;
-        if (navUserCeviname) navUserCeviname.textContent = ceviname;
-        if (navUserRealname) navUserRealname.textContent = realname;
-        if (navUserRole) navUserRole.textContent = primaryRole;
-        if (heroUserAvatar) heroUserAvatar.textContent = initial;
-        if (heroGreeting) heroGreeting.textContent = `Hallo ${ceviname}! Dein persoenlicher Ausbildungsweg`;
-        if (heroDescription) {
-          heroDescription.textContent = `Abteilung: ${group} • Anerkennung: J+S ${role} • Naechster Schritt: Kaderstufe (LLM / SLK)`;
-        }
+    const user = data.user;
+    const ceviname = user.nickname || user.first_name || '';
+    const realname = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    const initials = ((user.first_name?.[0] || '') + (user.last_name?.[0] || user.nickname?.[0] || '')).toUpperCase();
+    const age = ageInYears(user.birthday);
 
-        // Dynamisches Profilfoto aus DB oder Initials-Fallback
-        const navUserInitials = document.getElementById('navUserInitials');
-        const profileHeroInitials = document.getElementById('profileHeroInitials');
-        const navUserPhoto = document.getElementById('navUserPhoto');
-        const profileHeroPhoto = document.getElementById('profileHeroPhoto');
+    setText('navUserCeviname', ceviname);
+    setText('navUserRealname', realname);
+    setText('navUserRole', user.roles?.[0] || '');
 
-        if (navUserInitials) navUserInitials.textContent = initials;
-        if (profileHeroInitials) profileHeroInitials.textContent = initials;
+    // Dynamisches Profilfoto aus DB oder Initials-Fallback
+    setText('navUserInitials', initials);
+    setText('profileHeroInitials', initials);
+    setPhoto('navUserPhoto', user.picture_url);
+    setPhoto('profileHeroPhoto', user.picture_url);
 
-        if (currentUser.picture_url) {
-          if (navUserPhoto) {
-            navUserPhoto.src = currentUser.picture_url;
-            navUserPhoto.style.display = 'block';
-          }
-          if (profileHeroPhoto) {
-            profileHeroPhoto.src = currentUser.picture_url;
-            profileHeroPhoto.style.display = 'block';
-          }
-        } else {
-          if (navUserPhoto) {
-            navUserPhoto.src = '';
-            navUserPhoto.style.display = 'none';
-          }
-          if (profileHeroPhoto) {
-            profileHeroPhoto.src = '';
-            profileHeroPhoto.style.display = 'none';
-          }
-        }
-
-        // Stufenleiter-Planer Zugriffskontrolle (nur sichtbar fuer Stufenleiter, Abteilungsleiter, Kader, Kursleiter)
-        const allowedRoles = ['abteilungsleiter', 'stufenleiter', 'kader', 'kursleiter', 'admin'];
-        const userRoles = (currentUser.roles || []).map(r => String(r).toLowerCase());
-        const hasPlannerPermission = userRoles.some(r => allowedRoles.some(ar => r.includes(ar)));
-
-        const tabPlanner = document.getElementById('tabPlanner');
-        if (tabPlanner) {
-          tabPlanner.style.display = hasPlannerPermission ? 'flex' : 'none';
-        }
-
-        // Stammdaten im Profil-Modal & Cockpit aktualisieren (europaeisches Format)
-        const dbBirthdate = document.getElementById('dbBirthdate');
-        const profileDbBirthdate = document.getElementById('profileDbBirthdate');
-        const formattedBday = currentUser.birthday ? `${formatEuropeanDate(currentUser.birthday)} (25 Jahre)` : '14.08.2001 (25 Jahre)';
-        if (dbBirthdate) dbBirthdate.textContent = formattedBday;
-        if (profileDbBirthdate) profileDbBirthdate.textContent = formattedBday;
-
-        const dbRealName = document.getElementById('dbRealName');
-        if (dbRealName) dbRealName.textContent = realname;
-        const profileDbRealName = document.getElementById('profileDbRealName');
-        if (profileDbRealName) profileDbRealName.textContent = realname;
-
-        const dbCevinameEl = document.getElementById('dbCeviname');
-        if (dbCevinameEl) dbCevinameEl.textContent = ceviname;
-        const profileDbCeviname = document.getElementById('profileDbCeviname');
-        if (profileDbCeviname) profileDbCeviname.textContent = ceviname;
-
-        const profileHeroName = document.getElementById('profileHeroName');
-        if (profileHeroName) profileHeroName.textContent = realname;
-        const profileHeroCeviname = document.getElementById('profileHeroCeviname');
-        if (profileHeroCeviname) profileHeroCeviname.textContent = `«${ceviname}»`;
-      }
+    // Stufenleiter-Planer nur sichtbar, wenn der Server die Rolle freigibt
+    const tabPlanner = document.getElementById('tabPlanner');
+    if (tabPlanner) {
+      tabPlanner.style.display = data.canUsePlanner ? 'flex' : 'none';
     }
+
+    // Stammdaten im Profil-Cockpit aktualisieren (europaeisches Format)
+    setText('profileDbBirthdate', user.birthday
+      ? `${formatEuropeanDate(user.birthday)}${age !== null ? ` (${age} Jahre)` : ''}`
+      : 'Unbekannt');
+    setText('profileDbRealName', realname);
+    setText('profileDbCeviname', ceviname);
+    setText('profileHeroName', realname);
+    setText('profileHeroCeviname', `«${ceviname}»`);
   } catch (err) {
     console.warn('Auth check fallback:', err);
-  }
-}
-
-export function initiateLogin() {
-  window.location.href = '/api/auth/login';
-}
-
-export function loginWithMock() {
-  window.location.href = '/api/auth/mock-login';
-}
-
-export async function logout() {
-  try {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    window.location.reload();
-  } catch (err) {
-    console.error('Logout fehlgeschlagen:', err);
   }
 }

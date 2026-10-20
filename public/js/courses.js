@@ -9,8 +9,7 @@ let allCourses = [];
 
 export async function loadAllCourses() {
   const container = document.getElementById('coursesContainer');
-  const modalContainer = document.getElementById('modalCoursesContainer');
-  if (!container && !modalContainer) return;
+  if (!container) return;
 
   try {
     const res = await fetch('/api/courses');
@@ -20,13 +19,12 @@ export async function loadAllCourses() {
     renderCourses(allCourses);
   } catch (err) {
     console.error('Fehler beim Laden des Kursangebots:', err);
-    if (container) container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursangebots: ${err.message}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursangebots: ${err.message}</div>`;
   }
 }
 
 export function renderCourses(courses) {
   const container = document.getElementById('coursesContainer');
-  const modalContainer = document.getElementById('modalCoursesContainer');
   const list = Array.isArray(courses) ? courses : (courses?.courses || []);
 
   const html = list.map(c => `
@@ -59,7 +57,6 @@ export function renderCourses(courses) {
   `).join('');
 
   if (container) container.innerHTML = html;
-  if (modalContainer) modalContainer.innerHTML = html;
 }
 
 export function filterCourses() {

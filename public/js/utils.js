@@ -3,6 +3,13 @@
  * Hilfsfunktionen fuer Formatierung, Debouncing und Datumslogik (Schweizer / Europaeisches Format)
  */
 
+/**
+ * Maskiert Text fuer die Ausgabe in innerHTML (auch in Attributen)
+ */
+export function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 export function debounce(fn, ms) {
   let timer;
   return (...args) => {

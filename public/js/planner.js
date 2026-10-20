@@ -3,7 +3,10 @@
  * Ausbildungsreife-Uebersicht, Empfehlungen und Kursvorschlaege
  */
 
-import { formatEuropeanDate } from './utils.js';
+import { formatEuropeanDate, esc } from './utils.js';
+
+// Wert als JS-String-Argument fuer ein onclick-Attribut
+const jsArg = value => esc(JSON.stringify(String(value ?? '')));
 
 export async function loadPlannerData() {
   const tableBody = document.getElementById('plannerTableBody');
@@ -11,24 +14,21 @@ export async function loadPlannerData() {
   if (!tableBody) return;
 
   try {
-    const [readinessRes, nomRes] = await Promise.all([
-      fetch('/api/planner/readiness'),
-      fetch('/api/planner/nominations')
-    ]);
+    const res = await fetch('/api/planner/overview');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { analysis, nominations } = await res.json();
+    const readiness = analysis.analyzedParticipants;
 
-    const readiness = await readinessRes.json();
-    const nominations = await nomRes.json();
-
-    // KPI-Zahlen aktualisieren
+    // KPI-Zahlen aus der Server-Analyse
     const statTotal = document.getElementById('statPlannerTotal');
     const statHlk = document.getElementById('statPlannerHlk');
     const statGlk = document.getElementById('statPlannerGlk');
     const statUrgent = document.getElementById('statPlannerUrgent');
 
-    if (statTotal) statTotal.textContent = readiness.length;
-    if (statHlk) statHlk.textContent = readiness.filter(r => (r.recommendedCourses || []).some(c => c.courseId === 'voku' || c.courseId === 'heku')).length;
-    if (statGlk) statGlk.textContent = readiness.filter(r => (r.recommendedCourses || []).some(c => c.courseId === 'glk3')).length;
-    if (statUrgent) statUrgent.textContent = readiness.filter(r => (r.recommendedCourses || []).some(c => c.priority === 'DRINGEND')).length;
+    if (statTotal) statTotal.textContent = analysis.totalCount;
+    if (statHlk) statHlk.textContent = analysis.summaryStats.readyForHlk;
+    if (statGlk) statGlk.textContent = analysis.summaryStats.readyForGlk;
+    if (statUrgent) statUrgent.textContent = analysis.summaryStats.urgentRenewalCount;
 
     // Tabelle befuellen
     tableBody.innerHTML = readiness.map(item => {
@@ -41,31 +41,31 @@ export async function loadPlannerData() {
         const prioClass = primaryRec.priority === 'DRINGEND' ? 'prio-urgent' : 'prio-high';
         recBadge = `
           <span class="recommendation-pill ${prioClass}">
-            ${primaryRec.priority === 'DRINGEND' ? '<i class="fa-solid fa-triangle-exclamation"></i> ' : ''}${primaryRec.courseTitle || primaryRec.title || 'Empfohlener Kurs'}
+            ${primaryRec.priority === 'DRINGEND' ? '<i class="fa-solid fa-triangle-exclamation"></i> ' : ''}${esc(primaryRec.courseTitle || primaryRec.title || 'Empfohlener Kurs')}
           </span>
-          <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.2rem;">${primaryRec.reason}</div>
+          <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.2rem;">${esc(primaryRec.reason)}</div>
         `;
       }
 
       const completedBadges = (tn.completedCourses || []).length > 0
-        ? tn.completedCourses.map(c => `<span class="badge badge-success" style="font-size: 0.68rem; margin-right: 0.2rem;">${c.toUpperCase()}</span>`).join('')
+        ? tn.completedCourses.map(c => `<span class="badge badge-success" style="font-size: 0.68rem; margin-right: 0.2rem;">${esc(c.toUpperCase())}</span>`).join('')
         : '<span class="text-dim">Keine</span>';
 
       return `
         <tr>
           <td>
-            <strong>${tn.ceviname}</strong>
-            <div style="font-size: 0.75rem; color: var(--text-dim);">${tn.name}</div>
+            <strong>${esc(tn.ceviname)}</strong>
+            <div style="font-size: 0.75rem; color: var(--text-dim);">${esc(tn.name)}</div>
           </td>
           <td>
-            ${item.age} J.
-            ${tn.birthdate ? `<div style="font-size: 0.7rem; color: var(--text-dim);">${formatEuropeanDate(tn.birthdate)}</div>` : ''}
+            ${item.age ?? '–'} J.
+            ${tn.birthdate ? `<div style="font-size: 0.7rem; color: var(--text-dim);">${esc(formatEuropeanDate(tn.birthdate))}</div>` : ''}
           </td>
-          <td><span class="role-badge">${tn.currentRole}</span></td>
+          <td><span class="role-badge">${esc(tn.currentRole)}</span></td>
           <td>${completedBadges}</td>
           <td>${recBadge}</td>
           <td>
-            <button class="btn btn-secondary btn-sm" onclick="openNominationModal('${tn.id}', '${tn.ceviname}', '${primaryRec?.courseId || 'voku'}')">
+            <button class="btn btn-secondary btn-sm" onclick="openNominationModal(${jsArg(tn.id)}, ${jsArg(tn.ceviname)}, ${jsArg(primaryRec?.courseId || 'voku')})">
               <i class="fa-solid fa-plus"></i> Vorschlagen
             </button>
           </td>
@@ -83,12 +83,12 @@ export async function loadPlannerData() {
       nominationsList.innerHTML = nominations.map(nom => `
         <div class="nomination-card">
           <div class="nomination-card-header">
-            <span>${nom.ceviname} • ${nom.courseTitle}</span>
-            <span class="badge badge-success" style="font-size: 0.7rem;">${nom.season}</span>
+            <span>${esc(nom.ceviname)} • ${esc(nom.courseTitle)}</span>
+            <span class="badge badge-success" style="font-size: 0.7rem;">${esc(nom.season)}</span>
           </div>
           <div class="nomination-meta">
-            ${nom.notes ? `<em>«${nom.notes}»</em><br>` : ''}
-            Erfasst durch: ${nom.plannedBy} • Status: ${nom.status}
+            ${nom.notes ? `<em>«${esc(nom.notes)}»</em><br>` : ''}
+            Erfasst durch: ${esc(nom.plannedBy)} • Status: ${esc(nom.status)}
           </div>
         </div>
       `).join('');
@@ -96,18 +96,18 @@ export async function loadPlannerData() {
 
   } catch (err) {
     console.error('Fehler beim Laden der Planungsdaten:', err);
-    tableBody.innerHTML = `<tr><td colspan="6" class="text-danger">Fehler: ${err.message}</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="6" class="text-danger">Fehler: ${esc(err.message)}</td></tr>`;
   }
 }
 
 export function openNominationModal(personId, personName, defaultCourseId) {
   const modal = document.getElementById('nominationModal');
   const personInput = document.getElementById('modalPersonId');
-  const personNameSpan = document.getElementById('modalPersonName');
-  const courseSelect = document.getElementById('modalCourseId');
+  const personNameInput = document.getElementById('modalPersonName');
+  const courseSelect = document.getElementById('modalCourseSelect');
 
   if (personInput) personInput.value = personId;
-  if (personNameSpan) personNameSpan.textContent = personName;
+  if (personNameInput) personNameInput.value = personName;
   if (courseSelect && defaultCourseId) {
     courseSelect.value = defaultCourseId;
   }
@@ -128,15 +128,15 @@ export async function submitNomination(e) {
   if (e && e.preventDefault) e.preventDefault();
 
   const personId = document.getElementById('modalPersonId')?.value;
-  const courseId = document.getElementById('modalCourseId')?.value;
+  const courseId = document.getElementById('modalCourseSelect')?.value;
   const season = document.getElementById('modalSeason')?.value || 'Herbst 2026';
   const notes = document.getElementById('modalNotes')?.value || '';
 
   try {
-    const res = await fetch('/api/planner/nominations', {
+    const res = await fetch('/api/planner/propose', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ personId, courseId, season, notes })
+      body: JSON.stringify({ personId, targetCourseId: courseId, proposedSeason: season, notes })
     });
 
     if (res.ok) {
@@ -144,7 +144,7 @@ export async function submitNomination(e) {
       await loadPlannerData();
     } else {
       const err = await res.json();
-      alert(`Fehler beim Speichern: ${err.message}`);
+      alert(`Fehler beim Speichern: ${err.error}`);
     }
   } catch (err) {
     console.error('Fehler bei Nomination:', err);

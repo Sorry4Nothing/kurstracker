@@ -3,7 +3,7 @@
  * Knoten-Rendering, Pfadberechnung, Onboarding-Checkliste und Interaktionen
  */
 
-import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines, fitMapToScreen } from './tree-map.js';
+import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines } from './tree-map.js';
 
 let treeStructure = null;
 let currentTreeEvaluation = null;
@@ -11,10 +11,6 @@ let selectedTargetCourseId = null;
 
 export function getTreeStructure() {
   return treeStructure;
-}
-
-export function getCurrentTreeEvaluation() {
-  return currentTreeEvaluation;
 }
 
 export function getSelectedTargetCourseId() {
@@ -66,7 +62,7 @@ export function renderTree() {
     else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open"></i> Bereit';
 
     const isSelected = selectedTargetCourseId === node.id;
-    const org = node.org || (node.category === 'Jugend+Sport' || node.category === 'Expertenbildung' ? 'J+S' : (node.id === 'slrg_pool' ? 'SLRG' : 'Cevi'));
+    const org = node.org;
     const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
 
     return `
@@ -123,8 +119,8 @@ export async function selectTargetCourse(courseId) {
     }
 
     // Vorgelagerte Kursknoten hervorheben
-    if (pathResult.path) {
-      pathResult.path.forEach(step => {
+    if (pathResult.pathSteps) {
+      pathResult.pathSteps.forEach(step => {
         const stepCard = document.getElementById(`nodeCard-${step.id}`);
         if (stepCard && step.id !== courseId) {
           stepCard.classList.add('is-path-highlight');
@@ -146,7 +142,7 @@ export function updateTreeInspector(targetNode, pathResult) {
   const checksContainer = document.getElementById('inspectorChecks');
   const actionsContainer = document.getElementById('inspectorActions');
 
-  const org = targetNode.org || (targetNode.category === 'Jugend+Sport' || targetNode.category === 'Expertenbildung' ? 'J+S' : (targetNode.id === 'slrg_pool' ? 'SLRG' : 'Cevi'));
+  const org = targetNode.org;
   const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
 
   titleEl.innerHTML = `<span class="node-org-pill org-${orgClass}" style="vertical-align: middle; margin-right: 0.4rem;">${org}</span> <span>${targetNode.title}</span>${targetNode.code ? ` <span style="font-size: 0.85em; opacity: 0.7; font-weight: normal;">(${targetNode.code})</span>` : ''}`;
@@ -161,9 +157,11 @@ export function updateTreeInspector(targetNode, pathResult) {
   // Schritt 1: Alterspruefung
   checkItems.push({
     title: `Mindestalter (${targetNode.minAge} Jahre)`,
-    desc: ageCheck.isFulfilled 
-      ? `Erfuellt! Du bist aktuell ${ageCheck.actual} Jahre alt.` 
-      : `Fehlt noch: Du bist ${ageCheck.actual} Jahre alt (benoetigt: ${targetNode.minAge}).`,
+    desc: ageCheck.actual === null
+      ? 'Geburtsdatum fehlt in der Cevi-DB, Alter nicht pruefbar.'
+      : ageCheck.isFulfilled
+        ? `Erfuellt! Du bist aktuell ${ageCheck.actual} Jahre alt.`
+        : `Fehlt noch: Du bist ${ageCheck.actual} Jahre alt (benoetigt: ${targetNode.minAge}).`,
     isFulfilled: ageCheck.isFulfilled
   });
 
@@ -229,35 +227,4 @@ export function updateTreeInspector(targetNode, pathResult) {
 
   checksContainer.innerHTML = checksHtml;
   actionsContainer.style.display = 'block';
-
-  // Continue Learning Card synchronisieren
-  updateContinueLearningCard(targetNode, pathResult);
-}
-
-export function updateContinueLearningCard(targetNode, pathResult) {
-  const clTitle = document.getElementById('clTitle');
-  const clDesc = document.getElementById('clDesc');
-  const clNextCourseName = document.getElementById('clNextCourseName');
-  const clMilestoneBadge = document.getElementById('clMilestoneBadge');
-  const clProgressBarFill = document.getElementById('clProgressBarFill');
-
-  if (!clTitle) return;
-
-  clMilestoneBadge.textContent = `Zielkurs: ${targetNode.title}`;
-  clNextCourseName.textContent = `${targetNode.title}${targetNode.code ? ` (${targetNode.code})` : ''}`;
-  clTitle.textContent = pathResult.isDirectlyEligible
-    ? `Bereit fuer ${targetNode.title}!`
-    : `Naechster Meilenstein: ${targetNode.title}`;
-  clDesc.textContent = pathResult.summary;
-
-  if (clProgressBarFill) {
-    const pct = pathResult.isDirectlyEligible ? 100 : Math.max(25, 100 - (pathResult.missingCourses.length * 30));
-    clProgressBarFill.style.width = `${pct}%`;
-  }
-}
-
-export function onPlanTargetCourse() {
-  if (!selectedTargetCourseId) return;
-  // Weiterleitung zur Planung
-  window.switchTab('planner');
 }

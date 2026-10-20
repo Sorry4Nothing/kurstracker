@@ -49,9 +49,9 @@ export const envConfig = {
     scopes: process.env.CEVI_DB_SCOPES || 'openid email name with_roles events people',
     // Cevi.DB API-Keys / Service Token (aus CeviWiki: https://wiki.cevi.ch/index.php/Cevi.DB_API)
     serviceToken: process.env.CEVI_DB_SERVICE_TOKEN || '',
-    // Vorbereitungsmodus: Standardmässig TRUE, da offizielle OAuth-Applikation noch bei cevidb@cevi.ch registriert werden muss
-    preparationMode: process.env.CEVI_DB_PREPARATION_MODE !== 'false',
-    useMock: process.env.CEVI_DB_USE_MOCK !== 'false' || process.env.CEVI_DB_PREPARATION_MODE !== 'false' || !process.env.CEVI_DB_CLIENT_ID || process.env.CEVI_DB_CLIENT_ID.startsWith('local_')
+    // Vorbereitungsmodus (Testdaten): Standardmässig TRUE, da offizielle OAuth-Applikation noch bei cevidb@cevi.ch registriert werden muss.
+    // Live nur mit CEVI_DB_PREPARATION_MODE=false und einer echten Client-ID.
+    preparationMode: process.env.CEVI_DB_PREPARATION_MODE !== 'false' || !process.env.CEVI_DB_CLIENT_ID || process.env.CEVI_DB_CLIENT_ID.startsWith('local_')
   },
   auth: {
     sessionSecret: process.env.SESSION_SECRET || 'dev-insecure-secret-key-change-in-production',
@@ -91,10 +91,8 @@ export function validateEnv() {
     }
   }
 
-  if (envConfig.app.isDevelopment && !envConfig.ceviDb.preparationMode && !envConfig.ceviDb.useMock) {
-    if (!envConfig.ceviDb.clientId || !envConfig.ceviDb.clientSecret) {
-      errors.push('DEVELOPMENT: Entweder Cevi-DB Credentials eintragen oder CEVI_DB_PREPARATION_MODE=true setzen.');
-    }
+  if (envConfig.app.isDevelopment && !envConfig.ceviDb.preparationMode && !envConfig.ceviDb.clientSecret) {
+    errors.push('DEVELOPMENT: Entweder Cevi-DB Credentials eintragen oder CEVI_DB_PREPARATION_MODE=true setzen.');
   }
 
   return {

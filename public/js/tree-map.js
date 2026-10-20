@@ -29,8 +29,6 @@ export const COURSE_MAP_COORDS = {
   sec_winter: { x: 1740, y: 670 }
 };
 
-export const MAP_TRACK_ZONES = [];
-
 export const mapTransform = {
   x: -250,
   y: 0,
@@ -52,7 +50,7 @@ export function setupInteractiveMap() {
 
   // Mouse Drag zum Bewegen im Raum (Pan)
   viewport.addEventListener('mousedown', (e) => {
-    if (e.button !== 0 || e.target.closest('.tree-node-card') || e.target.closest('.map-ctrl-btn')) return;
+    if (e.button !== 0 || e.target.closest('.tree-node-card')) return;
     mapTransform.isPanning = true;
     mapTransform.startX = e.clientX - mapTransform.x;
     mapTransform.startY = e.clientY - mapTransform.y;

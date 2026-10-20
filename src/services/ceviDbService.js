@@ -25,7 +25,6 @@ export class CeviDbService {
     this.scopes = config.scopes;
     this.serviceToken = config.serviceToken || '';
     this.preparationMode = config.preparationMode !== false;
-    this.useMock = config.useMock || this.preparationMode;
   }
 
   /**
@@ -33,7 +32,39 @@ export class CeviDbService {
    * @returns {boolean}
    */
   isPreparationMode() {
-    return this.preparationMode || this.useMock;
+    return this.preparationMode;
+  }
+
+  /**
+   * Testdaten nur im Vorbereitungsmodus oder für die automatische Demo-Session (ohne echtes Token)
+   * @param {string} [accessToken]
+   * @returns {boolean}
+   */
+  usesMockData(accessToken) {
+    return this.isPreparationMode() || !accessToken || accessToken.startsWith('mock_token');
+  }
+
+  /**
+   * Holt eine Liste von der Cevi-DB (JSON:API) und flacht `attributes` ab.
+   * Wirft bei Fehlern, damit nie Testdaten als echte Daten erscheinen.
+   * @param {string} apiPath
+   * @param {string} accessToken
+   * @returns {Promise<Array>}
+   */
+  async fetchList(apiPath, accessToken) {
+    const response = await fetch(`${this.baseUrl}${apiPath}`, {
+      headers: this.getHeaders(accessToken)
+    });
+
+    if (!response.ok) {
+      const error = new Error(`Cevi-DB Abruf fehlgeschlagen (${response.status}): ${apiPath}`);
+      error.status = response.status === 401 ? 401 : 502;
+      throw error;
+    }
+
+    const data = await response.json();
+    const items = data.data || data;
+    return (Array.isArray(items) ? items : []).map(item => (item.attributes ? { id: item.id, ...item.attributes } : item));
   }
 
   /**
@@ -85,15 +116,6 @@ export class CeviDbService {
    * @returns {Promise<{ access_token: string, token_type: string, expires_in: number, refresh_token?: string }>}
    */
   async exchangeCodeForToken(code) {
-    if (this.isPreparationMode() || code === 'mock_auth_code_cevi') {
-      return {
-        access_token: 'mock_token_cevi_' + Date.now(),
-        token_type: 'Bearer',
-        expires_in: 7200,
-        refresh_token: 'mock_refresh_token_cevi'
-      };
-    }
-
     const response = await fetch(`${this.baseUrl}/oauth/token`, {
       method: 'POST',
       headers: {
@@ -123,10 +145,6 @@ export class CeviDbService {
    * @returns {Promise<object>}
    */
   async getUserInfo(accessToken) {
-    if (this.isPreparationMode() || accessToken?.startsWith('mock_token')) {
-      return this.getMockUser();
-    }
-
     const response = await fetch(`${this.baseUrl}/oauth/userinfo`, {
       headers: this.getHeaders(accessToken)
     });
@@ -142,30 +160,13 @@ export class CeviDbService {
   /**
    * Ruft Kurs- und Weiterbildungsangebote ab (Events mit Event-Typ Kurs)
    * @param {string} [accessToken]
-   * @param {object} [filters]
    * @returns {Promise<Array>}
    */
-  async getCourses(accessToken, filters = {}) {
-    if (this.isPreparationMode() || !accessToken || accessToken.startsWith('mock_token')) {
+  async getCourses(accessToken) {
+    if (this.usesMockData(accessToken)) {
       return this.getMockCourses();
     }
-
-    try {
-      const response = await fetch(`${this.baseUrl}/api/events?filter[type]=Course`, {
-        headers: this.getHeaders(accessToken)
-      });
-
-      if (!response.ok) {
-        console.warn(`[CeviDbService] Echte API lieferte ${response.status}, wechsle auf Kursdaten-Fallback`);
-        return this.getMockCourses();
-      }
-
-      const data = await response.json();
-      return data.data || data;
-    } catch (err) {
-      console.warn(`[CeviDbService] Fehler beim Kursabruf: ${err.message}. Verwende Fallback-Daten.`);
-      return this.getMockCourses();
-    }
+    return this.fetchList('/api/events?filter[type]=Course', accessToken);
   }
 
   /**
@@ -174,28 +175,11 @@ export class CeviDbService {
    * @param {string} [personId]
    */
   async getUserParticipations(accessToken, personId) {
-    if (this.isPreparationMode() || !accessToken || accessToken.startsWith('mock_token')) {
+    if (this.usesMockData(accessToken)) {
       return this.getMockParticipations();
     }
-
-    try {
-      const url = personId
-        ? `${this.baseUrl}/api/event_participations?filter[person_id]=${personId}`
-        : `${this.baseUrl}/api/event_participations`;
-
-      const response = await fetch(url, {
-        headers: this.getHeaders(accessToken)
-      });
-
-      if (!response.ok) {
-        return this.getMockParticipations();
-      }
-
-      const data = await response.json();
-      return data.data || data;
-    } catch {
-      return this.getMockParticipations();
-    }
+    const filter = personId ? `?filter[person_id]=${encodeURIComponent(personId)}` : '';
+    return this.fetchList(`/api/event_participations${filter}`, accessToken);
   }
 
   /**
@@ -204,28 +188,11 @@ export class CeviDbService {
    * @param {string} [personId]
    */
   async getUserQualifications(accessToken, personId) {
-    if (this.isPreparationMode() || !accessToken || accessToken.startsWith('mock_token')) {
+    if (this.usesMockData(accessToken)) {
       return this.getMockQualifications();
     }
-
-    try {
-      const url = personId
-        ? `${this.baseUrl}/api/qualifications?filter[person_id]=${personId}`
-        : `${this.baseUrl}/api/qualifications`;
-
-      const response = await fetch(url, {
-        headers: this.getHeaders(accessToken)
-      });
-
-      if (!response.ok) {
-        return this.getMockQualifications();
-      }
-
-      const data = await response.json();
-      return data.data || data;
-    } catch {
-      return this.getMockQualifications();
-    }
+    const filter = personId ? `?filter[person_id]=${encodeURIComponent(personId)}` : '';
+    return this.fetchList(`/api/qualifications${filter}`, accessToken);
   }
 
   // ===========================================================================
