@@ -451,10 +451,14 @@
 
 .bento-history {
   grid-column: span 5;
+  display: flex;
+  flex-direction: column;
 }
 
 .bento-courses {
   grid-column: span 7;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 1200px) {
@@ -467,7 +471,9 @@
 }
 
 .history-bento-scroll {
-  max-height: 480px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0.75rem 0.6rem 0.75rem 48px;
@@ -629,16 +635,17 @@
   box-sizing: border-box;
 }
 
-/* Durchgehende, scrollfeste Verbindungslinie pro Timeline-Eintrag */
+/* Durchgehende, mathematisch perfekt zentrierte Verbindungslinie pro Timeline-Eintrag */
 .timeline-item:not(:last-child)::after {
   content: '';
   position: absolute;
-  left: -26px;
-  top: calc(1.25rem + 7px);
-  bottom: calc(-1.15rem - 1.25rem - 7px);
+  left: -24px;
+  transform: translateX(-50%);
+  top: 1.65rem;
+  bottom: calc(-1.15rem - 1.65rem);
   width: 2px;
-  background: rgba(2, 132, 199, 0.55);
-  box-shadow: 0 0 6px rgba(2, 132, 199, 0.3);
+  background: rgba(2, 132, 199, 0.6);
+  box-shadow: 0 0 6px rgba(2, 132, 199, 0.35);
   z-index: 1;
 }
 
@@ -661,8 +668,9 @@
 .timeline-item::before {
   content: '';
   position: absolute;
-  left: -32px;
-  top: 1.25rem;
+  left: -24px;
+  top: 1.65rem;
+  transform: translate(-50%, -50%);
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -674,7 +682,7 @@
 }
 
 .timeline-item:hover::before {
-  transform: scale(1.2);
+  transform: translate(-50%, -50%) scale(1.25);
   box-shadow: 0 0 14px var(--cevi-accent);
 }
 
