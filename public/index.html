@@ -399,47 +399,10 @@
             </div>
           </div>
 
-          <!-- Kokonut Pro Learning Track Banner -->
-          <div class="continue-learning-section" id="continueLearningSection">
-            <div class="continue-learning-banner">
-              <div class="cl-main">
-                <div class="cl-header">
-                  <span><i class="fa-solid fa-route text-accent" aria-hidden="true"></i> Aktiver Ausbildungs-Meilenstein</span>
-                  <span class="badge badge-success" id="clMilestoneBadge">Meilenstein: Lagerleiter &amp; Kader</span>
-                </div>
-                <h2 class="cl-title" id="clTitle">GLK 3 &amp; Stufenleiterkurs (SLK) absolviert &ndash; Nächster Schritt: Lagerleiter (LLM) oder Fortbildung (MF)</h2>
-                <p class="cl-desc" id="clDesc">
-                  Du besitzt die J+S-Anerkennung <strong>Leiter Lagersport/Trekking</strong> und das <strong>SLRG Brevet Pool</strong>. Um Gesamtlagerleiter/in zu werden oder deine J+S-Anerkennung aktiv zu halten, wählst du als Nächstes das Lagerleiter-Modul (LLM) oder das Modul Fortbildung (MF).
-                </p>
-                <div class="cl-modules-progress">
-                  <div class="cl-progress-bar-bg">
-                    <div class="cl-progress-bar-fill" id="clProgressBarFill" style="width: 75%;"></div>
-                  </div>
-                  <div class="cl-modules-ticks">
-                    <span>Voku &amp; Heku <i class="fa-solid fa-check text-success" aria-hidden="true"></i></span>
-                    <span>GLK 1-3 (J+S) <i class="fa-solid fa-check text-success" aria-hidden="true"></i></span>
-                    <span>SLK &amp; SLRG <i class="fa-solid fa-check text-success" aria-hidden="true"></i></span>
-                    <span class="text-accent font-bold">MF / LLM <i class="fa-solid fa-hourglass-half" aria-hidden="true"></i></span>
-                    <span class="text-muted">J+S Experte <i class="fa-solid fa-lock" aria-hidden="true"></i></span>
-                  </div>
-                </div>
-              </div>
-              <div class="cl-side-panel">
-                <span class="cl-side-badge">Kokonut Learning Track</span>
-                <h4 id="clNextCourseName">MF Lagersport 2026</h4>
-                <p class="cl-side-meta">Empfohlener Kursblock Cevi Region Zürich</p>
-                <button class="btn btn-primary btn-block btn-sm" onclick="switchTab('tree'); selectTargetCourse('mf_lst');">
-                  <i class="fa-solid fa-sitemap" aria-hidden="true"></i>
-                  <span>Pfad im Baum anzeigen</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
           <!-- Bento-Grid Dashboard (Alle Bereiche als Kacheln über den Screen verteilt) -->
           <div class="profile-bento-grid">
             
-            <!-- Kachel 1: Cevi-DB Hitobito Stammdaten -->
+            <!-- Kachel 1: Cevi-DB Hitobito Stammdaten (Redesigned) -->
             <div class="bento-card bento-stammdaten">
               <div class="bento-card-header">
                 <div class="bento-title-left">
@@ -448,46 +411,63 @@
                 </div>
                 <span class="bento-tag">Hitobito Live Sync</span>
               </div>
-              <div class="stammdaten-grid" id="stammdatenContainer">
-                <div class="stammdaten-card">
-                  <span class="stammdaten-label">Vollständiger Name</span>
-                  <span class="stammdaten-value" id="profileDbRealName">Robin Notter</span>
+              
+              <!-- Profil Identitäts-Kopf -->
+              <div class="stammdaten-hero-badge">
+                <div class="stammdaten-hero-name">
+                  <span class="stammdaten-realname" id="profileDbRealName">Robin Notter</span>
+                  <span class="stammdaten-ceviname text-accent" id="profileDbCeviname">«Siro»</span>
                 </div>
-                <div class="stammdaten-card">
-                  <span class="stammdaten-label">Ceviname</span>
-                  <span class="stammdaten-value text-accent" id="profileDbCeviname">Siro</span>
+                <div class="stammdaten-id-pills">
+                  <span class="stammdaten-id-pill pill-cevi" title="Offizielle Cevi-DB Hitobito Personen-ID">
+                    <i class="fa-solid fa-id-badge"></i>
+                    <span>Cevi-DB:</span>
+                    <strong id="profileDbPersonId">#10842</strong>
+                  </span>
+                  <span class="stammdaten-id-pill pill-js" title="Offizielle Jugend+Sport Personennummer">
+                    <i class="fa-solid fa-award"></i>
+                    <span>J+S:</span>
+                    <strong id="profileDbJsNumber">JS-CH-948120</strong>
+                  </span>
                 </div>
-                <div class="stammdaten-card">
-                  <span class="stammdaten-label">Cevi-DB Person ID</span>
-                  <span class="stammdaten-value" id="profileDbPersonId">#10842</span>
+              </div>
+
+              <!-- Strukturierte Stammdaten Sektionen -->
+              <div class="stammdaten-sections" id="stammdatenContainer">
+                <div class="stammdaten-row">
+                  <div class="stammdaten-field">
+                    <div class="stammdaten-label"><i class="fa-solid fa-location-dot text-danger"></i> Abteilung &amp; Region</div>
+                    <div class="stammdaten-val" id="profileDbAbteilung">Cevi Winti (Region Zürich)</div>
+                  </div>
+                  <div class="stammdaten-field">
+                    <div class="stammdaten-label"><i class="fa-solid fa-cake-candles text-gold"></i> Geburtsdatum &amp; Alter</div>
+                    <div class="stammdaten-val" id="profileDbBirthdate">14.08.2001 (25 Jahre)</div>
+                  </div>
                 </div>
-                <div class="stammdaten-card">
-                  <span class="stammdaten-label">J+S Personennummer</span>
-                  <span class="stammdaten-value text-gold" id="profileDbJsNumber">JS-CH-948120</span>
+
+                <div class="stammdaten-row">
+                  <div class="stammdaten-field">
+                    <div class="stammdaten-label"><i class="fa-solid fa-envelope text-accent"></i> E-Mail</div>
+                    <div class="stammdaten-val" id="profileDbEmail">siro@cevi-winti.ch</div>
+                  </div>
+                  <div class="stammdaten-field">
+                    <div class="stammdaten-label"><i class="fa-solid fa-phone text-success"></i> Telefon</div>
+                    <div class="stammdaten-val" id="profileDbPhone">+41 79 123 45 67</div>
+                  </div>
                 </div>
-                <div class="stammdaten-card">
-                  <span class="stammdaten-label">Abteilung &amp; Region</span>
-                  <span class="stammdaten-value" id="profileDbAbteilung">Cevi Winti (Region Zürich)</span>
-                </div>
-                <div class="stammdaten-card">
-                  <span class="stammdaten-label">Geburtsdatum &amp; Alter</span>
-                  <span class="stammdaten-value" id="profileDbBirthdate">14.08.2001 (25 Jahre)</span>
-                </div>
-                <div class="stammdaten-card">
-                  <span class="stammdaten-label">E-Mail Adresse</span>
-                  <span class="stammdaten-value" id="profileDbEmail">siro@cevi-winti.ch</span>
-                </div>
-                <div class="stammdaten-card">
-                  <span class="stammdaten-label">Telefonnummer</span>
-                  <span class="stammdaten-value" id="profileDbPhone">+41 79 123 45 67</span>
-                </div>
-                <div class="stammdaten-card">
-                  <span class="stammdaten-label">Notfallkontakt</span>
-                  <span class="stammdaten-value">M. Notter (+41 79 987 65 43)</span>
-                </div>
-                <div class="stammdaten-card">
-                  <span class="stammdaten-label">Aktuelle Rollen im Cevi</span>
-                  <span class="stammdaten-value">Gruppenleiter, J+S Leiter LS/T</span>
+
+                <div class="stammdaten-row">
+                  <div class="stammdaten-field">
+                    <div class="stammdaten-label"><i class="fa-solid fa-phone-volume text-danger"></i> Notfallkontakt</div>
+                    <div class="stammdaten-val">M. Notter (+41 79 987 65 43)</div>
+                  </div>
+                  <div class="stammdaten-field">
+                    <div class="stammdaten-label"><i class="fa-solid fa-user-tag text-accent"></i> Cevi-Funktionen</div>
+                    <div class="stammdaten-val">
+                      <span class="role-chip">Gruppenleiter</span>
+                      <span class="role-chip chip-js">J+S Leiter LS/T</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

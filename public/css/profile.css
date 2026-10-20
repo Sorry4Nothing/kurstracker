@@ -469,7 +469,8 @@
 .history-bento-scroll {
   max-height: 480px;
   overflow-y: auto;
-  padding-right: 0.5rem;
+  overflow-x: hidden;
+  padding: 0.5rem 0.6rem 0.5rem 0.25rem;
 }
 
 .quals-bento-grid {
@@ -478,85 +479,212 @@
   gap: 1rem;
 }
 
-/* Stammdaten Grid */
-.stammdaten-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+/* ==============================================================================
+   REDESIGNED CEVI-DB STAMMDATEN (BENTO STYLE)
+   ============================================================================== */
+.stammdaten-hero-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  padding: 0.9rem 1.15rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(2, 132, 199, 0.06));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
 }
+
+.stammdaten-hero-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.stammdaten-realname {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.stammdaten-ceviname {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.stammdaten-id-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.stammdaten-id-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.stammdaten-id-pill.pill-cevi {
+  background: rgba(196, 19, 51, 0.12);
+  border: 1px solid rgba(196, 19, 51, 0.35);
+  color: #fca5a5;
+}
+
+.stammdaten-id-pill.pill-js {
+  background: rgba(16, 138, 67, 0.14);
+  border: 1px solid rgba(16, 138, 67, 0.35);
+  color: #6ee7b7;
+}
+
+.stammdaten-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stammdaten-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
 @media (max-width: 680px) {
-  .stammdaten-grid {
+  .stammdaten-row {
     grid-template-columns: 1fr;
   }
 }
-.stammdaten-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+
+.stammdaten-field {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-sm);
-  padding: 0.85rem 1rem;
+  padding: 0.7rem 0.95rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  transition: var(--transition);
 }
+
+.stammdaten-field:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .stammdaten-label {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
-.stammdaten-value {
+
+.stammdaten-val {
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--text-main);
+  line-height: 1.35;
 }
 
-/* Timeline */
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  background: rgba(2, 132, 199, 0.15);
+  border: 1px solid rgba(2, 132, 199, 0.35);
+  color: #38bdf8;
+  margin-right: 0.35rem;
+}
+
+.role-chip.chip-js {
+  background: rgba(16, 138, 67, 0.15);
+  border-color: rgba(16, 138, 67, 0.35);
+  color: #34d399;
+}
+
+/* ==============================================================================
+   PRECISION TIMELINE (PERFEKT AUSGERICHTET OHNE CLIPPING)
+   ============================================================================== */
 .timeline-container {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.15rem;
   position: relative;
-  padding-left: 2rem;
+  padding-left: 48px;
+  padding-right: 0.25rem;
+  box-sizing: border-box;
 }
+
 .timeline-container::before {
   content: '';
   position: absolute;
-  left: 9px;
-  top: 10px;
-  bottom: 10px;
+  left: 22px;
+  top: 14px;
+  bottom: 14px;
   width: 2px;
-  background: var(--border-subtle);
+  background: linear-gradient(180deg, var(--cevi-red) 0%, rgba(2, 132, 199, 0.6) 50%, rgba(255, 255, 255, 0.08) 100%);
+  border-radius: 2px;
 }
+
 .timeline-item {
   position: relative;
   background: var(--bg-glass-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 1.25rem 1.5rem;
+  padding: 1.1rem 1.35rem;
   transition: var(--transition);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
+
+.timeline-item:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateX(3px);
+}
+
 .timeline-item::before {
   content: '';
   position: absolute;
-  left: -2.35rem;
-  top: 1.5rem;
+  left: -32px;
+  top: 1.25rem;
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--cevi-blue);
-  border: 3px solid var(--bg-main);
-  box-shadow: 0 0 10px var(--cevi-blue);
+  background: var(--cevi-accent);
+  border: 3px solid var(--bg-surface-elevated);
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.7);
+  z-index: 2;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+.timeline-item:hover::before {
+  transform: scale(1.15);
+  box-shadow: 0 0 14px var(--cevi-accent);
+}
+
 .timeline-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
 }
+
 .timeline-year {
   font-weight: 800;
   font-family: var(--font-heading);
   color: var(--cevi-accent);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }

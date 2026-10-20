@@ -14,19 +14,22 @@ export async function loadAllCourses() {
 
   try {
     const res = await fetch('/api/courses');
-    allCourses = await res.json();
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    allCourses = Array.isArray(data) ? data : (data.courses || []);
     renderCourses(allCourses);
   } catch (err) {
     console.error('Fehler beim Laden des Kursangebots:', err);
-    if (container) container.innerHTML = `<div class="loading-placeholder text-danger">Fehler: ${err.message}</div>`;
+    if (container) container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursangebots: ${err.message}</div>`;
   }
 }
 
 export function renderCourses(courses) {
   const container = document.getElementById('coursesContainer');
   const modalContainer = document.getElementById('modalCoursesContainer');
+  const list = Array.isArray(courses) ? courses : (courses?.courses || []);
 
-  const html = courses.map(c => `
+  const html = list.map(c => `
     <div class="card">
       <div class="card-top">
         <span class="card-category">${c.category}</span>

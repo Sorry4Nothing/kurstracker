@@ -155,7 +155,7 @@ app.get('/api/courses', async (req, res) => {
   try {
     const session = getSession(req);
     const courses = await ceviDbService.getCourses(session?.accessToken);
-    res.json({ courses });
+    res.json(courses);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
