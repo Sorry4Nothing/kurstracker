@@ -1,50 +1,65 @@
 /* ==============================================================================
    CEVI KURSTRACKER - PROFIL & QUALIFIKATIONEN
-   Kokonut UI Pro Card, Learning Track Banner, Profile Hero, Subtabs, Timeline
+   Sidebar profile card (Kokonut UI), profile header with a stat row, and the four profile
+   sections: Stammdaten, Anerkennungen, Werdegang (timeline), Kursangebot.
+   The sections are plain: a heading over a 1px rule, no box and no fill, so
+   the cards that components.css draws inside them never sit in another card.
+   Tokens only. .card, .cards-grid, .badge, .btn, inputs and dropdowns are
+   owned by components.css and are not redefined here.
    ============================================================================== */
 
-/* Kokonut UI Pro Profile Card (Sidebar Footer) */
+/* ------------------------------------------------------------------------------
+   1. Sidebar profile card (#userNavActions): the Kokonut UI Pro profile card.
+   Same anatomy as the Kokonut component: a 5:4 portrait (placeholder with
+   initials, the photo on top when there is one), name with the verified
+   badge, role, three stats over a rule and a full-width button, drawn with
+   the design tokens. The whole card opens the profile; the button is the
+   control that also works from the keyboard.
+   ------------------------------------------------------------------------------ */
 .kokonut-pro-card {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  border-radius: var(--radius-md);
+  min-width: 0;
+  padding: var(--sp-1);
   border: 1px solid var(--border-subtle);
-  background: var(--bg-surface-elevated);
-  padding: 0.65rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-main);
   cursor: pointer;
-  box-sizing: border-box;
-}
-.kokonut-pro-card:hover {
-  border-color: rgba(2, 132, 199, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 16px rgba(2, 132, 199, 0.12);
-}
-.kokonut-pro-card.active {
-  border-color: var(--cevi-red);
-  box-shadow: 0 0 16px rgba(196, 19, 51, 0.25), 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: border-color var(--dur-fast) var(--ease);
 }
 
+.kokonut-pro-card:hover {
+  border-color: var(--border-strong);
+}
+
+/* Profile open: the card edge takes the red of the active nav marker */
+.kokonut-pro-card.active {
+  border-color: var(--primary-text);
+}
+
+/* Empty portrait in the identity colour: the blue pair, like the avatar in
+   the profile header */
 .koko-photo-container {
   position: relative;
   display: flex;
-  aspect-ratio: 5 / 4;
-  width: 100%;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  aspect-ratio: 5 / 4;
   overflow: hidden;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(2, 132, 199, 0.2), rgba(196, 19, 51, 0.2));
+  border-radius: var(--radius-sm);
+  background-color: var(--blue-soft);
 }
 
+/* Placeholder initials, as in the Kokonut card: the name below carries the
+   information, the initials only mark the empty portrait */
 .koko-initials-fallback {
-  font-size: 2.2rem;
-  font-weight: 800;
-  font-family: var(--font-heading);
-  letter-spacing: -0.03em;
-  color: #ffffff;
-  opacity: 0.9;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  font-size: var(--fs-30);
+  line-height: var(--lh-30);
+  font-weight: var(--fw-medium);
+  color: var(--blue-ink);
 }
 
 .koko-photo-img {
@@ -53,164 +68,205 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 20%;
+  object-position: center 30%;
 }
 
+/* Hairline inside the portrait edge, over initials and photo alike */
 .koko-photo-ring {
   position: absolute;
   inset: 0;
-  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: inherit;
   pointer-events: none;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
+/* Sync status dot in the portrait corner, ringed in the card colour */
 .koko-online-badge {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
-  width: 10px;
-  height: 10px;
-  background: #10b981;
+  right: var(--sp-2);
+  bottom: var(--sp-2);
+  width: 12px;
+  height: 12px;
   border: 2px solid var(--bg-surface-elevated);
-  border-radius: 50%;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  border-radius: var(--radius-full);
+  background-color: var(--ok-ink);
 }
 
 .koko-body {
-  padding: 0.65rem 0.6rem 0.4rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-2) var(--sp-2);
 }
 
 .koko-name-row {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  line-height: 1.2;
+  gap: var(--sp-1);
+  min-width: 0;
 }
 
 .koko-name {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.92rem;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
   color: var(--text-main);
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* The ceviname is a second name, not a link: muted ink, here and in the
+   profile header (see .profile-hero-titles .text-accent) */
 .koko-ceviname {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--cevi-accent);
+  flex: none;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
 }
 
+/* Verified badge in Cevi-Blau (identity) in every theme, the slot of the
+   Kokonut check badge */
 .koko-verified {
-  color: #38bdf8;
-  font-size: 0.82rem;
-  flex-shrink: 0;
+  display: inline-flex;
+  flex: none;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--blue-ink);
 }
 
 .koko-title {
-  margin-top: 0.2rem;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  line-height: 1.3;
-  white-space: nowrap;
   overflow: hidden;
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  color: var(--text-muted);
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
+/* Three stats over a rule: value on top, label below */
 .koko-stats-grid {
-  margin-top: 0.6rem;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 0.6rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .koko-stat-col {
   display: flex;
-  flex-direction: column-reverse;
-  gap: 1px;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Values by column: courses in blue, qualifications in teal (this also
+   outranks the .text-accent on the Qualis count) */
+.koko-stats-grid .koko-stat-number {
+  overflow: hidden;
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-main);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.koko-stat-col:nth-child(1) .koko-stat-number {
+  color: var(--blue-ink);
+}
+
+.koko-stat-col:nth-child(2) .koko-stat-number {
+  color: var(--teal-ink);
+}
+
+/* "Aktiv" is a status, so it keeps the ok ink */
+.koko-stats-grid .koko-stat-number.text-success {
+  color: var(--ok-ink);
 }
 
 .koko-stat-label {
-  font-size: 0.68rem;
-  color: var(--text-dim);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  color: var(--text-muted);
 }
 
-.koko-stat-number {
-  font-weight: 800;
-  font-family: var(--font-heading);
-  font-size: 0.95rem;
-  color: var(--text-main);
-}
-
+/* Full-width secondary button in the slot of the Kokonut "Follow" button,
+   same recipe as the tonal .btn-secondary in components.css */
 .koko-action-btn {
-  margin-top: 0.65rem;
-  display: flex;
-  height: 32px;
-  width: 100%;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-main);
-  font-size: 0.75rem;
-  font-weight: 600;
+  width: 100%;
+  height: var(--control-h);
+  margin-top: var(--sp-3);
+  padding: 0 var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background-color: var(--blue-soft);
+  color: var(--blue-ink);
+  font-family: inherit;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: background-color var(--dur-fast) var(--ease);
 }
 
 .koko-action-btn:hover {
-  background: rgba(2, 132, 199, 0.15);
-  border-color: rgba(2, 132, 199, 0.4);
-  color: #ffffff;
+  background-color: var(--blue-soft-hover);
 }
 
-/* Profile Cockpit Page Hero */
+/* ------------------------------------------------------------------------------
+   2. Profile header: avatar, name, meta line and a plain stat row
+   ------------------------------------------------------------------------------ */
+
+/* The profile view sizes its layout from its own width, not the viewport */
+#panel-profile {
+  width: 100%;
+  container: profile / inline-size;
+}
+
 .profile-page-hero {
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  gap: var(--sp-6) var(--sp-8);
+  margin-bottom: var(--sp-8);
 }
 
 .profile-hero-left {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
-  gap: 1.25rem;
+  gap: var(--sp-4);
+  min-width: 0;
 }
 
 .profile-hero-avatar-wrap {
   position: relative;
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
-  overflow: hidden;
-  border: 2px solid var(--border-subtle);
-  background: linear-gradient(135deg, rgba(2, 132, 199, 0.25), rgba(196, 19, 51, 0.25));
-  flex-shrink: 0;
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background-color: var(--blue-soft);
 }
 
+/* Identity in the blue pair, like the portrait on the sidebar card */
 .profile-hero-avatar-initials {
-  font-size: 1.6rem;
-  font-weight: 800;
-  font-family: var(--font-heading);
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-  letter-spacing: -0.02em;
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  font-weight: var(--fw-semibold);
+  color: var(--blue-ink);
 }
 
 .profile-hero-avatar-img {
@@ -222,480 +278,410 @@
   object-position: center 20%;
 }
 
-.profile-hero-titles h2 {
-  font-size: 1.35rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+/* overflow clips the separator that starts each wrapped meta line (see below) */
+.profile-hero-titles {
+  min-width: 0;
+  overflow: hidden;
 }
 
+.profile-hero-titles h2 {
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  font-weight: var(--fw-semibold);
+  color: var(--text-main);
+}
+
+/* «Ceviname» after the real name: the markup gives it .text-accent, but it
+   is not a link or an action, so it reads as a muted second name */
+.profile-hero-titles .text-accent {
+  color: var(--text-muted);
+}
+
+/* Meta as plain text: "Abteilung Cevi Winti · Region Zürich · J+S Leiter …".
+   Every item carries a 24px separator in front; the list is pulled 24px to the
+   left so the separator of the first item on each line falls into the clipped
+   gutter and no line starts with a dot. */
 .profile-hero-badges {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.4rem;
+  margin-top: var(--sp-1);
+  margin-left: calc(-1 * var(--sp-6));
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
 }
 
 .profile-badge-pill {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0.2rem 0.6rem;
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text-muted);
+  min-width: 0;
 }
 
+.profile-badge-pill::before {
+  content: "·";
+  display: inline-block;
+  width: var(--sp-6);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* Stat row: label above value, cells split by 1px rules, no tiles */
 .profile-hero-metrics {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex: none;
+  align-items: stretch;
 }
 
 .profile-metric-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 0.75rem 1.15rem;
-  text-align: center;
-  min-width: 100px;
+  display: flex;
+  flex-direction: column-reverse; /* label above value; the DOM still reads "7 Kurse" */
+  justify-content: flex-start;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: 0 var(--sp-6);
+  border-left: 1px solid var(--border-subtle);
 }
 
+.profile-metric-card:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+/* Coloured by figure, overriding the .text-success/.text-accent/.text-gold
+   utilities in the markup: courses in blue, recognitions in teal, the next
+   milestone in the primary tint (the step that comes next) */
 .profile-metric-value {
-  font-size: 1.3rem;
-  font-weight: 800;
-  font-family: var(--font-heading);
+  font-size: var(--fs-24);
+  line-height: var(--lh-24);
+  font-weight: var(--fw-medium);
   color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.profile-metric-card:nth-child(1) .profile-metric-value {
+  color: var(--blue-ink);
+}
+
+.profile-metric-card:nth-child(2) .profile-metric-value {
+  color: var(--teal-ink);
+}
+
+.profile-metric-card:nth-child(3) .profile-metric-value {
+  color: var(--primary-soft-ink);
 }
 
 .profile-metric-label {
-  font-size: 0.7rem;
-  color: var(--text-dim);
-  font-weight: 600;
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
 }
 
-/* Kokonut Pro Learning Track Banner */
-.continue-learning-section {
-  margin-bottom: 2rem;
-}
-.continue-learning-banner {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 1.5rem;
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-focus);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  box-shadow: var(--shadow-md), var(--shadow-glow);
-  position: relative;
-  overflow: hidden;
-}
-@media (max-width: 960px) {
-  .continue-learning-banner {
-    grid-template-columns: 1fr;
+@container profile (max-width: 599px) {
+  .profile-hero-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .profile-metric-card {
+    padding: 0 var(--sp-3);
+  }
+
+  .profile-metric-card:first-child {
+    padding-left: 0;
+  }
+
+  .profile-metric-value {
+    font-size: var(--fs-18);
+    line-height: var(--lh-18);
+    white-space: normal;
   }
 }
-.cl-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--cevi-accent);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.4rem;
-}
-.cl-title {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--text-main);
-  margin-bottom: 0.5rem;
-}
-.cl-desc {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-  margin-bottom: 1.25rem;
-}
-.cl-modules-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.cl-progress-bar-bg {
-  width: 100%;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-.cl-progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--cevi-accent), var(--cevi-gold));
-  border-radius: var(--radius-full);
-  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.cl-modules-ticks {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.72rem;
-  color: var(--text-dim);
-}
-.cl-side-panel {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
-  text-align: center;
-}
-.cl-side-badge {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.2rem 0.6rem;
-  border-radius: var(--radius-full);
-  background: rgba(16, 138, 67, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 138, 67, 0.3);
-  margin-bottom: 0.75rem;
-  align-self: center;
-}
-.cl-side-meta {
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  margin-bottom: 1rem;
-}
 
-/* ==============================================================================
-   PROFILE BENTO-GRID DASHBOARD (MODERN TILES)
-   ============================================================================== */
+/* ------------------------------------------------------------------------------
+   3. Profile sections (former bento tiles)
+   One column by default; from 1024px of view width a 1:2 split. The narrow
+   column holds the personal record (Stammdaten, Werdegang), the wide one the
+   card lists (Anerkennungen, Kursangebot), so .cards-grid keeps two columns.
+   ------------------------------------------------------------------------------ */
 .profile-bento-grid {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 1.5rem;
-  margin-top: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-8);
+}
+
+@container profile (min-width: 1024px) {
+  .profile-bento-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: var(--sp-12) var(--sp-8);
+  }
+
+  /* The course list beside the timeline is far longer. The timeline stays
+     in view while the list scrolls past (within its own grid row) and
+     scrolls on its own when it is taller than the window. */
+  .bento-history {
+    position: sticky;
+    top: calc(var(--shell-header-h) + var(--sp-6));
+    max-height: calc(100dvh - var(--shell-header-h) - var(--sp-12));
+    overflow-y: auto;
+  }
 }
 
 .bento-card {
-  background: var(--bg-surface);
-  backdrop-filter: blur(14px);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 1.35rem 1.5rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.2s;
-  box-sizing: border-box;
-}
-
-.bento-card:hover {
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  min-width: 0;
 }
 
 .bento-card-header {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: var(--sp-2) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .bento-title-left {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: var(--sp-2);
+  min-width: 0;
 }
 
-.bento-title-left i {
-  font-size: 1.15rem;
-}
-
+/* Section headings in Cevi-Blau, like .card-header-flex h3 (components.css) */
 .bento-title-left h3 {
-  font-family: var(--font-heading);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text-main);
-  margin: 0;
-  letter-spacing: -0.01em;
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
+  color: var(--blue-ink);
 }
 
-.bento-tag {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 0.2rem 0.6rem;
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text-dim);
-}
-
-/* Kachel-Layout / Spaltenaufteilung im Bento-Grid */
+/* ------------------------------------------------------------------------------
+   4. Stammdaten: the two ID tags open the record (the name is already in the
+      profile header), then label-above-value fields
+   ------------------------------------------------------------------------------ */
 .bento-stammdaten {
-  grid-column: span 5;
+  container: stammdaten / inline-size;
 }
 
-.bento-quals {
-  grid-column: span 7;
-}
-
-.bento-history {
-  grid-column: span 5;
-  display: flex;
-  flex-direction: column;
-}
-
-.bento-courses {
-  grid-column: span 7;
-  display: flex;
-  flex-direction: column;
-}
-
-@media (max-width: 1200px) {
-  .bento-stammdaten,
-  .bento-quals,
-  .bento-history,
-  .bento-courses {
-    grid-column: span 12;
-  }
-}
-
-.history-bento-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 0.75rem 0.6rem 0.75rem 48px;
-}
-
-.quals-bento-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1rem;
-}
-
-/* ==============================================================================
-   REDESIGNED CEVI-DB STAMMDATEN (BENTO STYLE)
-   ============================================================================== */
 .stammdaten-hero-badge {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.85rem;
-  padding: 0.9rem 1.15rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(2, 132, 199, 0.06));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-md);
-  margin-bottom: 1rem;
-}
-
-.stammdaten-hero-name {
-  display: flex;
-  align-items: baseline;
-  gap: 0.55rem;
-}
-
-.stammdaten-realname {
-  font-family: var(--font-heading);
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: var(--text-main);
-  letter-spacing: -0.02em;
-}
-
-.stammdaten-ceviname {
-  font-family: var(--font-heading);
-  font-size: 1.1rem;
-  font-weight: 700;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sp-2) var(--sp-4);
+  margin-bottom: var(--sp-5);
 }
 
 .stammdaten-id-pills {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
   flex-wrap: wrap;
+  gap: var(--sp-2);
 }
 
+/* .stammdaten-id-pill and .role-chip are the tags from components.css. An ID
+   is identity, so the blue pair; a function (role) is a category, so the
+   teal pair. .pill-cevi / .pill-js and .chip-js get no hue of their own:
+   an ID or a role is not an organisation tag. The ID value is set apart
+   by weight. */
 .stammdaten-id-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
-  padding: 0.3rem 0.65rem;
-  border-radius: var(--radius-full);
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  background-color: var(--blue-soft);
+  border-color: transparent;
+  color: var(--blue-ink);
 }
 
-.stammdaten-id-pill.pill-cevi {
-  background: rgba(196, 19, 51, 0.12);
-  border: 1px solid rgba(196, 19, 51, 0.35);
-  color: #fca5a5;
+.stammdaten-id-pill strong {
+  font-weight: var(--fw-semibold);
+  color: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
-.stammdaten-id-pill.pill-js {
-  background: rgba(16, 138, 67, 0.14);
-  border: 1px solid rgba(16, 138, 67, 0.35);
-  color: #6ee7b7;
+.stammdaten-val .role-chip {
+  background-color: var(--teal-soft);
+  border-color: transparent;
+  color: var(--teal-ink);
 }
 
+/* The rows only pair the fields in the markup; the grid decides the columns */
 .stammdaten-sections {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4) var(--sp-6);
 }
 
 .stammdaten-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  display: contents;
 }
 
-@media (max-width: 680px) {
-  .stammdaten-row {
-    grid-template-columns: 1fr;
+@container stammdaten (min-width: 400px) {
+  .stammdaten-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container stammdaten (min-width: 640px) {
+  .stammdaten-sections {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 .stammdaten-field {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-sm);
-  padding: 0.7rem 0.95rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  transition: var(--transition);
-}
-
-.stammdaten-field:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.1);
+  gap: var(--sp-1);
+  min-width: 0;
 }
 
 .stammdaten-label {
-  font-size: 0.68rem;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
 }
 
 .stammdaten-val {
-  font-size: 0.92rem;
-  font-weight: 600;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
   color: var(--text-main);
-  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
-.role-chip {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.15rem 0.55rem;
-  border-radius: var(--radius-full);
-  background: rgba(2, 132, 199, 0.15);
-  border: 1px solid rgba(2, 132, 199, 0.35);
-  color: #38bdf8;
-  margin-right: 0.35rem;
+.stammdaten-val:has(> .role-chip) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
 }
 
-.role-chip.chip-js {
-  background: rgba(16, 138, 67, 0.15);
-  border-color: rgba(16, 138, 67, 0.35);
-  color: #34d399;
+/* ------------------------------------------------------------------------------
+   5. Anerkennungen and Kursangebot: .cards-grid, .card, .filter-bar and the
+      loading line come from components.css unchanged.
+      profile.js gives a qualification's sub_title an inline font-size of
+      0.8rem (12.8px) and a 0.4rem margin; !important puts it on the 12px step
+      and the 4px grid until the template drops the inline style.
+   ------------------------------------------------------------------------------ */
+.qual-card .card-subtitle[style] {
+  margin-bottom: var(--sp-1) !important;
+  font-size: var(--fs-12) !important;
+  line-height: var(--lh-12);
 }
 
-/* ==============================================================================
-   PRECISION TIMELINE (PERFEKT AUSGERICHTET OHNE CLIPPING)
-   ============================================================================== */
+/* The issuer line ("Ausgestellt von: BASPO / Cevi Schweiz") names an
+   organisation, so it reads in teal; the sub-title above it (.text-dim)
+   stays grey */
+.qual-card .card-subtitle:not(.text-dim) {
+  color: var(--teal-ink);
+}
+
+/* Status colour only where it tells something apart. Nearly every course is
+   "Offen für Anmeldung" and every past course "Erfolgreich bestanden", so
+   those chips are grey; the warn chips ("Ausgebucht (Warteliste)",
+   "Voranmeldung möglich") keep their tint and stand out. */
+#coursesContainer .badge-success,
+#historyContainer .badge-success {
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
+/* Deadlines ("Anmeldeschluss") are gold: courses.js writes them in
+   --cevi-gold inline, and !important pins them to the gold ink */
+#coursesContainer .meta-item > strong[style] {
+  color: var(--warn-ink) !important;
+}
+
+/* "Bestätigt" is the same on every qualification. The validity chip at the
+   top stays the card's one status mark; here only the check keeps ok ink. */
+.qual-card .meta-item > strong.text-success {
+  color: var(--text-main);
+}
+
+.qual-card .meta-item > strong.text-success > i {
+  color: var(--ok-ink);
+}
+
+/* ------------------------------------------------------------------------------
+   6. Ausbildungs-Werdegang: flat entries on a 1px rail with small Cevi-Blau
+      dots and dates. Entries are not interactive, so they have no hover state
+      (and never turn dark under the pointer).
+   ------------------------------------------------------------------------------ */
 .timeline-container {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
-  position: relative;
-  padding-left: 48px;
-  padding-right: 0.25rem;
-  box-sizing: border-box;
-}
-
-/* Durchgehende, mathematisch perfekt zentrierte Verbindungslinie pro Timeline-Eintrag */
-.timeline-item:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  left: -24px;
-  transform: translateX(-50%);
-  top: 1.65rem;
-  bottom: calc(-1.15rem - 1.65rem);
-  width: 2px;
-  background: rgba(2, 132, 199, 0.6);
-  box-shadow: 0 0 6px rgba(2, 132, 199, 0.35);
-  z-index: 1;
+  gap: var(--sp-5);
+  padding-left: var(--sp-6);
 }
 
 .timeline-item {
   position: relative;
-  background: var(--bg-glass-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 1.1rem 1.35rem;
-  transition: var(--transition);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  min-width: 0;
 }
 
-.timeline-item:hover {
-  border-color: rgba(2, 132, 199, 0.35);
-  background: rgba(15, 23, 42, 0.85);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-}
-
+/* Dot, centred on the first line (the 20px date and status row) */
 .timeline-item::before {
-  content: '';
+  content: "";
   position: absolute;
-  left: -24px;
-  top: 1.65rem;
-  transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--cevi-accent);
-  border: 3px solid var(--bg-surface-elevated);
-  box-shadow: 0 0 10px rgba(2, 132, 199, 0.7);
-  z-index: 2;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  top: 6px;
+  left: calc(-1 * var(--sp-6));
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  background-color: var(--blue-solid);
 }
 
-.timeline-item:hover::before {
-  transform: translate(-50%, -50%) scale(1.25);
-  box-shadow: 0 0 14px var(--cevi-accent);
+/* Rail segment from this dot down to the next one */
+.timeline-item:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: calc(-1 * (var(--sp-5) + 10px));
+  left: calc(-1 * var(--sp-6) + 4px);
+  width: 1px;
+  background-color: var(--border-subtle);
 }
 
 .timeline-header {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
-  margin-bottom: 0.4rem;
+  gap: var(--sp-1) var(--sp-3);
+  min-height: 20px;
 }
 
 .timeline-year {
-  font-weight: 800;
-  font-family: var(--font-heading);
-  color: var(--cevi-accent);
-  font-size: 0.88rem;
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--blue-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-item h4 {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-semibold);
+  color: var(--text-main);
+}
+
+/* Role line and note under the title. profile.js sets them inline at 0.85rem
+   and 0.78rem (13.6 / 12.5px) with 0.2 / 0.3rem margins; !important puts them
+   on the 14px and 12px steps and the 4px grid until the template drops them. */
+.timeline-item > h4 + p {
+  margin-top: var(--sp-1) !important;
+  font-size: var(--fs-14) !important;
+  line-height: var(--lh-14);
+}
+
+.timeline-item > p + p {
+  margin-top: var(--sp-1) !important;
+  font-size: var(--fs-12) !important;
+  line-height: var(--lh-12);
 }

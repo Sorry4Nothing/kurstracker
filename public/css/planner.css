@@ -1,208 +1,600 @@
 /* ==============================================================================
-   CEVI KURSTRACKER - STUFENLEITER & ABTEILUNGS-PLANER
-   KPI Cards, Eligibility Table, Course Nominations & Radix Modal Dialog
+   CEVI KURSTRACKER - STUFENLEITER-PLANER
+   KPI strip, workspace (member table and nominations rail), the chips planner.js
+   renders into the table, and the nomination dialog with its form.
+   Tokens only (variables.css). The card surface, buttons and the base .badge
+   come from components.css; this file adds the planner's layout and local
+   variants that follow the same recipes.
+   JS contract (planner.js): it renders the table rows, .role-badge,
+   .recommendation-pill.prio-urgent / .prio-high, .nomination-card*, .empty-text
+   and the count in #nominationsCountBadge, and it shows #nominationModal with an
+   inline display: flex / none, so .modal-backdrop stays a flex container.
+   Colour: KPI figures by tile, blue for the stage, count and recommendations,
+   teal for roles, the bad pair for urgent; the cards themselves stay neutral.
    ============================================================================== */
 
+/* ------------------------------------------------------------------------------
+   1. Action row. The topbar already names the view, so the panel header
+      (components.css) only holds the refresh action, at the right edge.
+   ------------------------------------------------------------------------------ */
+.planner-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+
+/* ------------------------------------------------------------------------------
+   2. KPI strip: one container split by 1px dividers, label above the value.
+      The grid's fill shows through the 1px gaps as the dividers. The column
+      count is fixed (4, then 2 on narrow screens) so no empty cell exposes it.
+   ------------------------------------------------------------------------------ */
 .planner-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: var(--sp-4);
+  overflow: hidden;
+  background-color: var(--border-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
 }
 
 .stat-card {
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  justify-content: space-between; /* values stay on one line when a label wraps */
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: var(--sp-4) var(--sp-5);
+  background-color: var(--bg-surface);
 }
-.stat-num {
-  font-family: var(--font-heading);
-  font-size: 1.85rem;
-  font-weight: 800;
-  line-height: 1.1;
-}
+
 .stat-label {
-  font-size: 0.78rem;
+  order: -1; /* shown above the value; the DOM order is value, then label */
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
   color: var(--text-muted);
 }
 
-.planner-workspace {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1.5rem;
-  align-items: start;
+/* The markup gives each value a .text-* utility; these rules load later and
+   colour the figures by tile instead: members in blue, ready for the entry
+   courses in teal, ready for GLK 3 in green, urgent renewals in the primary
+   tint. The labels stay muted. */
+.stat-num {
+  font-size: var(--fs-24);
+  line-height: var(--lh-24);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-main);
 }
-@media (max-width: 1000px) {
-  .planner-workspace {
-    grid-template-columns: 1fr;
+
+.stat-card:nth-child(1) .stat-num {
+  color: var(--blue-ink);
+}
+
+.stat-card:nth-child(2) .stat-num {
+  color: var(--teal-ink);
+}
+
+.stat-card:nth-child(3) .stat-num {
+  color: var(--ok-ink);
+}
+
+.stat-card:nth-child(4) .stat-num {
+  color: var(--primary-soft-ink);
+}
+
+@media (max-width: 720px) {
+  .planner-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-card {
+    padding: var(--sp-3) var(--sp-4);
   }
 }
 
-.planner-table-card, .planner-nominations-card {
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
+/* ------------------------------------------------------------------------------
+   3. Workspace: the member table and the nominations rail share a row while the
+      table keeps 780px (its six columns without sideways scrolling, at 1440px
+      and wider); below that the rail wraps under the full-width table. No media
+      query needed. Each card keeps its own height: the rail is as tall as its
+      proposals, so it never stretches into an empty box beside the table.
+   ------------------------------------------------------------------------------ */
+.planner-workspace {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--sp-4);
 }
+
+.planner-table-card {
+  flex: 999 1 0;
+  min-width: min(100%, 780px);
+}
+
+.planner-nominations-card {
+  display: flex;
+  flex: 1 1 288px;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Flush cards: rows and their rules run edge to edge, while every text column
+   starts on the card's 20px padding line. */
+.card.planner-table-card,
+.card.planner-nominations-card {
+  padding: var(--sp-5) 0 var(--sp-2);
+}
+
 .card-header-flex {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
-  margin-bottom: 1rem;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-4);
+  margin-bottom: var(--sp-4);
 }
 
-.table-responsive {
-  overflow-x: auto;
+.planner-workspace .card-header-flex {
+  padding: 0 var(--sp-5);
 }
+
+/* Colour: the section-heading rule in components.css (Cevi-Blau) */
+.card-header-flex h3 {
+  min-width: 0;
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
+}
+
+/* Tags beside the card titles, in the blue pair: the group's stage
+   ("Stufe Jungschar") and the proposal count. The count arrives as
+   .badge-success but is a count, not a status. */
+.card-header-flex .badge-info,
+#nominationsCountBadge {
+  background-color: var(--blue-soft);
+  border-color: transparent;
+  color: var(--blue-ink);
+}
+
+#nominationsCountBadge {
+  min-width: 20px;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------------------
+   4. Member table: rules and alignment. 12px grey sentence-case headers, no
+      zebra, 1px row rules, the age right-aligned in tabular figures.
+   ------------------------------------------------------------------------------ */
+.table-responsive {
+  overflow-x: auto; /* the table scrolls inside its card, never the page */
+  overscroll-behavior-x: contain;
+}
+
 .data-table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-}
-.data-table th {
-  text-align: left;
-  padding: 0.75rem 0.6rem;
-  color: var(--text-dim);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-.data-table td {
-  padding: 0.85rem 0.6rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  vertical-align: middle;
-}
-.data-table tr:hover td {
-  background: rgba(255, 255, 255, 0.02);
+  border-collapse: separate; /* cell borders move with the sticky first column */
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
-.role-badge {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius-full);
-  padding: 0.15rem 0.5rem;
-  font-size: 0.72rem;
+/* Headers stay on one line where the table has room; at its narrowest a long
+   header wraps (sitting on the rule) instead of forcing a sideways scroll. */
+.data-table th {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  text-align: left;
+  text-wrap: balance;
+  vertical-align: bottom;
+  border-bottom: 1px solid var(--border-subtle);
 }
+
+/* No colour here, so the .text-danger error cell from planner.js stays red */
+.data-table td {
+  padding: var(--sp-3);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table tbody tr:hover td:not([colspan]) {
+  background-color: var(--bg-hover);
+}
+
+/* Second line in a cell (name, birth date, reason). planner.js sets 0.7-0.75rem
+   inline; !important puts them on the 12px step until the template drops it. */
+.data-table td > div {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-12) !important;
+  line-height: var(--lh-12);
+}
+
+/* Loading and error rows span all columns */
+.data-table td[colspan] {
+  padding: var(--sp-8) var(--sp-5);
+  text-align: center;
+}
+
+.data-table td.loading-placeholder {
+  color: var(--text-muted);
+}
+
+/* Planner columns: Name, Alter, Rolle, Kurse, Empfehlung, Aktion */
+.planner-table-card .data-table th:first-child,
+.planner-table-card .data-table td:first-child {
+  padding-left: var(--sp-5);
+}
+
+/* The identity column never wraps; the recommendation column absorbs the squeeze */
+.planner-table-card .data-table th:first-child,
+.planner-table-card .data-table td:first-child:not([colspan]) {
+  white-space: nowrap;
+}
+
+.planner-table-card .data-table th:last-child,
+.planner-table-card .data-table td:last-child {
+  padding-right: var(--sp-5);
+}
+
+.planner-table-card .data-table th:nth-child(2),
+.planner-table-card .data-table td:nth-child(2),
+.planner-table-card .data-table th:nth-child(6),
+.planner-table-card .data-table td:nth-child(6) {
+  text-align: right;
+}
+
+/* Completed courses: room for three codes on one line; longer lists wrap at the commas */
+.planner-table-card .data-table th:nth-child(4) {
+  width: 128px;
+}
+
+/* The 28px button sits centred on the 20px first text line of its row */
+.planner-table-card .data-table td:nth-child(6) {
+  padding-top: var(--sp-2);
+  white-space: nowrap;
+}
+
+/* Row action ("Vorschlagen", .btn-secondary .btn-sm from planner.js): a ghost
+   of the tonal secondary button, Cevi-Blau text without the tint, so five of
+   them don't outweigh the one urgent recommendation. The negative margin
+   lines its label up with the right-aligned "Aktion" header. The row already
+   turns --bg-hover under the pointer, so the button shows its hover as the
+   tonal secondary button. "Aktualisieren" and the dialog keep the tint. */
+.data-table .btn-secondary {
+  margin-right: calc(-1 * var(--sp-3));
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--blue-ink);
+}
+
+.data-table .btn-secondary:hover:not(:disabled) {
+  background-color: var(--blue-soft);
+}
+
+/* Phone: the table takes its natural width inside the scroller (rows stay two
+   lines instead of collapsing every column), and the name column stays in view. */
+@media (max-width: 640px) {
+  .planner-table-card .data-table {
+    width: max-content;
+  }
+
+  .planner-table-card .data-table td > div {
+    max-width: 36ch;
+  }
+
+  .planner-table-card .data-table th:first-child,
+  .planner-table-card .data-table td:first-child:not([colspan]) {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: var(--bg-surface);
+    border-right: 1px solid var(--border-subtle);
+  }
+
+  .planner-table-card .data-table tbody tr:hover td:first-child:not([colspan]) {
+    background-color: var(--bg-hover);
+  }
+}
+
+/* ------------------------------------------------------------------------------
+   5. Chips in the table: 4px tags, never pills. The recommendation is the
+      status mark of a row (urgent = bad, high = blue); the role is a teal tag
+      and the completed courses are plain grey text.
+   ------------------------------------------------------------------------------ */
+/* The role: the tag from components.css in the teal pair (a role is a
+   category, not a status); in a cell it sits on the first line */
+.data-table .role-badge {
+  vertical-align: top;
+  background-color: var(--teal-soft);
+  border-color: transparent;
+  color: var(--teal-ink);
+}
+
+/* Completed courses arrive as .badge.badge-success chips, one per course code.
+   They are a list, not a status, so they read as grey text: "HLK, GLK, SLK".
+   planner.js sets font-size 0.68rem and margin-right 0.2rem inline, which only
+   !important can override; the comma and space come from ::after. */
+.data-table .badge {
+  display: inline;
+  height: auto;
+  margin: 0 !important;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  font-size: var(--fs-14) !important;
+  line-height: inherit;
+  font-weight: var(--fw-regular);
+  color: var(--text-muted);
+  white-space: normal; /* the base .badge is nowrap; a long list breaks after a comma */
+}
+
+.data-table .badge:not(:last-child)::after {
+  content: ", ";
+}
+
+/* A long course title wraps inside the chip instead of widening the table.
+   The 1px block padding plus the 1px border make a 20px box for one line. */
 .recommendation-pill {
   display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-.recommendation-pill.prio-urgent {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-}
-.recommendation-pill.prio-high {
-  background: rgba(56, 189, 248, 0.15);
-  color: #7dd3fc;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  align-items: baseline;
+  gap: var(--sp-1);
+  max-width: 100%;
+  padding: 1px var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  vertical-align: top;
 }
 
+.recommendation-pill i {
+  flex: none;
+  font-size: var(--fs-12);
+}
+
+.recommendation-pill.prio-urgent {
+  background-color: var(--bad-bg);
+  color: var(--bad-ink);
+}
+
+.recommendation-pill.prio-high {
+  background-color: var(--blue-soft);
+  color: var(--blue-ink);
+}
+
+/* ------------------------------------------------------------------------------
+   6. Nominations rail: flat rows split by 1px rules (no boxes inside the card)
+   ------------------------------------------------------------------------------ */
 .nominations-list {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: 0.75rem;
-}
-.nomination-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 0.85rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-.nomination-card-header {
-  display: flex;
-  justify-content: space-between;
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-.nomination-meta {
-  font-size: 0.75rem;
-  color: var(--text-dim);
-}
-.empty-text {
-  font-size: 0.82rem;
-  color: var(--text-dim);
-  text-align: center;
-  padding: 1.5rem 0;
 }
 
-/* Modal Dialog System */
+.nomination-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.nomination-card:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* The season tag follows the title instead of sitting at the far edge, so a
+   full-width rail (stacked under the table) has no gap in the middle of a row. */
+.nomination-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-medium);
+  color: var(--text-main);
+}
+
+.nomination-card-header > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Season: a date, not a status, so a neutral tag. planner.js sets 0.7rem inline. */
+.nomination-card-header .badge {
+  flex: none;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: var(--fs-12) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.nomination-meta {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  color: var(--text-muted);
+}
+
+.nomination-meta em {
+  color: var(--text-main);
+}
+
+/* Empty state: one sentence on the card's text column, directly under the
+   header; with the card's 8px bottom padding it ends 20px above the edge */
+.empty-text {
+  max-width: 48ch;
+  padding: 0 var(--sp-5) var(--sp-3);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------------------------
+   7. Nomination dialog. planner.js sets display: flex / none inline on the
+      backdrop. The card centres through auto margins, so a dialog taller than
+      the window scrolls inside the backdrop instead of losing its top.
+   ------------------------------------------------------------------------------ */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  z-index: 1000;
+  z-index: var(--z-modal);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
+  padding: var(--sp-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: var(--scrim);
 }
+
 .modal-card {
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-focus);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 480px;
-  padding: 1.75rem;
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  width: min(480px, 100%);
+  margin: auto;
+  padding: var(--sp-6);
+  background-color: var(--bg-surface-elevated);
+  border: 0; /* --shadow-float carries its own 1px hairline */
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
 }
+
 .modal-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.25rem;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
 }
+
+.modal-header h3 {
+  min-width: 0;
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  font-weight: var(--fw-semibold);
+  color: var(--text-main);
+}
+
+/* Ghost icon button (components.css recipe), pulled 8px into the corner so the
+   icon sits near the padding line without growing the header. */
 .modal-close {
-  background: transparent;
-  border: none;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  margin: calc(var(--sp-2) * -1) calc(var(--sp-2) * -1) calc(var(--sp-2) * -1) 0;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
   color: var(--text-muted);
-  font-size: 1.5rem;
   cursor: pointer;
-  line-height: 1;
+  transition: var(--transition);
 }
+
 .modal-close:hover {
+  background-color: var(--bg-hover);
   color: var(--text-main);
 }
-.form-group {
-  margin-bottom: 1rem;
+
+.modal-close i {
+  font-size: var(--fs-14);
 }
-.form-group label {
+
+/* Form: labels above 40px fields, 16px between fields, 24px to the buttons.
+   A local variant of the components.css input recipe (36px there). */
+.modal-card form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.modal-card .form-group {
+  margin: 0;
+}
+
+.modal-card .form-group label {
   display: block;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: 0.35rem;
-}
-.form-input {
-  width: 100%;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 0.6rem 0.8rem;
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-medium);
   color: var(--text-main);
-  font-family: inherit;
-  font-size: 0.85rem;
 }
-.form-input:focus {
-  outline: none;
-  border-color: var(--cevi-accent);
+
+.modal-card .form-input {
+  display: block;
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--sp-3);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-main);
+  transition: border-color var(--dur-fast) var(--ease);
 }
+
+.modal-card .form-input:hover:not([readonly]) {
+  border-color: var(--text-muted);
+}
+
+/* Focus: the global :focus-visible ring (2px --focus-ring, 2px offset) */
+
+.modal-card .form-input[readonly] {
+  background-color: var(--bg-subtle);
+  border-color: var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.modal-card select.form-input {
+  padding-right: var(--sp-8); /* room for the native arrow, which follows color-scheme */
+}
+
+.modal-card textarea.form-input {
+  height: auto;
+  min-height: 80px;
+  padding: var(--sp-2) var(--sp-3);
+  resize: vertical;
+}
+
+/* Footer buttons are .btn-secondary and .btn-primary from components.css */
 .modal-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2); /* plus the form's 16px gap */
+}
+
+@media (max-width: 640px) {
+  .modal-card {
+    padding: var(--sp-5);
+  }
+
+  /* 16px keeps iOS from zooming into a focused field */
+  .modal-card .form-input {
+    font-size: var(--fs-16);
+    line-height: var(--lh-16);
+  }
 }

@@ -1,126 +1,338 @@
 /* ==============================================================================
-   CEVI KURSTRACKER - DESIGN TOKENS & THEMES
-   Official Cevi Corporate Design, High-Precision Contrast & Theme Presets
+   CEVI KURSTRACKER - DESIGN TOKENS, THEMES & BASE LAYER
+   Derived from the Cevi corporate design: Cevi-Blau #323394, Cevi-Rot #C41333,
+   Logo-Schwarz #141412 and white. Typeface: Archivo.
+   This is the only stylesheet that may contain colour literals. Every other
+   file references the custom properties defined here.
+   Colour roles: five hue families, one meaning each. Large surfaces (page,
+   sidebar, cards) stay neutral; colour sits on headings, chips, numbers,
+   statuses, icons and buttons.
+   - Red (Cevi-Rot): primary action, the active / current state, selected
+     path, Cevi organisation tags, urgent.
+   - Blue (Cevi-Blau): section headings, interaction (secondary buttons,
+     tabs, dropdown checks), "angemeldet / in Arbeit", identity (avatars, IDs).
+   - Teal (cevi.ch secondary #2C7C91 / #4EB7D4): categories, organisations
+     other than Cevi, roles, "bereit / freigeschaltet".
+   - Green (--ok-*): met, valid, completed.
+   - Gold (--warn-*): deadlines, "in Ausbildung", warnings.
+   Hue tokens: *-soft is a fill, *-ink is text or an icon on that fill or on
+   the page, *-solid is for dots, lines and bars. --primary-soft(-ink) is the
+   tint of the primary hue (red, blue in Alpine); --info-* is the blue family.
    ============================================================================== */
 
-:root, [data-theme="cevi-tools"] {
-  color-scheme: dark;
-  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-
-  /* Theme 1: Cevi Tools Offiziell (Corporate Design Manual: Pantone 032 C / Pantone 072 C) */
-  --bg-main: #0b0f19;
-  --bg-surface: #111827;
-  --bg-surface-elevated: #1e293b;
-  --bg-glass: rgba(17, 24, 39, 0.8);
-  --bg-glass-card: rgba(30, 41, 59, 0.65);
-
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(2, 132, 199, 0.6);
-
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
-
-  /* Offizielle Cevi Farben */
-  --cevi-red: #c41333;          /* Offizielles Cevi-Rot (RGB 196, 19, 51) */
-  --cevi-blue: #323394;         /* Offizielles Cevi-Blau (RGB 50, 51, 148) */
-  --cevi-accent: #0284c7;       /* Cevi.tools Web-Sky */
-  --cevi-blue-glow: rgba(2, 132, 199, 0.15);
-  --cevi-gold: #f59e0b;         /* Cevi Halstuch / Gold */
-  --cevi-emerald: #108a43;      /* J+S Lagersport Grün */
-
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 16px 36px -6px rgba(0, 0, 0, 0.55);
-  --shadow-glow: 0 4px 20px rgba(0, 0, 0, 0.3);
-
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-full: 9999px;
-  --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Theme 2: Nachtlager & Sternenhimmel (Ultra Deep Dark Mode) */
-[data-theme="midnight"] {
-  --bg-main: #060911;
-  --bg-surface: #0c1222;
-  --bg-surface-elevated: #151f38;
-  --bg-glass: rgba(12, 18, 34, 0.85);
-  --bg-glass-card: rgba(21, 31, 56, 0.65);
-
-  --border-subtle: rgba(56, 189, 248, 0.12);
-  --border-focus: rgba(56, 189, 248, 0.7);
-
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
-  --text-dim: #475569;
-
-  --cevi-red: #f43f5e;
-  --cevi-blue: #0284c7;
-  --cevi-accent: #38bdf8;
-  --cevi-blue-glow: rgba(56, 189, 248, 0.4);
-  --cevi-gold: #fbbf24;
-  --cevi-emerald: #10b981;
-
-  --shadow-glow: 0 0 30px rgba(56, 189, 248, 0.25);
-}
-
-/* Theme 3: Alpiner Cevi Tag (Swiss Alpine Clean Light Mode) */
-[data-theme="alpine-light"] {
-  --bg-main: #f8fafc;
-  --bg-surface: #ffffff;
-  --bg-surface-elevated: #f1f5f9;
-  --bg-glass: rgba(255, 255, 255, 0.9);
-  --bg-glass-card: rgba(255, 255, 255, 0.85);
-
-  --border-subtle: rgba(15, 23, 42, 0.08);
-  --border-focus: #323394;
-
-  --text-main: #0f172a;
-  --text-muted: #475569;
-  --text-dim: #64748b;
-
-  --cevi-red: #c41333;
+/* ------------------------------------------------------------------------------
+   1. Theme-independent tokens
+   ------------------------------------------------------------------------------ */
+:root {
+  /* Brand constants from the Cevi logo, identical in every theme. Use them as
+     fills only; for text on a dark theme use --cevi-accent, --info-ink or --primary-text. */
   --cevi-blue: #323394;
-  --cevi-accent: #0284c7;
-  --cevi-blue-glow: rgba(50, 51, 148, 0.2);
-  --cevi-gold: #d97706;
-  --cevi-emerald: #059669;
+  --cevi-red: #C41333;
+  --cevi-black: #141412;
 
-  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 6px 18px -3px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 28px -5px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 25px rgba(196, 19, 51, 0.15);
+  /* Typography */
+  --font-sans: 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-body: var(--font-sans);
+  --font-heading: var(--font-sans);
+
+  --fs-12: 12px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-24: 24px;
+  --fs-30: 30px;
+
+  --lh-12: 16px;
+  --lh-14: 20px;
+  --lh-16: 24px;
+  --lh-18: 24px;
+  --lh-24: 32px;
+  --lh-30: 36px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700; /* page title only */
+
+  /* Spacing on a 4px grid */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
+
+  /* Shape */
+  --radius-sm: 4px;      /* chips, tags */
+  --radius-md: 6px;      /* cards, controls, menus, modal */
+  --radius-full: 9999px; /* avatars and status dots only */
+
+  /* Controls */
+  --control-h: 36px;
+  --control-h-sm: 28px;
+
+  /* Motion: feedback only, never entrance. Colour, opacity and transform. */
+  --dur-fast: 120ms; /* hover, press */
+  --dur-med: 200ms;  /* menus, drawers */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --transition:
+    color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease);
+
+  /* Stacking */
+  --z-sticky: 90;
+  --z-sidebar: 100;
+  --z-dropdown: 200;
+  --z-modal: 1000;
+
+  /* Legacy name still set in inline styles by the JS templates. */
+  --cevi-gold: var(--warn-ink);
 }
 
-/* Theme 4: Lagerfeuer & Glut (Warm Atmospheric Dark Mode) */
+/* ------------------------------------------------------------------------------
+   2. Theme "Cevi CD (Offiziell)": default, light. White ground, Cevi-Rot is the
+      only brand accent, Cevi-Blau carries interaction and info.
+   ------------------------------------------------------------------------------ */
+:root,
+[data-theme="cevi-tools"] {
+  color-scheme: light;
+
+  --bg-main: #FFFFFF;
+  --bg-surface: #FAFAF8;
+  --bg-surface-elevated: #FFFFFF;
+  --bg-subtle: #F3F3F0;
+  --bg-hover: #EDEDE9;
+
+  --border-subtle: #E4E4E0;
+  --border-strong: #8A8A84; /* 3.5:1 on white, 3.1:1 on --bg-subtle */
+
+  --text-main: #141412;
+  --text-muted: #5C5C57;
+  --text-dim: #6B6B65;
+
+  --primary: #C41333;
+  --primary-hover: #A30F2A;
+  --primary-ink: #FFFFFF;
+  --primary-text: #C41333;
+  --cevi-accent: #323394;
+  --focus-ring: #323394;
+  --route: var(--primary-text); /* selected course and its path in the tree */
+
+  --ok-bg: #E7F4EC;
+  --ok-ink: #17703A;
+  --warn-bg: #FFF4D6;
+  --warn-ink: #8A5A00;
+  --bad-bg: #FCE9EC;
+  --bad-ink: #9E1B2C;
+
+  /* Hue families (see the roles at the top of this file) */
+  --red-soft: #FBEAED;
+  --red-ink: #A30F2A;
+  --red-solid: #C41333;
+  --blue-soft: #ECECF8;
+  --blue-soft-hover: #DFDFF3;
+  --blue-ink: #323394;
+  --blue-solid: #323394;
+  --teal-soft: #E3F2F6;
+  --teal-ink: #1D6274;
+  --teal-solid: #2C7C91;
+  --primary-soft: var(--red-soft);
+  --primary-soft-ink: var(--red-ink);
+  --info-bg: var(--blue-soft);
+  --info-ink: var(--blue-ink);
+
+  --scrollbar-thumb: #C4C4BE;
+  --scrim: rgba(20, 20, 18, 0.48);
+  --shadow-float:
+    0 0 0 1px rgba(20, 20, 18, 0.06),
+    0 12px 32px -8px rgba(20, 20, 18, 0.18),
+    0 2px 6px rgba(20, 20, 18, 0.06);
+}
+
+/* ------------------------------------------------------------------------------
+   3. Theme "Alpine Pure": light, cool grey ground. Cevi-Blau is the primary
+      accent (so --primary-soft is the blue tint); Cevi-Rot appears only in
+      the logo and on the Cevi organisation tags.
+   ------------------------------------------------------------------------------ */
+[data-theme="alpine-light"] {
+  color-scheme: light;
+
+  --bg-main: #F5F6F8;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #FFFFFF;
+  --bg-subtle: #EEF0F3;
+  --bg-hover: #EBEEF2;
+
+  --border-subtle: #E1E4EA;
+  --border-strong: #858A95; /* 3.2:1 on --bg-main, 3.5:1 on white */
+
+  --text-main: #12131A;
+  --text-muted: #565A66;
+  --text-dim: #666B78;
+
+  --primary: #323394;
+  --primary-hover: #28297A;
+  --primary-ink: #FFFFFF;
+  --primary-text: #323394;
+  --cevi-accent: #323394;
+  --focus-ring: #323394;
+  /* Ink, not blue: Cevi-Blau already marks "angemeldet" and keyboard focus
+     here, and red stays in the logo */
+  --route: var(--text-main);
+
+  --ok-bg: #E7F4EC;
+  --ok-ink: #17703A;
+  --warn-bg: #FFF4D6;
+  --warn-ink: #8A5A00;
+  --bad-bg: #FCE9EC;
+  --bad-ink: #9E1B2C;
+
+  --red-soft: #FBEAED;
+  --red-ink: #A30F2A;
+  --red-solid: #C41333;
+  --blue-soft: #ECECF8;
+  --blue-soft-hover: #DFDFF3;
+  --blue-ink: #323394;
+  --blue-solid: #323394;
+  --teal-soft: #E3F2F6;
+  --teal-ink: #1D6274;
+  --teal-solid: #2C7C91;
+  --primary-soft: var(--blue-soft);
+  --primary-soft-ink: var(--blue-ink);
+  --info-bg: var(--blue-soft);
+  --info-ink: var(--blue-ink);
+
+  --scrollbar-thumb: #C3C7CF;
+  --scrim: rgba(18, 19, 26, 0.48);
+  --shadow-float:
+    0 0 0 1px rgba(18, 19, 26, 0.06),
+    0 12px 32px -8px rgba(18, 19, 26, 0.16),
+    0 2px 6px rgba(18, 19, 26, 0.06);
+}
+
+/* ------------------------------------------------------------------------------
+   4. Theme "Midnight": dark neutral (no navy, no slate). Cevi-Rot stays the
+      fill colour; red text and strokes use the lighter --primary-text.
+   ------------------------------------------------------------------------------ */
+[data-theme="midnight"] {
+  color-scheme: dark;
+
+  --bg-main: #141414;
+  --bg-surface: #1B1B1B;
+  --bg-surface-elevated: #222222;
+  --bg-subtle: #262626;
+  --bg-hover: #2B2B2B;
+
+  --border-subtle: #2E2E2E;
+  --border-strong: #74746F; /* 3.9:1 on --bg-main, 3.4:1 on elevated */
+
+  --text-main: #EDEDEB;
+  --text-muted: #ABABA6;
+  --text-dim: #92928D;
+
+  --primary: #C41333;
+  --primary-hover: #D21A3D;
+  --primary-ink: #FFFFFF;
+  --primary-text: #FF7A8A;
+  --cevi-accent: #A9ABF2;
+  --focus-ring: #A9ABF2;
+  --route: var(--primary-text);
+
+  --ok-bg: #16271D;
+  --ok-ink: #6FD39A;
+  --warn-bg: #2A2312;
+  --warn-ink: #F2C063;
+  --bad-bg: #2E1519;
+  --bad-ink: #FF8E9A;
+
+  --red-soft: #3A1A20;
+  --red-ink: #FF8C9A;
+  --red-solid: #E5485D;
+  --blue-soft: #23244A;
+  --blue-soft-hover: #2C2E5C;
+  --blue-ink: #B4B6F5;
+  --blue-solid: #8F91E8;
+  --teal-soft: #0F2A31;
+  --teal-ink: #7FD0E3;
+  --teal-solid: #4EB7D4;
+  --primary-soft: var(--red-soft);
+  --primary-soft-ink: var(--red-ink);
+  --info-bg: var(--blue-soft);
+  --info-ink: var(--blue-ink);
+
+  --scrollbar-thumb: #4A4A47;
+  --scrim: rgba(0, 0, 0, 0.6);
+  --shadow-float:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 12px 32px -8px rgba(0, 0, 0, 0.7),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* ------------------------------------------------------------------------------
+   5. Theme "Campfire": warm dark. Glut-Amber for interaction, Cevi-Rot as
+      fill, light blue focus ring so focus never reads as a warning.
+   ------------------------------------------------------------------------------ */
 [data-theme="campfire"] {
-  --bg-main: #120e14;
-  --bg-surface: #1a131f;
-  --bg-surface-elevated: #281c2f;
-  --bg-glass: rgba(26, 19, 31, 0.85);
-  --bg-glass-card: rgba(40, 28, 47, 0.65);
+  color-scheme: dark;
 
-  --border-subtle: rgba(249, 115, 22, 0.14);
-  --border-focus: rgba(249, 115, 22, 0.7);
+  --bg-main: #17130F;
+  --bg-surface: #1F1A15;
+  --bg-surface-elevated: #26201A;
+  --bg-subtle: #2B241D;
+  --bg-hover: #312920;
 
-  --text-main: #fef2f2;
-  --text-muted: #cbd5e1;
-  --text-dim: #78716c;
+  --border-subtle: #3A3128;
+  --border-strong: #82766A; /* 4.2:1 on --bg-main, 3.5:1 on --bg-subtle */
 
-  --cevi-red: #dc2626;
-  --cevi-blue: #ea580c;
-  --cevi-accent: #f97316;       /* Warm Campfire Orange */
-  --cevi-blue-glow: rgba(249, 115, 22, 0.4);
-  --cevi-gold: #eab308;         /* Glühendes Gelb */
-  --cevi-emerald: #16a34a;
+  --text-main: #F4EDE3;
+  --text-muted: #BBAE9D;
+  --text-dim: #9E9282;
 
-  --shadow-glow: 0 0 35px rgba(249, 115, 22, 0.25);
+  --primary: #C41333;
+  --primary-hover: #D21A3D;
+  --primary-ink: #FFFFFF;
+  --primary-text: #FF8A7A;
+  --cevi-accent: #EFB06A;
+  --focus-ring: #A9ABF2;
+  --route: var(--primary-text);
+
+  --ok-bg: #18261B;
+  --ok-ink: #7FD3A0;
+  --warn-bg: #2C2414;
+  --warn-ink: #F2C063;
+  --bad-bg: #311A16;
+  --bad-ink: #FF9A8C;
+
+  --red-soft: #3A1D18;
+  --red-ink: #FF9A8C;
+  --red-solid: #E5584A;
+  --blue-soft: #26243F;
+  --blue-soft-hover: #302E4E;
+  --blue-ink: #B9B8F2;
+  --blue-solid: #9593E6;
+  --teal-soft: #132A2C;
+  --teal-ink: #86D4DF;
+  --teal-solid: #4EB7D4;
+  --primary-soft: var(--red-soft);
+  --primary-soft-ink: var(--red-ink);
+  --info-bg: var(--blue-soft);
+  --info-ink: var(--blue-ink);
+
+  --scrollbar-thumb: #54483B;
+  --scrim: rgba(10, 7, 4, 0.62);
+  --shadow-float:
+    0 0 0 1px rgba(255, 236, 214, 0.08),
+    0 12px 32px -8px rgba(0, 0, 0, 0.7),
+    0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
-/* Global Reset & Base */
+/* ------------------------------------------------------------------------------
+   6. Reset
+   ------------------------------------------------------------------------------ */
 *,
 *::before,
 *::after {
@@ -131,62 +343,221 @@
   margin: 0;
   padding: 0;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
-/* Custom WebKit Scrollbars */
-*::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 9999px;
-  transition: background 0.2s ease;
-}
-*:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--cevi-accent);
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background-color: var(--bg-main);
+  overflow-x: clip;
 }
 
 body {
-  font-family: var(--font-body);
-  background-color: var(--bg-main);
-  color: var(--text-main);
-  line-height: 1.6;
   min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+  line-height: 1.4286; /* 20px at 14px; inherited as a ratio, not as 20px */
+  font-weight: var(--fw-regular);
+  letter-spacing: 0;
+  color: var(--text-main);
+  background-color: var(--bg-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
 }
 
-/* Background Ambient Glows */
-.bg-glow {
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(140px);
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.12;
+img,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
-.bg-glow-1 {
-  width: 550px;
-  height: 550px;
-  background: radial-gradient(circle, #0284c7 0%, transparent 70%);
-  top: -150px;
-  left: -100px;
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
 }
-.bg-glow-2 {
-  width: 450px;
-  height: 450px;
-  background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
-  top: 30%;
-  right: -100px;
-  opacity: 0.2;
+
+:where(button:not(:disabled), [role="button"], select:not(:disabled), label[for]) {
+  cursor: pointer;
 }
+
+:where(button:disabled) {
+  cursor: not-allowed;
+}
+
+::placeholder {
+  color: var(--text-dim);
+  opacity: 1;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+th {
+  text-align: start;
+  font-weight: var(--fw-medium);
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ------------------------------------------------------------------------------
+   7. Type
+   ------------------------------------------------------------------------------ */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--fs-24);
+  line-height: var(--lh-24);
+  font-weight: var(--fw-bold);
+}
+
+h2 {
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+}
+
+h3 {
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+}
+
+h4,
+h5,
+h6 {
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+}
+
+p {
+  text-wrap: pretty;
+}
+
+b,
+strong {
+  font-weight: var(--fw-semibold);
+}
+
+small {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+}
+
+a {
+  color: var(--cevi-accent);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+::selection {
+  background-color: var(--cevi-accent);
+  color: var(--bg-main);
+}
+
+/* ------------------------------------------------------------------------------
+   8. Focus, scrollbars, reduced motion
+   ------------------------------------------------------------------------------ */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* WebKit fallback; Chrome 121+ and Firefox use scrollbar-color above */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------------------------
+   9. Utilities (single class, no !important: a component rule that sets
+      `color` on the same element wins because it loads later)
+   ------------------------------------------------------------------------------ */
+.text-main { color: var(--text-main); }
+.text-muted { color: var(--text-muted); }
+.text-dim { color: var(--text-dim); }
+.text-accent { color: var(--cevi-accent); }
+.text-info { color: var(--info-ink); }
+.text-success { color: var(--ok-ink); }
+.text-warning { color: var(--warn-ink); }
+.text-gold { color: var(--cevi-gold); }
+.text-danger { color: var(--bad-ink); }
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------------------
+   10. Brand logo: the inline SVG keeps the official Cevi colours (Cevi-Blau
+       #323394, Cevi-Rot #C41333) in every theme. Never recolour it per theme.
+   ------------------------------------------------------------------------------ */
