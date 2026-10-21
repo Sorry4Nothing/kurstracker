@@ -57,7 +57,8 @@ export function renderCourses(courses) {
     </div>
   `).join('');
 
-  if (container) container.innerHTML = html;
+  // Ohne Treffer (Suche, Kategorie) einen Hinweis statt einer leeren Liste
+  if (container) container.innerHTML = html || '<p class="empty-text">Keine passenden Kurse gefunden.</p>';
 }
 
 export function filterCourses() {

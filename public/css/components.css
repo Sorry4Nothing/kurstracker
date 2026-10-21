@@ -530,6 +530,15 @@
   text-align: center;
 }
 
+/* Empty result in a card grid (search without hits, courses.js): the
+   muted .empty-text line, laid out like the loading line above */
+.cards-grid > .empty-text {
+  grid-column: 1 / -1;
+  max-width: none;
+  padding: var(--sp-8) var(--sp-4);
+  text-align: center;
+}
+
 /* ------------------------------------------------------------------------------
    8. Text colours at zero specificity, so the .text-* utilities that the JS
       templates add win: .card-subtitle.text-dim, strong.text-success

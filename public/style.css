@@ -8,9 +8,9 @@
    The ?v= query busts caches together with style.css?v= in index.html.
    ============================================================================== */
 
-@import 'css/variables.css?v=22';
-@import 'css/layout.css?v=22';
-@import 'css/components.css?v=22';
-@import 'css/tree.css?v=22';
-@import 'css/profile.css?v=22';
-@import 'css/planner.css?v=22';
+@import 'css/variables.css?v=23';
+@import 'css/layout.css?v=23';
+@import 'css/components.css?v=23';
+@import 'css/tree.css?v=23';
+@import 'css/profile.css?v=23';
+@import 'css/planner.css?v=23';
