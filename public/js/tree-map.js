@@ -143,7 +143,7 @@ export function fitMapToScreen() {
 /**
  * Zeichnet fliessende SVG Cubic Bézier-Kurven zwischen Kurs-Knoten
  */
-export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null) {
+export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null, routeIds = null) {
   const svg = document.getElementById('treeSvgLines');
   if (!svg || !treeStructure || !treeStructure.nodes) return;
 
@@ -152,13 +152,22 @@ export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null)
 
   const paths = [];
 
-  // Berechnung aktiver Pfad fuer Hervorhebung
+  // Pflicht-Vorgaenger als durchgezogene, empfohlene Vorstufen als gestrichelte Linie
+  const edgesOf = (node) => [
+    ...(node.prerequisites || []).map(preId => ({ preId, isRecommended: false })),
+    ...(node.recommendedPrerequisites || []).map(preId => ({ preId, isRecommended: true }))
+  ];
+
+  // Berechnung aktiver Pfad fuer Hervorhebung (inklusive empfohlener Vorstufen).
+  // routeIds (aus der Pfadberechnung) beschraenkt die Route auf diese Kurse.
   const activePathEdges = new Set();
   if (selectedTargetCourseId) {
     const collectPath = (targetId) => {
       const target = treeStructure.nodes[targetId];
-      if (!target || !target.prerequisites) return;
-      target.prerequisites.forEach(preId => {
+      if (!target) return;
+      edgesOf(target).forEach(({ preId }) => {
+        if (routeIds && !routeIds.has(preId)) return;
+        if (activePathEdges.has(`${preId}->${targetId}`)) return;
         activePathEdges.add(`${preId}->${targetId}`);
         collectPath(preId);
       });
@@ -166,15 +175,18 @@ export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null)
     collectPath(selectedTargetCourseId);
   }
 
-  Object.values(treeStructure.nodes).forEach(targetNode => {
-    if (!targetNode.prerequisites || targetNode.prerequisites.length === 0) return;
+  // Alias-Eintraege (glk, hlk, mf) tragen dieselbe ID wie ihr Kurs: jede Kante nur einmal zeichnen
+  const drawnEdges = new Set();
 
+  Object.values(treeStructure.nodes).forEach(targetNode => {
     const targetCoord = COURSE_MAP_COORDS[targetNode.id];
     if (!targetCoord) return;
 
-    targetNode.prerequisites.forEach(preId => {
+    edgesOf(targetNode).forEach(({ preId, isRecommended }) => {
       const srcCoord = COURSE_MAP_COORDS[preId];
-      if (!srcCoord) return;
+      const edgeKey = `${preId}->${targetNode.id}`;
+      if (!srcCoord || drawnEdges.has(edgeKey)) return;
+      drawnEdges.add(edgeKey);
 
       const isPathActive = activePathEdges.has(`${preId}->${targetNode.id}`);
 
@@ -197,7 +209,7 @@ export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null)
 
       paths.push(`
         <path d="${d}" 
-              class="tree-path-line ${isPathActive ? 'active-path' : ''}" 
+              class="tree-path-line ${isRecommended ? 'is-recommended' : ''} ${isPathActive ? 'active-path' : ''}"
               data-edge="${preId}->${targetNode.id}" />
       `);
     });

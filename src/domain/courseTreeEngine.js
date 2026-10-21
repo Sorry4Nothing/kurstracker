@@ -3,6 +3,10 @@ import { COURSE_NODES } from './courseTreeData.js';
 // Kurzbezeichnungen aus Altdaten und Tests auf die Baum-IDs abbilden
 const COURSE_ALIASES = { glk: 'glk3', hlk: 'heku', mf: 'mf_lst' };
 
+// Eine empfohlene Vorstufe wird nur bis so viele Jahre uber ihrem recommendedAge
+// vorgeschlagen; danach ist man herausgewachsen (z.B. Voku fur Erwachsene)
+const RECOMMENDED_AGE_TOLERANCE_YEARS = 1;
+
 /**
  * CourseTreeEngine - Berechnungslogik fur den Cevi & J+S Ausbildungsbaum
  * Unterstutzt Cevi Region Zuerich Reglement & J+S Lagersport/Trekking
@@ -24,7 +28,9 @@ export class CourseTreeEngine {
 
   /**
    * Normalisiert ein Set von Kurs-IDs: Aliase auflosen und alle Pflicht-Vorganger
-   * erganzen (wer GLK 3 hat, hat auch GLK 2, GLK 1 und Heku absolviert)
+   * sowie empfohlenen Vorstufen erganzen. Eine spatere Stufe ersetzt die fruheren:
+   * wer GLK 3 hat, fur den gelten GLK 2, GLK 1, Heku und Voku als erledigt, auch
+   * wenn er sie ubersprungen hat.
    * @param {string[]|Set<string>} courses
    * @returns {Set<string>}
    */
@@ -34,6 +40,7 @@ export class CourseTreeEngine {
       if (!id || set.has(id)) return;
       set.add(id);
       (this.nodes[id]?.prerequisites || []).forEach(add);
+      (this.nodes[id]?.recommendedPrerequisites || []).forEach(add);
     };
     Array.from(courses || []).forEach(c => add(this.resolveCourseId(c)));
 
@@ -205,39 +212,54 @@ export class CourseTreeEngine {
     const quals = this.normalizeQualifications(person.qualifications);
     const personAge = this.calculateAge(person.birthdate);
 
-    // Alle transitiven Vorbedingungen sammeln (Topological Reverse Search)
-    const requiredCoursesSet = new Set();
-    const collectPrereqs = (courseId) => {
-      const node = this.nodes[courseId];
-      if (!node) return;
-      for (const req of (node.prerequisites || [])) {
-        requiredCoursesSet.add(req);
-        collectPrereqs(req);
-      }
-    };
-    collectPrereqs(targetNode.id);
-
-    // Reihenfolge nach Ausbildungsstufen (Level 0 -> Level 4)
-    const orderedRequirements = Array.from(requiredCoursesSet)
-      .map(id => this.nodes[id])
-      .filter(Boolean)
-      .sort((a, b) => a.level - b.level);
-
-    // Schritte analysieren
-    const pathSteps = orderedRequirements.map(reqNode => {
-      const done = completed.has(reqNode.id);
-      return {
-        id: reqNode.id,
-        title: reqNode.title,
-        level: reqNode.level,
-        category: reqNode.category,
-        isCompleted: done,
-        status: done ? 'ERFULLT' : 'NOCH ZU ABSOLVIEREN'
+    // Transitive Vorbedingungen in Kettenreihenfolge sammeln: Tiefensuche, Vorganger
+    // vor Nachfolger. Erst nur Pflicht-Vorganger (sperren den Zielkurs), dann mit den
+    // empfohlenen Vorstufen (sperren nicht) ohne die bereits gefundenen Pflichtkurse.
+    const collect = (followRecommended, exclude) => {
+      const order = [];
+      const seen = new Set([targetNode.id]);
+      const walk = (courseId) => {
+        const node = this.nodes[courseId];
+        if (!node) return;
+        const next = [
+          ...(node.prerequisites || []),
+          ...(followRecommended ? (node.recommendedPrerequisites || []) : [])
+        ];
+        for (const id of next) {
+          if (seen.has(id)) continue;
+          seen.add(id);
+          walk(id);
+          if (!exclude.has(id) && this.nodes[id]) order.push(id);
+        }
       };
-    });
+      walk(targetNode.id);
+      return order;
+    };
+    const requiredIds = collect(false, new Set());
+    // Empfohlen bleibt, was absolviert ist oder noch zum Alter passt (ohne Geburtsdatum alles)
+    const fitsAge = (id) => personAge === null ||
+      personAge <= (this.nodes[id].recommendedAge ?? Infinity) + RECOMMENDED_AGE_TOLERANCE_YEARS;
+    const recommendedIds = collect(true, new Set(requiredIds))
+      .filter(id => completed.has(id) || fitsAge(id));
 
-    // Fehlende Kurse auf dem Pfad
+    const toStep = (id, openStatus) => {
+      const node = this.nodes[id];
+      const done = completed.has(id);
+      return {
+        id,
+        title: node.title,
+        level: node.level,
+        category: node.category,
+        isCompleted: done,
+        status: done ? 'ERFULLT' : openStatus
+      };
+    };
+    const pathSteps = requiredIds.map(id => toStep(id, 'NOCH ZU ABSOLVIEREN'));
+    const recommendedSteps = recommendedIds.map(id => toStep(id, 'EMPFOHLEN'));
+
+    // Fehlende Kurse auf dem Pfad: Pflicht sperrt, Empfehlung nur als Hinweis
     const missingCourses = pathSteps.filter(s => !s.isCompleted);
+    const missingRecommended = recommendedSteps.filter(s => !s.isCompleted);
 
     // Voraussetzungen des Zielkurses selbst prufen
     const targetDirectPrereqs = (targetNode.prerequisites || []).map(id => ({
@@ -274,19 +296,26 @@ export class CourseTreeEngine {
       stepsRemainingCount: missingCourses.length,
       pathSteps,
       missingCourses,
+      recommendedSteps,
+      missingRecommended,
       targetDirectPrereqs,
       targetQualCheck,
       ageCheck,
-      summary: this.generatePathSummary(targetNode, missingCourses, ageCheck, targetQualCheck)
+      summary: this.generatePathSummary(targetNode, missingCourses, ageCheck, targetQualCheck, missingRecommended)
     };
   }
 
   /**
    * Generiert eine verstandliche Zusammenfassung des Pfads ohne Emojis
    */
-  generatePathSummary(targetNode, missingCourses, ageCheck, qualChecks) {
+  generatePathSummary(targetNode, missingCourses, ageCheck, qualChecks, missingRecommended = []) {
+    const recommendation = missingRecommended.length > 0
+      ? `Empfohlen vorher (keine Pflicht): ${missingRecommended.map(c => c.title).join(' -> ')}.`
+      : '';
+
     if (missingCourses.length === 0 && ageCheck.isFulfilled && qualChecks.every(q => q.isFulfilled)) {
-      return `Du erfullst alle Voraussetzungen fur den ${targetNode.title} und kannst dich direkt anmelden.`;
+      const eligible = `Du erfullst alle Voraussetzungen fur den ${targetNode.title} und kannst dich direkt anmelden.`;
+      return recommendation ? `${eligible} ${recommendation}` : eligible;
     }
 
     const messages = [];
@@ -303,6 +332,7 @@ export class CourseTreeEngine {
     if (missingQuals.length > 0) {
       messages.push(`Fehlende Qualifikation: ${missingQuals.map(q => q.id).join(', ')}.`);
     }
+    if (recommendation) messages.push(recommendation);
 
     return messages.join(' | ');
   }

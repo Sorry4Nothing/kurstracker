@@ -113,6 +113,18 @@
   background-color: var(--teal-solid);
 }
 
+/* Line swatches for the connectors (section 5): solid = required,
+   dashed = recommended preparation */
+.legend-line {
+  flex-shrink: 0;
+  width: 20px;
+  border-top: 2px solid var(--border-strong);
+}
+
+.legend-line.is-recommended {
+  border-top-style: dashed;
+}
+
 /* ------------------------------------------------------------------------------
    2. Toolbar: zoom controls directly above the canvas, aligned with its
       left edge. No box of its own; the buttons are ghost icon buttons.
@@ -248,6 +260,12 @@
 .tree-path-line.active-path {
   stroke: var(--route);
   stroke-width: 2px;
+}
+
+/* Recommended preparation (Heku -> GLK 1 -> GLK 2 -> GLK 3): dashed, also
+   on the route, because it never locks the next course */
+.tree-path-line.is-recommended {
+  stroke-dasharray: 6 5;
 }
 
 /* ------------------------------------------------------------------------------
@@ -648,6 +666,12 @@
   border-color: var(--ok-ink);
   background-color: var(--ok-ink);
   color: var(--bg-surface-elevated);
+}
+
+/* Recommended, not required (tree.js, "Empfohlene Vorstufen"): a dashed
+   badge like the dashed line in the tree; it does not count for progress */
+.check-optional:not(.check-fulfilled) .check-step-badge {
+  border-style: dashed;
 }
 
 .check-text-content {

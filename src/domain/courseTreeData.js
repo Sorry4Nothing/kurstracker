@@ -10,6 +10,12 @@
  * - Level 2: Weiterbildung, Stufenleitung & Sicherheit (SLK, MF, SLRG, Pioniertechnik, Sicherheit Berg/Wasser/Winter)
  * - Level 3: Kaderstufe (Lagerleiter LLM, Abteilungsleiter AL, J+S Coach)
  * - Level 4: Expertenstufe (J+S Experte Lagersport/Trekking)
+ *
+ * prerequisites: Pflicht-Vorgaenger, sperren den Kurs bis sie absolviert sind.
+ * recommendedPrerequisites: direkte empfohlene Vorstufe, sperrt nicht. Voku, Heku,
+ * GLK 1 und GLK 2 sind Vorbereitungen; die erste richtige Anerkennung ist GLK 3.
+ * Wer einen Kurs hat, fur den gelten auch seine Vorstufen als erledigt (eine spatere
+ * Stufe ersetzt die fruheren). Nur fur echte Vorstufen derselben Kette verwenden.
  */
 
 export const COURSE_NODES = {
@@ -62,8 +68,8 @@ export const COURSE_NODES = {
     minAge: 14,
     recommendedAge: 14,
     description: 'Erste Stufe der Gruppenleiterausbildung. Methodik fur Gruppenstunden, Gruppenpsychologie, Programmgestaltung und Leitungsstile.',
-    prerequisites: ['heku'],
-    recommendedPrerequisites: ['voku', 'heku'],
+    prerequisites: [],
+    recommendedPrerequisites: ['heku'],
     requiredQualifications: [],
     grantsQualifications: ['cevi_gruppenleiter_1'],
     treePosition: { col: 0, row: 2 }
@@ -80,7 +86,8 @@ export const COURSE_NODES = {
     minAge: 15,
     recommendedAge: 15,
     description: 'Vertiefung der Gruppenleitung vor dem J+S-Alter. Mehrtagige Unternehmungen, Biwak, Kartenkunde, Orientierung und Dynamik.',
-    prerequisites: ['glk1'],
+    prerequisites: [],
+    recommendedPrerequisites: ['glk1'],
     requiredQualifications: [],
     grantsQualifications: ['cevi_gruppenleiter_2'],
     treePosition: { col: 0, row: 3 }
@@ -100,8 +107,8 @@ export const COURSE_NODES = {
     minAge: 17,
     recommendedAge: 17,
     description: 'Offizieller J+S-Leiterkurs Lagersport/Trekking Jugendsport (zusammen mit Sportamt Kanton Zuerich). Befahigt zur selbststandigen Leitung von Lagern und Sportprogrammen.',
-    prerequisites: ['glk2'],
-    recommendedPrerequisites: ['glk1', 'glk2'],
+    prerequisites: [],
+    recommendedPrerequisites: ['glk2'],
     requiredQualifications: [],
     grantsQualifications: ['js_leiter_lst', 'cevi_gruppenleiter_3'],
     treePosition: { col: 1, row: 0 }

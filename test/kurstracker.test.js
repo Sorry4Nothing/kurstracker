@@ -9,11 +9,21 @@ const { app } = await import('../src/app.js');
 
 const yearsAgo = (years) => `${new Date().getFullYear() - years}-01-01`;
 
-test('GLK 3 allein gilt inklusive aller Pflicht-Vorgänger als absolviert', () => {
+test('GLK 3 allein gilt inklusive aller Vorstufen als absolviert', () => {
   const { nodes } = courseTreeEngine.evaluatePersonInTree({ birthdate: yearsAgo(25), completedCourses: ['glk3'] });
-  for (const id of ['heku', 'glk1', 'glk2', 'glk3']) {
+  for (const id of ['voku', 'heku', 'glk1', 'glk2', 'glk3']) {
     assert.equal(nodes[id].status, 'COMPLETED', id);
   }
+  // Pioniertechnik verlangt GLK 1: wer GLK 1 übersprungen und GLK 3 hat, darf trotzdem
+  assert.equal(nodes.pionier.status, 'AVAILABLE');
+});
+
+test('Heku, GLK 1 und GLK 2 sind Vorbereitung: GLK 3 ist ab 17 ohne sie bereit', () => {
+  const { nodes } = courseTreeEngine.evaluatePersonInTree({ birthdate: yearsAgo(17), completedCourses: [] });
+  for (const id of ['heku', 'glk1', 'glk2', 'glk3']) {
+    assert.equal(nodes[id].status, 'AVAILABLE', id);
+  }
+  assert.equal(courseTreeEngine.evaluatePersonInTree({ birthdate: yearsAgo(16) }).nodes.glk3.status, 'LOCKED');
 });
 
 test('SLK allein schaltet GLK 3 und die Kaderstufe frei', () => {
@@ -34,11 +44,36 @@ test('fehlendes Geburtsdatum erfüllt kein Mindestalter', () => {
   assert.equal(courseTreeEngine.findPathToTarget({}, 'voku').ageCheck.isFulfilled, false);
 });
 
-test('findPathToTarget liefert die fehlenden Schritte in pathSteps', () => {
-  const result = courseTreeEngine.findPathToTarget({ birthdate: yearsAgo(25), completedCourses: ['heku'] }, 'glk');
+test('findPathToTarget: Vorstufen von GLK 3 sind Empfehlung in Kettenreihenfolge, keine Pflicht', () => {
+  const result = courseTreeEngine.findPathToTarget({ birthdate: yearsAgo(14), completedCourses: ['heku'] }, 'glk');
   assert.equal(result.target.id, 'glk3');
-  assert.deepEqual(result.pathSteps.map(s => s.id).sort(), ['glk1', 'glk2', 'heku']);
-  assert.deepEqual(result.missingCourses.map(s => s.id).sort(), ['glk1', 'glk2']);
+  assert.deepEqual(result.pathSteps, []);
+  assert.deepEqual(result.missingCourses, []);
+  assert.deepEqual(result.recommendedSteps.map(s => s.id), ['voku', 'heku', 'glk1', 'glk2']);
+  assert.deepEqual(result.missingRecommended.map(s => s.id), ['glk1', 'glk2']);
+  assert.equal(result.summary,
+    'Mindestalter (17 Jahre) noch nicht erreicht (aktuell: 14 Jahre). | ' +
+    'Empfohlen vorher (keine Pflicht): Gruppenleiterkurs 1 (GLK 1) -> Gruppenleiterkurs 2 (GLK 2).');
+});
+
+test('findPathToTarget: herausgewachsene Vorstufen werden nicht mehr empfohlen', () => {
+  const adult = courseTreeEngine.findPathToTarget({ birthdate: yearsAgo(25) }, 'glk3');
+  assert.deepEqual(adult.recommendedSteps, []);
+  assert.equal(adult.isDirectlyEligible, true);
+  assert.doesNotMatch(adult.summary, /Empfohlen/);
+  // 16: nur noch GLK 2 (recommendedAge 15 + 1 Jahr Toleranz), Voku bis GLK 1 sind vorbei
+  const sixteen = courseTreeEngine.findPathToTarget({ birthdate: yearsAgo(16) }, 'glk3');
+  assert.deepEqual(sixteen.missingRecommended.map(s => s.id), ['glk2']);
+  // Ohne Geburtsdatum lässt sich nichts ausschliessen
+  assert.deepEqual(courseTreeEngine.findPathToTarget({}, 'glk3').missingRecommended.map(s => s.id), ['voku', 'heku', 'glk1', 'glk2']);
+});
+
+test('findPathToTarget: Pflichtkurs GLK 3 vor der Kaderstufe', () => {
+  const result = courseTreeEngine.findPathToTarget({ birthdate: yearsAgo(25), qualifications: ['js_leiter_lst'] }, 'llm');
+  assert.deepEqual(result.missingCourses.map(s => s.id), ['glk3']);
+  assert.deepEqual(result.missingRecommended, []);
+  assert.equal(result.isDirectlyEligible, false);
+  assert.equal(result.summary, 'Noch 1 Kurs(e) notwendig: Gruppenleiterkurs 3 (GLK 3 / J+S Leiterkurs)');
 });
 
 test('summaryStats zählt Heku- und GLK-Kandidaten', () => {
