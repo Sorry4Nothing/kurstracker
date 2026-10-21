@@ -91,6 +91,24 @@ test('unbekanntes gespeichertes Theme fällt auf Cevi Klassik zurück', async ({
   await expect(page.locator('#themeDropdownLabel')).toHaveText('Cevi Klassik');
 });
 
+test('gespeichertes Theme gilt schon vor dem Start der JS-Module, nichts blitzt im Standard auf', async ({ page }) => {
+  // app.js zurückhalten: So sieht die Seite aus, bevor theme.js läuft
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  await page.route('**/app.js*', async route => { await held; await route.continue(); });
+  await page.addInitScript(() => localStorage.setItem('cevi_theme', 'midnight'));
+  await page.goto('/', { waitUntil: 'commit' });
+
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'midnight');
+  const background = () => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
+  await expect.poll(background).not.toBe('rgba(0, 0, 0, 0)'); // Stylesheets geladen
+  const before = await background();
+
+  release();
+  await expect(page.locator('#themeDropdownLabel')).toHaveText('Sternennacht');
+  expect(await background()).toBe(before);
+});
+
 test('Fokusring auf dem Kopfband ist in jedem Theme sichtbar, weiss wie die Schrift im Band', async ({ page }) => {
   await openApp(page);
   for (const [theme, label] of THEMES) {
