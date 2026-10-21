@@ -4,6 +4,7 @@
  */
 
 import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines } from './tree-map.js';
+import { esc } from './utils.js';
 
 let treeStructure = null;
 let currentTreeEvaluation = null;
@@ -34,7 +35,7 @@ export async function loadCourseTree() {
     setupInteractiveMap();
   } catch (err) {
     console.error('Fehler beim Laden des Kursbaums:', err);
-    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursbaums: ${err.message}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursbaums: ${esc(err.message)}</div>`;
   }
 }
 

@@ -3,7 +3,7 @@
  * Hitobito Stammdaten, Anerkennungen, Kurshistorie und Subtab-Navigation
  */
 
-import { formatEuropeanDate } from './utils.js';
+import { esc, formatEuropeanDate } from './utils.js';
 
 export async function loadUserProfile() {
   await Promise.all([
@@ -23,7 +23,7 @@ export async function loadUserQualifications() {
     renderQualifications(quals);
   } catch (err) {
     console.error('Fehler beim Laden der Qualifikationen:', err);
-    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Qualifikationen: ${err.message}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Qualifikationen: ${esc(err.message)}</div>`;
   }
 }
 
@@ -41,24 +41,25 @@ export function renderQualifications(quals) {
     const issuer = q.issuer || 'BASPO / Cevi Schweiz';
     const validUntil = q.valid_until ? (q.valid_until === 'Unbefristet' ? 'Unbefristet' : formatEuropeanDate(q.valid_until)) : 'Unbefristet';
 
+    // Qualifikationen kommen im Live-Betrieb aus der Cevi-DB (fremde Eingaben): alles escapen
     return `
       <div class="card qual-card">
         <div class="card-top">
-          <span class="card-category">${category}</span>
-          <span class="badge ${badgeClass}">${status}</span>
+          <span class="card-category">${esc(category)}</span>
+          <span class="badge ${badgeClass}">${esc(status)}</span>
         </div>
-        <h3 class="card-title">${q.title}</h3>
-        ${q.sub_title ? `<p class="card-subtitle text-dim" style="font-size: 0.8rem; margin-bottom: 0.4rem;">${q.sub_title}</p>` : ''}
-        <p class="card-subtitle">Ausgestellt von: ${issuer}</p>
+        <h3 class="card-title">${esc(q.title)}</h3>
+        ${q.sub_title ? `<p class="card-subtitle text-dim" style="font-size: 0.8rem; margin-bottom: 0.4rem;">${esc(q.sub_title)}</p>` : ''}
+        <p class="card-subtitle">Ausgestellt von: ${esc(issuer)}</p>
         <div class="meta-list">
           <div class="meta-item">
             <span>Gültig bis:</span>
-            <strong>${validUntil}</strong>
+            <strong>${esc(validUntil)}</strong>
           </div>
           ${q.renewal_recommended ? `
           <div class="meta-item text-accent">
             <span>Empfehlung:</span>
-            <strong>${q.renewal_recommended}</strong>
+            <strong>${esc(q.renewal_recommended)}</strong>
           </div>` : ''}
           <div class="meta-item">
             <span>Cevi-DB / BASPO:</span>
@@ -83,7 +84,7 @@ export async function loadUserHistory() {
     renderHistory(history);
   } catch (err) {
     console.error('Fehler beim Laden der Historie:', err);
-    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Historie: ${err.message}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Historie: ${esc(err.message)}</div>`;
   }
 }
 
@@ -98,17 +99,18 @@ export function renderHistory(history) {
     const organizer = h.organizer || (h.category ? `${h.category} Kurs` : 'Cevi Region Zürich');
     const result = h.result || 'Erfolgreich bestanden';
 
+    // Kurshistorie inkl. Notizen kommt im Live-Betrieb aus der Cevi-DB (fremde Eingaben): alles escapen
     return `
       <div class="timeline-item">
         <div class="timeline-header">
-          <span class="timeline-year">${dateFormatted}</span>
-          <span class="badge badge-success"><i class="fa-solid fa-check" aria-hidden="true"></i> ${result}</span>
+          <span class="timeline-year">${esc(dateFormatted)}</span>
+          <span class="badge badge-success"><i class="fa-solid fa-check" aria-hidden="true"></i> ${esc(result)}</span>
         </div>
-        <h4>${courseTitle}</h4>
+        <h4>${esc(courseTitle)}</h4>
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">
-          ${role} • ${organizer}
+          ${esc(role)} • ${esc(organizer)}
         </p>
-        ${h.notes ? `<p style="color: var(--text-dim); font-size: 0.78rem; margin-top: 0.3rem; font-style: italic;">${h.notes}</p>` : ''}
+        ${h.notes ? `<p style="color: var(--text-dim); font-size: 0.78rem; margin-top: 0.3rem; font-style: italic;">${esc(h.notes)}</p>` : ''}
       </div>
     `;
   }).join('');
