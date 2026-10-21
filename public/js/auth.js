@@ -63,8 +63,6 @@ export async function checkAuth() {
     setText('profileDbBirthdate', user.birthday
       ? `${formatEuropeanDate(user.birthday)}${age !== null ? ` (${age} Jahre)` : ''}`
       : 'Unbekannt');
-    setText('profileDbRealName', realname);
-    setText('profileDbCeviname', ceviname);
     setText('profileHeroName', realname);
     setText('profileHeroCeviname', `«${ceviname}»`);
   } catch (err) {
