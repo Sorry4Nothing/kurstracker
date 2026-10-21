@@ -39,6 +39,23 @@ test.describe('Footer', () => {
   });
 });
 
+test('Logo-Motiv sitzt in jedem Theme mittig in seiner Kachel', async ({ page }) => {
+  await page.goto('/');
+  for (const [theme] of THEMES) {
+    await page.evaluate(value => localStorage.setItem('cevi_theme', value), theme);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    // Mitte des gezeichneten Motivs gegen die Mitte der Kachel; eine viewBox-Einheit sind hier 0.18 px
+    const [dx, dy] = await page.locator('.brand-logo-svg').evaluate(svg => {
+      const plate = svg.getBoundingClientRect();
+      const motif = svg.querySelector('g').getBoundingClientRect();
+      return [motif.x + motif.width / 2 - (plate.x + plate.width / 2), motif.y + motif.height / 2 - (plate.y + plate.height / 2)];
+    });
+    expect(Math.abs(dx), `${theme}: waagrecht`).toBeLessThan(0.2);
+    expect(Math.abs(dy), `${theme}: senkrecht`).toBeLessThan(0.2);
+  }
+});
+
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => openApp(page));
 
