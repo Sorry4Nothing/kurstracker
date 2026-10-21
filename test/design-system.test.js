@@ -206,7 +206,7 @@ function resolveToken(tokens, name, seen = []) {
   return tokens.get(name).replace(/var\(\s*(--[\w-]+)[^)]*\)/g, (_, ref) => resolveToken(tokens, ref, [...seen, name]));
 }
 
-const SURFACES = ['--bg-main', '--bg-surface', '--bg-surface-elevated', '--bg-subtle', '--bg-hover', '--sidebar-bg', '--canvas-bg'];
+const SURFACES = ['--bg-main', '--bg-surface', '--bg-surface-elevated', '--bg-subtle', '--bg-hover', '--sidebar-bg', '--canvas-bg', '--panel-bg'];
 
 for (const theme of themeBlocks.keys()) {
   test(`Kontrast ≥ 4.5:1 im Theme ${themeNames[theme] ?? theme} (${theme})`, () => {
