@@ -181,13 +181,13 @@
 }
 
 /* ------------------------------------------------------------------------------
-   3. Workspace: canvas and inspector side by side, stacked below 1200px
+   3. Workspace: canvas and inspector stacked, side by side from 1201px
+      (section 8)
    ------------------------------------------------------------------------------ */
 .tree-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-4);
-  align-items: start;
 }
 
 /* ------------------------------------------------------------------------------
@@ -196,9 +196,11 @@
       has no transition: dragging follows the pointer 1:1 and the map does
       not glide in on load or on a tab switch.
    ------------------------------------------------------------------------------ */
+/* Stacked, the canvas leaves room to scroll the page past it on a phone:
+   one finger on the map pans the map */
 .tree-canvas-container {
   position: relative;
-  height: min(720px, 70vh);
+  height: min(640px, 60vh);
   overflow: hidden;
   background-color: var(--canvas-bg);
   background-image: radial-gradient(circle, var(--canvas-dot) 1px, transparent 1px);
@@ -475,8 +477,6 @@
 /* The sections are spaced by the panel's gap, so a hidden block (see
    #inspectorActions below) leaves no empty space behind. */
 .tree-inspector-panel {
-  position: sticky;
-  top: calc(var(--shell-header-h, 76px) + var(--sp-4));
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
@@ -698,15 +698,37 @@
 }
 
 /* ------------------------------------------------------------------------------
-   8. Responsive
+   8. Responsive. From 1201px canvas and inspector sit side by side and fill
+      the window down to the footer: the view takes the rest of
+      .app-content-area (a flex column), the workspace the rest of the view.
+      Below a 480px canvas the page scrolls instead.
    ------------------------------------------------------------------------------ */
-@media (max-width: 1200px) {
-  .tree-workspace {
-    grid-template-columns: minmax(0, 1fr);
+@media (min-width: 1201px) {
+  #panel-tree.active {
+    flex: 1;
+    grid-template-rows: auto 1fr;
   }
 
+  /* The gap equals the space below the workspace: the bottom padding of
+     .app-content-area (layout.css) */
+  .tree-workspace {
+    align-self: stretch;
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 34%, 440px);
+    gap: var(--sp-8);
+  }
+
+  .tree-canvas-container {
+    height: auto;
+    min-height: 480px;
+  }
+
+  /* Exactly as tall as the canvas: size containment keeps the content out
+     of the row height, longer content scrolls inside (tabindex="0" in the
+     HTML makes it scrollable by keyboard) */
   .tree-inspector-panel {
-    position: static;
+    contain: size;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 }
 

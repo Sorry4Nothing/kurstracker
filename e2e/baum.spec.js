@@ -233,3 +233,32 @@ for (const [width, height] of [[1440, 900], [375, 812]]) {
   });
 }
 
+// Ab 1201 px: Baumfläche und Inspektor nebeneinander, bis zur Fusszeile, ohne dass die Seite scrollt
+for (const [width, height] of [[1440, 900], [1280, 720], [1920, 1080]]) {
+  test.describe(`Ausbildungsbaum mit Inspektor ${width} x ${height}`, () => {
+    test.use({ viewport: { width, height } });
+
+    test('Baumfläche und Inspektor schliessen bündig ab, mit gleichen Abständen untereinander und zur Fusszeile', async ({ page }) => {
+      await openApp(page);
+      // Ein Kurs mit langer Checkliste: bei 720 px Höhe scrollt sie im Inspektor, der Inspektor wächst nicht
+      await page.getByRole('button', { name: /Sicherheitsmodul Wasser/ }).press('Enter');
+      await expect(page.locator('#inspectorTitle')).toContainText('Wasser');
+
+      const [canvas, inspector, footer] = await Promise.all(
+        ['#treeCanvasWrapper', '#treeInspector', '#appGlobalFooter'].map(selector => page.locator(selector).boundingBox()));
+      expect(Math.abs(inspector.y - canvas.y), 'Oberkanten').toBeLessThanOrEqual(1);
+      expect(Math.abs(inspector.y + inspector.height - (canvas.y + canvas.height)), 'Unterkanten').toBeLessThanOrEqual(1);
+      expect(inspector.width).toBeGreaterThanOrEqual(340);
+      expect(inspector.width).toBeLessThanOrEqual(440);
+      const gap = inspector.x - (canvas.x + canvas.width);
+      const toFooter = footer.y - (canvas.y + canvas.height);
+      expect(Math.abs(gap - toFooter), `Abstand zum Inspektor ${gap} px, zur Fusszeile ${toFooter} px`).toBeLessThanOrEqual(1);
+
+      const { scrollHeight, clientHeight } = await page.evaluate(() => {
+        const { scrollHeight, clientHeight } = document.documentElement;
+        return { scrollHeight, clientHeight };
+      });
+      expect(scrollHeight, 'Seite scrollt vertikal').toBeLessThanOrEqual(clientHeight);
+    });
+  });
+}
