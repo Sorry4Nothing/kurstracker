@@ -46,7 +46,10 @@ export const envConfig = {
     port: parseInt(process.env.PORT || '3000', 10),
     // Nur Produktion (hinter Proxy) lauscht auf allen Interfaces; lokal und development bleiben auf localhost
     host: process.env.HOST || (normalizedAppEnv === 'production' ? '0.0.0.0' : 'localhost'),
-    url: process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`
+    url: process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`,
+    // Hinter einem Reverse Proxy: Anzahl Proxy-Hops (z. B. 1) oder Express-Wert wie "loopback".
+    // Nötig, damit Rate Limit die echte Client-IP zählt und req.secure die HTTPS-Verbindung des Proxys erkennt.
+    trustProxy: process.env.TRUST_PROXY || ''
   },
   ceviDb: {
     baseUrl: process.env.CEVI_DB_BASE_URL || 'https://db.cevi.ch',
@@ -65,7 +68,8 @@ export const envConfig = {
     // development und production starten ohne echtes Secret nicht (siehe validateEnv).
     sessionSecret: configuredSessionSecret || (normalizedAppEnv === 'local' ? crypto.randomBytes(32).toString('hex') : ''),
     sessionSecretConfigured: Boolean(configuredSessionSecret),
-    cookieSecure: process.env.COOKIE_SECURE === 'true' || normalizedAppEnv === 'production'
+    // Secure überall, wo die App per HTTPS erreichbar ist, nicht nur in Produktion (#51)
+    cookieSecure: process.env.COOKIE_SECURE === 'true' || normalizedAppEnv === 'production' || (process.env.APP_URL || '').startsWith('https://')
   },
   logging: {
     level: process.env.LOG_LEVEL || (normalizedAppEnv === 'production' ? 'warn' : 'debug')
@@ -97,7 +101,10 @@ export function validateEnv() {
       errors.push('PRODUKTION: SESSION_SECRET muss gesetzt, mindestens 32 Zeichen lang und kryptografisch sicher sein (kein Platzhalter).');
     }
     if (!envConfig.server.url.startsWith('https://')) {
-      errors.push('PRODUKTION: APP_URL sollte mit https:// beginnen.');
+      errors.push('PRODUKTION: APP_URL muss mit https:// beginnen.');
+    }
+    if (!envConfig.server.trustProxy) {
+      warnings.push('PRODUKTION: TRUST_PROXY ist nicht gesetzt. Hinter einem Reverse Proxy zählt das Rate Limit sonst die Proxy-IP, und die Umleitung auf HTTPS bleibt aus.');
     }
   }
 

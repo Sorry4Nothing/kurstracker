@@ -31,6 +31,24 @@ const releaseVersion = readReleaseVersion();
 
 export const app = express();
 
+// Hinter einem Reverse Proxy die echte Client-IP und das Protokoll aus X-Forwarded-* übernehmen (nur wenn konfiguriert)
+if (envConfig.server.trustProxy) {
+  const hops = envConfig.server.trustProxy;
+  app.set('trust proxy', /^\d+$/.test(hops) ? Number(hops) : hops);
+}
+
+// Nur HTTPS: In Produktion hinter einem Proxy jede HTTP-Anfrage auf die HTTPS-Adresse aus APP_URL umleiten.
+// Ziel ist APP_URL, nie der Host-Header der Anfrage, damit niemand die Umleitung auf eine fremde Seite lenken kann.
+// Ohne TRUST_PROXY wäre req.secure hinter einem TLS-Proxy immer false und die Umleitung liefe im Kreis.
+if (envConfig.app.isProduction && envConfig.server.trustProxy && envConfig.server.url.startsWith('https://')) {
+  // Origin + Pfad statt new URL(pfad, basis): ein Pfad wie "//fremd.example" würde sonst zum fremden Host
+  const httpsOrigin = new URL(envConfig.server.url).origin;
+  app.use((req, res, next) => {
+    if (req.secure) return next();
+    res.redirect(308, httpsOrigin + req.originalUrl);
+  });
+}
+
 // Eine Zeile, ein Eintrag: Zeilenumbrüche und Steuerzeichen aus Nutzereingaben dürfen keine Log-Zeilen fälschen
 export function logSafe(value) {
   return String(value ?? '').replace(/[\r\n\u0000-\u001f\u007f]+/g, ' ').slice(0, 300);
