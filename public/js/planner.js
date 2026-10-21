@@ -100,6 +100,9 @@ export async function loadPlannerData() {
   }
 }
 
+// Element, das den Dialog geoeffnet hat: bekommt den Fokus beim Schliessen zurueck
+let modalOpener = null;
+
 export function openNominationModal(personId, personName, defaultCourseId) {
   const modal = document.getElementById('nominationModal');
   const personInput = document.getElementById('modalPersonId');
@@ -113,15 +116,24 @@ export function openNominationModal(personId, personName, defaultCourseId) {
   }
 
   if (modal) {
+    modalOpener = document.activeElement;
     modal.style.display = 'flex';
+    // Hintergrund fuer Tab und Screenreader sperren, Fokus in den Dialog
+    const layout = document.querySelector('.app-layout');
+    if (layout) layout.inert = true;
+    courseSelect?.focus();
   }
 }
 
 export function closeNominationModal() {
   const modal = document.getElementById('nominationModal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
+  // app.js ruft das bei jedem Escape auf, auch wenn der Dialog geschlossen ist
+  if (!modal || modal.style.display === 'none') return;
+  modal.style.display = 'none';
+  const layout = document.querySelector('.app-layout');
+  if (layout) layout.inert = false;
+  if (modalOpener?.isConnected) modalOpener.focus();
+  modalOpener = null;
 }
 
 export async function submitNomination(e) {
@@ -140,8 +152,12 @@ export async function submitNomination(e) {
     });
 
     if (res.ok) {
+      // Die Tabelle wird neu gezeichnet: danach den Button derselben Zeile fokussieren
+      const rowButtons = () => [...document.querySelectorAll('#plannerTableBody button')];
+      const openerIndex = rowButtons().indexOf(modalOpener);
       closeNominationModal();
       await loadPlannerData();
+      if (openerIndex >= 0) rowButtons()[openerIndex]?.focus();
     } else {
       const err = await res.json();
       alert(`Fehler beim Speichern: ${err.error}`);

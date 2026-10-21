@@ -221,6 +221,13 @@
   border-bottom: 3px solid var(--band-rule);
 }
 
+/* On the band --focus-ring vanishes (Cevi-Blau on Cevi-Blau in Klassik,
+   1:1); a white ring like the band text stays visible in every theme */
+.sidebar-header :focus-visible,
+.app-topbar :focus-visible {
+  outline-color: var(--on-brand);
+}
+
 .topbar-left {
   display: flex;
   flex: 1;
