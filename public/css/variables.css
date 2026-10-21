@@ -122,6 +122,9 @@
   --bg-surface-elevated: #FFFFFF;
   --bg-subtle: #F3F3F0;
   --bg-hover: #EDEDE9;
+  /* Profile panels: a step off the page, so the elevated cards inside them
+     still read as cards */
+  --panel-bg: #F6F6F3;
 
   --border-subtle: #E4E4E0;
   --border-strong: #8A8A84; /* 3.5:1 on white, 3.1:1 on --bg-subtle */
@@ -199,6 +202,8 @@
   --bg-subtle: #EDEAE6;
   /* Neutral grey, so the nav hover still shows on the blush sidebar */
   --bg-hover: #E6E4E1;
+  /* Surface and elevated are both white here: the panels take a warm grey */
+  --panel-bg: #F5F2EF;
 
   --border-subtle: #E6DED9;
   --border-strong: #857C77; /* 3.9:1 on --bg-main, 3.4:1 on --bg-subtle */
@@ -267,6 +272,7 @@
   --bg-surface-elevated: #222222;
   --bg-subtle: #262626;
   --bg-hover: #2B2B2B;
+  --panel-bg: var(--bg-surface);
 
   --border-subtle: #2E2E2E;
   --border-strong: #74746F; /* 3.9:1 on --bg-main, 3.4:1 on elevated */
@@ -335,6 +341,7 @@
   --bg-surface-elevated: #26201A;
   --bg-subtle: #2B241D;
   --bg-hover: #312920;
+  --panel-bg: var(--bg-surface);
 
   --border-subtle: #3A3128;
   --border-strong: #82766A; /* 4.2:1 on --bg-main, 3.5:1 on --bg-subtle */

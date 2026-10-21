@@ -2,8 +2,10 @@
    CEVI KURSTRACKER - PROFIL & QUALIFIKATIONEN
    Sidebar profile card (Kokonut UI), profile header with a stat row, and the four profile
    sections: Stammdaten, Anerkennungen, Werdegang (timeline), Kursangebot.
-   The sections are plain: a heading over a 1px rule, no box and no fill, so
-   the cards that components.css draws inside them never sit in another card.
+   Each section is a panel: a field in --panel-bg with a 1px border, a title
+   bar and a body that scrolls on its own. The cards that components.css
+   draws inside take the elevated surface, so they still stand out from the
+   panel fill, like the node cards on the tree canvas.
    Tokens only. .card, .cards-grid, .badge, .btn, inputs and dropdowns are
    owned by components.css and are not redefined here.
    ============================================================================== */
@@ -230,13 +232,21 @@
   container: profile / inline-size;
 }
 
+/* Grows to the bottom of the content area, so the section grid can take
+   the height the header leaves (section 3) */
+#panel-profile.active {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+}
+
 .profile-page-hero {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-6) var(--sp-8);
-  margin-bottom: var(--sp-8);
+  margin-bottom: var(--sp-6);
 }
 
 .profile-hero-left {
@@ -401,38 +411,30 @@
 
 /* ------------------------------------------------------------------------------
    3. Profile sections (former bento tiles)
-   One column by default; from 1024px of view width a 1:2 split. The narrow
-   column holds the personal record (Stammdaten, Werdegang), the wide one the
-   card lists (Anerkennungen, Kursangebot), so .cards-grid keeps two columns.
+   Four panels, each a title bar over a body that scrolls on its own. The
+   body is a named region with tabindex="0" in the markup, so the keyboard
+   scrolls it too.
+   One column by default: the page scrolls and every body stops at
+   min(60vh, 32rem). From 900px of view width (a 1280px window beside the
+   sidebar) a 1:2 grid of two rows fills the window below the header and the
+   page itself stays put. The narrow column holds the personal record
+   (Stammdaten, Werdegang), the wide one the card lists (Anerkennungen,
+   Kursangebot).
    ------------------------------------------------------------------------------ */
 .profile-bento-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: var(--sp-8);
-}
-
-@container profile (min-width: 1024px) {
-  .profile-bento-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-    gap: var(--sp-12) var(--sp-8);
-  }
-
-  /* The course list beside the timeline is far longer. The timeline stays
-     in view while the list scrolls past (within its own grid row) and
-     scrolls on its own when it is taller than the window. */
-  .bento-history {
-    position: sticky;
-    top: calc(var(--shell-header-h) + var(--sp-6));
-    max-height: calc(100dvh - var(--shell-header-h) - var(--sp-12));
-    overflow-y: auto;
-  }
+  gap: var(--sp-6);
 }
 
 .bento-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--panel-bg);
 }
 
 .bento-card-header {
@@ -441,9 +443,62 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-2) var(--sp-4);
-  margin-bottom: var(--sp-4);
-  padding-bottom: var(--sp-3);
-  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--sp-3) var(--sp-4);
+}
+
+/* Kursangebot: search and filter are part of the title bar */
+.bento-card > .filter-bar {
+  margin-bottom: 0;
+  padding: 0 var(--sp-4) var(--sp-3);
+}
+
+/* A rule under the title bar, then the content, which scrolls on its own.
+   The bottom radius keeps the focus ring and the scrollbar inside the
+   panel's rounded corners. */
+.bento-card-body {
+  flex: 1 1 auto;
+  max-height: min(60vh, 32rem);
+  padding: var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  overflow-y: auto;
+}
+
+/* The ring sits inside the panel instead of over its border */
+.bento-card-body:focus-visible {
+  outline-offset: -2px;
+}
+
+/* One step above the panel fill, so the cards still read as cards */
+.bento-card .card {
+  background-color: var(--bg-surface-elevated);
+}
+
+@container profile (min-width: 900px) {
+  /* Zero basis: the grid fills the height below the header, but its lists
+     never make the page longer. The first row fits its content up to 40%,
+     the second takes the rest. Below 420px the page scrolls instead of
+     crushing the panels. */
+  .profile-bento-grid {
+    flex: 1 1 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    grid-template-rows: fit-content(40%) minmax(0, 1fr);
+    align-items: stretch;
+    min-height: 420px;
+  }
+
+  /* The rows set the panel heights, not the content */
+  .bento-card {
+    min-height: 0;
+  }
+
+  /* Contain only here, where the page stays put. In one column a body at
+     its end hands the scroll on to the page, so a phone never gets stuck
+     in a panel. */
+  .bento-card-body {
+    max-height: none;
+    overscroll-behavior: contain;
+  }
 }
 
 .bento-title-left {
@@ -560,7 +615,8 @@
 
 /* ------------------------------------------------------------------------------
    5. Anerkennungen and Kursangebot: .cards-grid, .card, .filter-bar and the
-      loading line come from components.css unchanged.
+      loading line come from components.css; section 3 only lifts the card
+      fill and fits the filter bar into the title bar.
       profile.js gives a qualification's sub_title an inline font-size of
       0.8rem (12.8px) and a 0.4rem margin; !important puts it on the 12px step
       and the 4px grid until the template drops the inline style.

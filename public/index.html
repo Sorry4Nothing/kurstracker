@@ -21,7 +21,7 @@
   <!-- Font Awesome 6 Pro Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="style.css?v=26">
 </head>
 <body class="dark-theme">
 
@@ -365,64 +365,67 @@
           </div>
 
           <!-- Bento-Grid Dashboard (Alle Bereiche als Kacheln über den Screen verteilt) -->
+          <!-- Jede Kachel: Titelzeile über einem Inhalt, der für sich scrollt (profile.css). Der Inhalt ist eine benannte Region und per Tab fokussierbar, damit die Tastatur mitscrollt -->
           <div class="profile-bento-grid">
-            
+
             <!-- Kachel 1: Cevi-DB Hitobito Stammdaten (Redesigned) -->
             <div class="bento-card bento-stammdaten">
               <div class="bento-card-header">
                 <div class="bento-title-left">
-                  <h3>Cevi-DB Stammdaten</h3>
-                </div>
-              </div>
-              
-              <!-- Profil Identitäts-Kopf -->
-              <div class="stammdaten-hero-badge">
-                <div class="stammdaten-id-pills">
-                  <span class="stammdaten-id-pill pill-cevi" title="Offizielle Cevi-DB Hitobito Personen-ID">
-                    <span>Cevi-DB:</span>
-                    <strong id="profileDbPersonId">#10842</strong>
-                  </span>
-                  <span class="stammdaten-id-pill pill-js" title="Offizielle Jugend+Sport Personennummer">
-                    <span>J+S:</span>
-                    <strong id="profileDbJsNumber">JS-CH-948120</strong>
-                  </span>
+                  <h3 id="stammdatenHeading">Cevi-DB Stammdaten</h3>
                 </div>
               </div>
 
-              <!-- Strukturierte Stammdaten Sektionen -->
-              <div class="stammdaten-sections" id="stammdatenContainer">
-                <div class="stammdaten-row">
-                  <div class="stammdaten-field">
-                    <div class="stammdaten-label">Abteilung &amp; Region</div>
-                    <div class="stammdaten-val" id="profileDbAbteilung">Cevi Winti (Region Zürich)</div>
-                  </div>
-                  <div class="stammdaten-field">
-                    <div class="stammdaten-label">Geburtsdatum &amp; Alter</div>
-                    <div class="stammdaten-val" id="profileDbBirthdate">14.08.2001 (25 Jahre)</div>
-                  </div>
-                </div>
-
-                <div class="stammdaten-row">
-                  <div class="stammdaten-field">
-                    <div class="stammdaten-label">E-Mail</div>
-                    <div class="stammdaten-val" id="profileDbEmail">siro@cevi-winti.ch</div>
-                  </div>
-                  <div class="stammdaten-field">
-                    <div class="stammdaten-label">Telefon</div>
-                    <div class="stammdaten-val" id="profileDbPhone">+41 79 123 45 67</div>
+              <div class="bento-card-body" role="region" aria-labelledby="stammdatenHeading" tabindex="0">
+                <!-- Profil Identitäts-Kopf -->
+                <div class="stammdaten-hero-badge">
+                  <div class="stammdaten-id-pills">
+                    <span class="stammdaten-id-pill pill-cevi" title="Offizielle Cevi-DB Hitobito Personen-ID">
+                      <span>Cevi-DB:</span>
+                      <strong id="profileDbPersonId">#10842</strong>
+                    </span>
+                    <span class="stammdaten-id-pill pill-js" title="Offizielle Jugend+Sport Personennummer">
+                      <span>J+S:</span>
+                      <strong id="profileDbJsNumber">JS-CH-948120</strong>
+                    </span>
                   </div>
                 </div>
 
-                <div class="stammdaten-row">
-                  <div class="stammdaten-field">
-                    <div class="stammdaten-label">Notfallkontakt</div>
-                    <div class="stammdaten-val">M. Notter (+41 79 987 65 43)</div>
+                <!-- Strukturierte Stammdaten Sektionen -->
+                <div class="stammdaten-sections" id="stammdatenContainer">
+                  <div class="stammdaten-row">
+                    <div class="stammdaten-field">
+                      <div class="stammdaten-label">Abteilung &amp; Region</div>
+                      <div class="stammdaten-val" id="profileDbAbteilung">Cevi Winti (Region Zürich)</div>
+                    </div>
+                    <div class="stammdaten-field">
+                      <div class="stammdaten-label">Geburtsdatum &amp; Alter</div>
+                      <div class="stammdaten-val" id="profileDbBirthdate">14.08.2001 (25 Jahre)</div>
+                    </div>
                   </div>
-                  <div class="stammdaten-field">
-                    <div class="stammdaten-label">Cevi-Funktionen</div>
-                    <div class="stammdaten-val">
-                      <span class="role-chip">Gruppenleiter</span>
-                      <span class="role-chip chip-js">J+S Leiter LS/T</span>
+
+                  <div class="stammdaten-row">
+                    <div class="stammdaten-field">
+                      <div class="stammdaten-label">E-Mail</div>
+                      <div class="stammdaten-val" id="profileDbEmail">siro@cevi-winti.ch</div>
+                    </div>
+                    <div class="stammdaten-field">
+                      <div class="stammdaten-label">Telefon</div>
+                      <div class="stammdaten-val" id="profileDbPhone">+41 79 123 45 67</div>
+                    </div>
+                  </div>
+
+                  <div class="stammdaten-row">
+                    <div class="stammdaten-field">
+                      <div class="stammdaten-label">Notfallkontakt</div>
+                      <div class="stammdaten-val">M. Notter (+41 79 987 65 43)</div>
+                    </div>
+                    <div class="stammdaten-field">
+                      <div class="stammdaten-label">Cevi-Funktionen</div>
+                      <div class="stammdaten-val">
+                        <span class="role-chip">Gruppenleiter</span>
+                        <span class="role-chip chip-js">J+S Leiter LS/T</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -433,24 +436,27 @@
             <div class="bento-card bento-quals">
               <div class="bento-card-header">
                 <div class="bento-title-left">
-                  <h3>J+S &amp; Cevi Anerkennungen</h3>
+                  <h3 id="qualsHeading">J+S &amp; Cevi Anerkennungen</h3>
                 </div>
               </div>
-              <div class="cards-grid quals-bento-grid" id="qualsContainer">
-                <div class="loading-placeholder">Lade Qualifikationen aus der Cevi-DB...</div>
+              <div class="bento-card-body" role="region" aria-labelledby="qualsHeading" tabindex="0">
+                <div class="cards-grid quals-bento-grid" id="qualsContainer">
+                  <div class="loading-placeholder">Lade Qualifikationen aus der Cevi-DB...</div>
+                </div>
               </div>
             </div>
 
             <!-- Kachel 3: Ausbildungs-Werdegang & Timeline -->
-            <!-- Scrollt ab 1024px Breite selbst (profile.css): per Tab fokussierbar, damit die Tastatur mitscrollt -->
-            <div class="bento-card bento-history" role="region" aria-labelledby="historyHeading" tabindex="0">
+            <div class="bento-card bento-history">
               <div class="bento-card-header">
                 <div class="bento-title-left">
                   <h3 id="historyHeading">Ausbildungs-Werdegang</h3>
                 </div>
               </div>
-              <div class="timeline-container history-bento-scroll" id="historyContainer">
-                <div class="loading-placeholder">Lade Kurshistorie...</div>
+              <div class="bento-card-body" role="region" aria-labelledby="historyHeading" tabindex="0">
+                <div class="timeline-container history-bento-scroll" id="historyContainer">
+                  <div class="loading-placeholder">Lade Kurshistorie...</div>
+                </div>
               </div>
             </div>
 
@@ -458,7 +464,7 @@
             <div class="bento-card bento-courses">
               <div class="bento-card-header">
                 <div class="bento-title-left">
-                  <h3>Aktuelles Kursangebot (Cevi &amp; J+S)</h3>
+                  <h3 id="coursesHeading">Aktuelles Kursangebot (Cevi &amp; J+S)</h3>
                 </div>
               </div>
               <div class="filter-bar">
@@ -500,8 +506,10 @@
                   </div>
                 </div>
               </div>
-              <div class="cards-grid" id="coursesContainer">
-                <div class="loading-placeholder">Lade Kursangebot...</div>
+              <div class="bento-card-body" role="region" aria-labelledby="coursesHeading" tabindex="0">
+                <div class="cards-grid" id="coursesContainer">
+                  <div class="loading-placeholder">Lade Kursangebot...</div>
+                </div>
               </div>
             </div>
 
