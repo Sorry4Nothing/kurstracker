@@ -533,6 +533,17 @@ test('OAuth-Callback: ein State ist nur einmal einlösbar, auch mit gültigem Co
   assert.equal(exchange.mock.callCount(), 1);
 });
 
+test('OAuth-Callback: Zeilenumbrüche aus der URL landen nicht im Log (#51)', async (t) => {
+  const logged = [];
+  t.mock.method(console, 'error', (...args) => logged.push(args.join(' ')));
+  const error = encodeURIComponent('access_denied\r\n[INFO] Admin-Login erfolgreich');
+  const description = encodeURIComponent('a\nb\rc');
+  const res = await request(`/api/auth/callback?error=${error}&error_description=${description}`);
+  assert.equal(res.headers.get('location'), '/?error=provider_error');
+  assert.ok(logged.length > 0, 'nichts geloggt');
+  for (const line of logged) assert.doesNotMatch(line, /[\r\n]/, line);
+});
+
 // Bleibt der letzte Test der Datei: danach ist das Auth-Kontingent dieser Instanz aufgebraucht
 test('Rate Limit: Anmelde-Endpunkte drosseln nach zu vielen Versuchen mit 429', async () => {
   let limited;
