@@ -179,13 +179,6 @@ export function resetMapTransform() {
   applyMapTransform();
 }
 
-export function fitMapToScreen() {
-  const viewport = document.getElementById('treeMapViewport');
-  if (!viewport) return;
-  const rect = viewport.getBoundingClientRect();
-  centerCanvas(Math.min(fitZoom(rect), 1.0), rect);
-}
-
 // Zoom, bei dem die ganze Flaeche mit 20 px Rand in den Viewport passt
 function fitZoom(rect) {
   return Math.min((rect.width - 40) / CANVAS_WIDTH, (rect.height - 40) / CANVAS_HEIGHT);
