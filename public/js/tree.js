@@ -57,14 +57,15 @@ export function renderTree() {
     const statusLower = (state.status || 'locked').toLowerCase();
 
     let statusLabel = 'Gesperrt';
-    if (statusLower === 'completed') statusLabel = '<i class="fa-solid fa-check"></i> Absolviert';
-    else if (statusLower === 'in_progress') statusLabel = '<i class="fa-solid fa-hourglass-half"></i> Angemeldet';
-    else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open"></i> Bereit';
+    if (statusLower === 'completed') statusLabel = '<i class="fa-solid fa-check" aria-hidden="true"></i> Absolviert';
+    else if (statusLower === 'in_progress') statusLabel = '<i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> Angemeldet';
+    else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open" aria-hidden="true"></i> Bereit';
 
     const isSelected = selectedTargetCourseId === node.id;
     const org = node.org;
     const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
 
+    // Kein aria-label: der Name kommt aus dem sichtbaren Text (Organisation, Code, Status, Titel), WCAG 2.5.3
     return `
       <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''}" 
            id="nodeCard-${node.id}"
@@ -72,7 +73,7 @@ export function renderTree() {
            onclick="selectTargetCourse('${node.id}')"
            tabindex="0"
            role="button"
-           aria-label="Kurs ${node.title} (${org} ${node.code})">
+           aria-current="${isSelected}">
         <div class="node-header">
           <div class="node-header-left">
             <span class="node-org-pill org-${orgClass}">${org}</span>
@@ -100,8 +101,11 @@ export function renderTree() {
 export async function selectTargetCourse(courseId) {
   selectedTargetCourseId = courseId;
 
-  // Visuelle Selektion aktualisieren
-  document.querySelectorAll('.tree-node-card').forEach(c => c.classList.remove('is-selected', 'is-path-highlight'));
+  // Selektion aktualisieren, sichtbar und fuer Screenreader (aria-current)
+  document.querySelectorAll('.tree-node-card').forEach(c => {
+    c.classList.remove('is-selected', 'is-path-highlight');
+    c.setAttribute('aria-current', c.id === `nodeCard-${courseId}`);
+  });
   const card = document.getElementById(`nodeCard-${courseId}`);
   if (card) card.classList.add('is-selected');
 

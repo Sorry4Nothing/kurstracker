@@ -28,7 +28,8 @@ test.describe('Stufenleiter-Planer', () => {
     const { analysis } = await fetchOverview(request);
     const { participant, recommendedCourses } = analysis.analyzedParticipants.find(p => p.recommendedCourses?.length);
     const modal = page.locator('#nominationModal');
-    const open = () => page.getByRole('row', { name: participant.ceviname }).getByRole('button', { name: 'Vorschlagen' }).click();
+    const opener = page.getByRole('row', { name: participant.ceviname }).getByRole('button', { name: 'Vorschlagen' });
+    const layout = page.locator('.app-layout');
 
     await expect(modal).toBeHidden();
     for (const close of [
@@ -36,13 +37,19 @@ test.describe('Stufenleiter-Planer', () => {
       () => page.getByRole('button', { name: 'Schliessen' }).click(),
       () => page.keyboard.press('Escape')
     ]) {
-      await open();
+      await opener.click();
       await expect(page.getByRole('dialog', { name: 'Kurs vorschlagen' })).toBeVisible();
       await expect(modal).toHaveCSS('display', 'flex');
       await expect(page.getByLabel('Teilnehmer / Leiter')).toHaveValue(participant.ceviname);
       await expect(page.getByLabel('Zielkurs')).toHaveValue(recommendedCourses[0].courseId);
+      // Fokus springt in den Dialog, der Hintergrund ist für Tab und Screenreader gesperrt
+      await expect(page.getByLabel('Zielkurs')).toBeFocused();
+      await expect(layout).toHaveJSProperty('inert', true);
       await close();
       await expect(modal).toBeHidden();
+      // Fokus kehrt zum auslösenden Knopf zurück
+      await expect(layout).toHaveJSProperty('inert', false);
+      await expect(opener).toBeFocused();
     }
   });
 

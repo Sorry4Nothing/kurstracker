@@ -49,12 +49,23 @@ test.describe('Theme-Wahl in der Sidebar', () => {
     await page.keyboard.press('Enter');
     await expect(menu).toBeHidden();
     await expectTheme(page, 'midnight', 'Sternennacht');
+    await expect(trigger).toBeFocused(); // Fokus geht nach der Auswahl nicht verloren
 
+    // Pfeiltasten wechseln zwischen den Optionen, Escape gibt den Fokus zurück
     await trigger.press('Enter');
     await expect(menu).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('option', { name: 'Cevi Klassik' })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('option', { name: 'Sternennacht' })).toBeFocused();
+    await page.keyboard.press('ArrowUp');
+    await expect(page.getByRole('option', { name: 'Cevi Klassik' })).toBeFocused();
+    await page.keyboard.press('ArrowUp'); // erste Option: bleibt stehen
+    await expect(page.getByRole('option', { name: 'Cevi Klassik' })).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(menu).toBeHidden();
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(trigger).toBeFocused();
     await expectTheme(page, 'midnight', 'Sternennacht');
 
     await page.reload();
@@ -78,4 +89,24 @@ test('unbekanntes gespeichertes Theme fällt auf Cevi Klassik zurück', async ({
 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'cevi-tools');
   await expect(page.locator('#themeDropdownLabel')).toHaveText('Cevi Klassik');
+});
+
+test('Fokusring auf dem Kopfband ist in jedem Theme sichtbar, weiss wie die Schrift im Band', async ({ page }) => {
+  await openApp(page);
+  for (const [theme, label] of THEMES) {
+    await page.evaluate(t => localStorage.setItem('cevi_theme', t), theme);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await page.keyboard.press('Tab'); // Tastatur-Modus, damit :focus-visible greift
+    const brand = page.locator('.brand-link');
+    await brand.focus();
+    await expect(brand).toBeFocused();
+    const { style, ring, bandText } = await brand.evaluate(el => ({
+      style: getComputedStyle(el).outlineStyle,
+      ring: getComputedStyle(el).outlineColor,
+      bandText: getComputedStyle(document.querySelector('.brand-title')).color
+    }));
+    expect(style, label).not.toBe('none');
+    expect(ring, label).toBe(bandText);
+  }
 });
