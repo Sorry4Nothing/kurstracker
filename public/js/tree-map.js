@@ -57,8 +57,9 @@ export function setupInteractiveMap(courseId = 'voku') {
 
   resetMapTransform();
 
-  // Ziehen mit Maus, Finger oder Stift verschiebt die Karte, auch auf einem Kurs. Erst ab 4 px Bewegung,
-  // damit Klick und Tipp den Kurs auswaehlen; Pointer Capture erst dann, sonst trifft der Klick den Kurs nicht mehr
+  // Ziehen mit Maus, Finger oder Stift verschiebt die Karte, auch auf einem Kurs. Erst ab 4 px Bewegung (Finger und
+  // Stift 15 px: so weit darf ein Tipp wandern), damit Klick und Tipp den Kurs auswaehlen; Pointer Capture erst dann,
+  // sonst trifft der Klick den Kurs nicht mehr
   viewport.addEventListener('pointerdown', (e) => {
     if (!e.isPrimary || e.button !== 0) return;
     mapTransform.pointerId = e.pointerId;
@@ -69,10 +70,12 @@ export function setupInteractiveMap(courseId = 'voku') {
 
   window.addEventListener('pointermove', (e) => {
     if (e.pointerId !== mapTransform.pointerId) return;
+    // Loslassen nicht mitbekommen (z.B. ueber einem Kontextmenue): Ziehen beenden
+    if (!e.buttons) return endDrag(e);
     const x = e.clientX - mapTransform.startX;
     const y = e.clientY - mapTransform.startY;
     if (!mapTransform.isPanning) {
-      if (Math.hypot(x - mapTransform.x, y - mapTransform.y) <= 4) return;
+      if (Math.hypot(x - mapTransform.x, y - mapTransform.y) <= (e.pointerType === 'mouse' ? 4 : 15)) return;
       mapTransform.isPanning = true;
       viewport.setPointerCapture(e.pointerId);
       container?.classList.add('is-panning');
@@ -92,9 +95,15 @@ export function setupInteractiveMap(courseId = 'voku') {
   window.addEventListener('pointerup', endDrag);
   window.addEventListener('pointercancel', endDrag);
 
-  // Ein Ziehen waehlt den Kurs nicht aus, auf dem es begonnen hat
+  // Ein Finger verschiebt nur die Karte: sonst erkennt der Browser dazu eine Wischgeste, die den naechsten Tipp
+  // verschluckt. Zwei Finger zoomen weiter die Seite
+  viewport.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1 && e.cancelable) e.preventDefault();
+  }, { passive: false });
+
+  // Ein Ziehen waehlt den Kurs nicht aus, auf dem es begonnen hat; andere Klicks laufen weiter (Menues schliessen)
   viewport.addEventListener('click', (e) => {
-    if (mapTransform.isPanning) e.stopPropagation();
+    if (mapTransform.isPanning && e.target.closest('.tree-node-card')) e.stopPropagation();
   }, true);
 
   // Tastatur: einen fokussierten Kurs ausserhalb des Ausschnitts ganz ins Bild schieben. Der Browser wuerde
@@ -123,6 +132,7 @@ export function applyMapTransform() {
   const zoomLabel = document.getElementById('treeZoomLabel');
   if (canvas) {
     canvas.style.transform = `translate(${mapTransform.x}px, ${mapTransform.y}px) scale(${mapTransform.zoom})`;
+    canvas.style.setProperty('--map-zoom', mapTransform.zoom);
   }
   if (zoomLabel) {
     zoomLabel.textContent = `${Math.round(mapTransform.zoom * 100)}%`;
@@ -150,16 +160,22 @@ function zoomAround(zoom, pointX, pointY, rect) {
   applyMapTransform();
 }
 
-// Startansicht: 100 %, zentriert auf den Kurs, an dem die Person steht. Ist die Flaeche groesser als der
-// Viewport, endet sie hoechstens 24 px vor dessen Rand; ist sie kleiner, steht sie in der Mitte.
+// Startansicht: 100 %, zentriert auf den Kurs, an dem die Person steht. Ragen die Kurse ueber den Viewport
+// hinaus, bleibt neben dem aeussersten Kurs hoechstens 24 px leere Flaeche; passen sie hinein, stehen sie in der Mitte.
 export function resetMapTransform() {
   const viewport = document.getElementById('treeMapViewport');
   const rect = viewport ? viewport.getBoundingClientRect() : { width: 1000, height: 600 };
   const course = COURSE_MAP_COORDS[startCourseId];
-  const place = (offset, view, size) => (size <= view ? (view - size) / 2 : Math.min(Math.max(offset, view - size - 24), 24));
+  const xs = Object.values(COURSE_MAP_COORDS).map(c => c.x);
+  const ys = Object.values(COURSE_MAP_COORDS).map(c => c.y);
+  // offset zentriert den Kurs; first/last: Rand der aeussersten Kurse auf der Flaeche
+  const place = (offset, view, first, last) => (last - first <= view
+    ? (view - first - last) / 2
+    : Math.min(Math.max(offset, view - last - 24), 24 - first));
+  viewport?.scrollTo(0, 0);
   mapTransform.zoom = 1.0;
-  mapTransform.x = place(rect.width / 2 - course.x - NODE_WIDTH / 2, rect.width, CANVAS_WIDTH);
-  mapTransform.y = place(rect.height / 2 - course.y - NODE_HEIGHT / 2, rect.height, CANVAS_HEIGHT);
+  mapTransform.x = place(rect.width / 2 - course.x - NODE_WIDTH / 2, rect.width, Math.min(...xs), Math.max(...xs) + NODE_WIDTH);
+  mapTransform.y = place(rect.height / 2 - course.y - NODE_HEIGHT / 2, rect.height, Math.min(...ys), Math.max(...ys) + NODE_HEIGHT);
   applyMapTransform();
 }
 
@@ -175,7 +191,9 @@ function fitZoom(rect) {
   return Math.min((rect.width - 40) / CANVAS_WIDTH, (rect.height - 40) / CANVAS_HEIGHT);
 }
 
+// Auch einen Scroll des Viewports aufheben, den der Browser selbst setzt (z.B. beim Suchen auf der Seite)
 function centerCanvas(zoom, rect) {
+  document.getElementById('treeMapViewport')?.scrollTo(0, 0);
   mapTransform.zoom = zoom;
   mapTransform.x = (rect.width - CANVAS_WIDTH * zoom) / 2;
   mapTransform.y = (rect.height - CANVAS_HEIGHT * zoom) / 2;

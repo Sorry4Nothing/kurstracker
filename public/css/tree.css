@@ -232,6 +232,9 @@
   width: 2360px;
   height: 840px;
   transform-origin: 0 0;
+  /* Current zoom, written by tree-map.js: the rings on the nodes divide by
+     it and stay 2px on screen at every zoom */
+  --map-zoom: 1;
 }
 
 /* Loading and error text before the map exists: keep it in view at the
@@ -345,14 +348,14 @@
   border-top-color: var(--route);
   border-right-color: var(--route);
   border-bottom-color: var(--route);
-  outline: 2px solid var(--route);
-  outline-offset: 2px;
+  outline: calc(2px / var(--map-zoom)) solid var(--route);
+  outline-offset: calc(2px / var(--map-zoom));
 }
 
 /* Keyboard focus wins over the selection ring (same specificity, later). */
 .tree-node-card:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: calc(2px / var(--map-zoom)) solid var(--focus-ring);
+  outline-offset: calc(2px / var(--map-zoom));
 }
 
 .node-header {
@@ -724,11 +727,13 @@
 
   /* Exactly as tall as the canvas: size containment keeps the content out
      of the row height, longer content scrolls inside (tabindex="0" in the
-     HTML makes it scrollable by keyboard) */
+     HTML makes it scrollable by keyboard). The reserved gutter keeps the
+     text still when a scrollbar comes and goes. */
   .tree-inspector-panel {
     contain: size;
     overflow-y: auto;
     overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
 }
 

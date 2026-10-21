@@ -27,6 +27,24 @@ const outsideMap = page => page.locator('.tree-node-card').evaluateAll(cards => 
   }).map(card => card.id);
 });
 
+// Leere Fläche zwischen Kartenrand und äusserstem Kurs, je Achse: [links, rechts] und [oben, unten]
+const emptyBesideCourses = page => page.locator('.tree-node-card').evaluateAll(cards => {
+  const map = document.getElementById('treeMapViewport').getBoundingClientRect();
+  const rects = cards.map(card => card.getBoundingClientRect());
+  const first = side => Math.min(...rects.map(r => r[side]));
+  const last = side => Math.max(...rects.map(r => r[side]));
+  return [[first('left') - map.left, map.right - last('right')], [first('top') - map.top, map.bottom - last('bottom')]]
+    .map(pair => pair.map(px => Math.max(0, px)));
+});
+
+// Mit der Maus von einem Punkt im Kurs aus um dx / dy ziehen
+async function dragFrom(page, box, dx, dy) {
+  await page.mouse.move(box.x + 20, box.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 20 + dx, box.y + 20 + dy, { steps: 4 });
+  await page.mouse.up();
+}
+
 // «Baum verkleinern», bis sich die Anzeige nicht mehr ändert: dann zeigt die Karte die Übersicht
 async function zoomOutFully(page) {
   const label = page.locator('#treeZoomLabel');
@@ -194,24 +212,67 @@ test.describe('Ausbildungsbaum', () => {
     expect(after.y - before.y).toBeCloseTo(60, 0);
   });
 
-  test('Ziehen auf einem Kurs verschiebt die Karte, ohne ihn auszuwählen; ein Klick ohne Bewegung wählt ihn aus', async ({ page, request }) => {
+  test('Ziehen auf einem Kurs verschiebt die Karte, ohne ihn auszuwählen; Enter danach und ein Klick mit 3 px Bewegung wählen aus', async ({ page, request }) => {
     const node = page.locator(`#nodeCard-${await startCourse(request)}`);
+    const title = page.locator('#inspectorTitle');
     const before = await node.boundingBox();
 
-    await page.mouse.move(before.x + 20, before.y + 20);
-    await page.mouse.down();
-    await page.mouse.move(before.x + 80, before.y - 10, { steps: 4 });
-    await page.mouse.up();
-
+    await dragFrom(page, before, 60, -30);
     const after = await node.boundingBox();
     expect(after.x - before.x).toBeCloseTo(60, 0);
     expect(after.y - before.y).toBeCloseTo(-30, 0);
     await expect(node).not.toHaveClass(/is-selected/);
-    await expect(page.locator('#inspectorTitle')).toHaveText('Kurs auswählen');
+    await expect(title).toHaveText('Kurs auswählen');
 
-    await node.click();
+    // Das Ziehen verschluckt nur seinen eigenen Klick
+    await page.getByRole('button', { name: /Vorkurs/ }).press('Enter');
+    await expect(title).toContainText('Vorkurs');
+
+    const box = await node.boundingBox();
+    await dragFrom(page, box, 3, 0);
     await expect(node).toHaveClass(/is-selected/);
-    await expect(page.locator('#inspectorTitle')).not.toHaveText('Kurs auswählen');
+    expect(await node.boundingBox(), 'Karte bleibt stehen').toEqual(box);
+  });
+
+  test('Ziehen wählt den Kurs auch dann nicht aus, wenn der Browser den Klick nicht auf die Karte umleitet', async ({ page, request }) => {
+    // Ohne Pointer Capture landet der Klick nach dem Ziehen auf dem Kurs, wie in Browsern ohne Umleitung
+    await page.addInitScript(() => { Element.prototype.setPointerCapture = () => {}; });
+    await openApp(page);
+    const node = page.locator(`#nodeCard-${await startCourse(request)}`);
+
+    await dragFrom(page, await node.boundingBox(), 60, -30);
+    await expect(node).not.toHaveClass(/is-selected/);
+    await expect(page.locator('#inspectorTitle')).toHaveText('Kurs auswählen');
+  });
+
+  test('zurück im Baum zeigt die Karte wieder die Startansicht', async ({ page, request }) => {
+    await zoomOutFully(page);
+    await page.getByRole('button', { name: 'Profil & Cockpit' }).click();
+    await expect(page.locator('#panel-profile')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Ausbildungsbaum' }).click();
+    await expect(page.locator('#treeZoomLabel')).toHaveText('100%');
+    expect(await outsideMap(page)).not.toContain(`nodeCard-${await startCourse(request)}`);
+  });
+
+  test('längere Inhalte scrollen im Inspektor, ein neuer Kurs steht wieder oben', async ({ page }) => {
+    const inspector = page.locator('#treeInspector');
+    const title = page.locator('#inspectorTitle');
+    // Bei 1280 x 720 sind Wasser und Experte länger als der Inspektor
+    await page.getByRole('button', { name: /Sicherheitsmodul Wasser/ }).press('Enter');
+    await expect(title).toContainText('Wasser');
+
+    const box = await inspector.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.wheel(0, 1000);
+    await expect.poll(async () => {
+      const last = await page.locator('#inspectorChecks .check-item').last().boundingBox();
+      return last.y + last.height <= box.y + box.height;
+    }, { message: 'letzter Punkt der Checkliste ins Bild gescrollt' }).toBe(true);
+
+    await page.getByRole('button', { name: /Expertenkurs/ }).press('Enter');
+    await expect(title).toContainText('Expertenkurs');
+    expect(await inspector.evaluate(el => el.scrollTop)).toBe(0);
   });
 });
 
@@ -229,9 +290,51 @@ for (const [width, height] of [[1440, 900], [375, 812]]) {
       expect(await outsideMap(page)).not.toContain(course);
       const box = await page.locator(`#${course}`).boundingBox();
       expect(box.y + box.height, 'ohne Scrollen der Seite sichtbar').toBeLessThanOrEqual(height);
+
+      // Kein leerer Streifen statt Kursen: am Rand höchstens 24 px Fläche neben dem äussersten Kurs,
+      // ausser die Kurse passen hinein und stehen in der Mitte
+      for (const [before, after] of await emptyBesideCourses(page)) {
+        expect(Math.abs(before - after) <= 1 || Math.max(before, after) <= 24.5, `leer ${before} / ${after} px`).toBe(true);
+      }
+    });
+
+    test('verkleinern zeigt die Übersicht mit jedem Kurs ganz im Bild', async ({ page }) => {
+      await openApp(page);
+      await zoomOutFully(page);
+      expect(await outsideMap(page)).toEqual([]);
     });
   });
 }
+
+// Touch: ein Finger verschiebt die Karte, ein Tipp wählt aus, auch wenn der Finger dabei etwas wandert
+test.describe('Ausbildungsbaum mit Touch 375 x 812', () => {
+  test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+
+  test('Wischen auf einem Kurs verschiebt die Karte statt der Seite, der Tipp danach wählt ihn aus', async ({ page, request }) => {
+    await openApp(page);
+    const node = page.locator(`#nodeCard-${await startCourse(request)}`);
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+
+    // Zügig wischen, wie mit dem Daumen
+    const before = await node.boundingBox();
+    await touch('touchStart', before.x + 20, before.y + 20);
+    for (let i = 1; i <= 8; i++) await touch('touchMove', before.x + 20 + i * 7.5, before.y + 20 - i * 3.75);
+    await touch('touchEnd');
+    const after = await node.boundingBox();
+    expect(after.x - before.x).toBeCloseTo(60, 0);
+    expect(after.y - before.y).toBeCloseTo(-30, 0);
+    expect(await page.evaluate(() => window.scrollY), 'Seite scrollt nicht mit').toBe(0);
+    await expect(node).not.toHaveClass(/is-selected/);
+
+    // Gleich danach ein Tipp, bei dem der Finger 8 px wandert: wählt aus, die Karte bleibt stehen
+    await touch('touchStart', after.x + 20, after.y + 20);
+    await touch('touchMove', after.x + 28, after.y + 20);
+    await touch('touchEnd');
+    await expect(node).toHaveClass(/is-selected/);
+    expect(await node.boundingBox(), 'Karte bleibt stehen').toEqual(after);
+  });
+});
 
 // Ab 1201 px: Baumfläche und Inspektor nebeneinander, bis zur Fusszeile, ohne dass die Seite scrollt
 for (const [width, height] of [[1440, 900], [1280, 720], [1920, 1080]]) {

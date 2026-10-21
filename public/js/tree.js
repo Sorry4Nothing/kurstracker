@@ -264,4 +264,6 @@ export function updateTreeInspector(targetNode, pathResult) {
 
   checksContainer.innerHTML = checksHtml;
   actionsContainer.style.display = 'block';
+  // Ab 1201 px scrollt der Inspektor selbst: einen neuen Kurs von oben zeigen
+  document.getElementById('treeInspector').scrollTop = 0;
 }
