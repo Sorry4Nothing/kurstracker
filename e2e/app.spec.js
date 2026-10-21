@@ -174,6 +174,7 @@ test.describe('Profil', () => {
     const other = courses.find(c => c.category !== 'Sicherheit');
     await search.fill(other.code);
     await expect(cards).toHaveCount(0);
+    await expect(page.locator('#coursesContainer')).toHaveText('Keine passenden Kurse gefunden.');
 
     await search.fill('');
     await page.locator('#categoryDropdownTrigger').click();
