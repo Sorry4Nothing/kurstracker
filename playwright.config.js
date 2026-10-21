@@ -26,7 +26,10 @@ export default defineConfig({
     env: {
       HOST: '127.0.0.1',
       PORT: '3100',
-      CEVI_DB_PREPARATION_MODE: 'true'
+      CEVI_DB_PREPARATION_MODE: 'true',
+      // Alle Browser-Tests laufen von einer IP gegen einen Server: Rate Limits hier nicht greifen lassen
+      RATE_LIMIT_AUTH_MAX: '100000',
+      RATE_LIMIT_API_MAX: '100000'
     }
   }
 });

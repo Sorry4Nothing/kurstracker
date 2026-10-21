@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 // Vor dem Import setzen: env.js liest die Variablen beim Laden, dotenv überschreibt sie nicht
 process.env.CEVI_DB_PREPARATION_MODE = 'true';
-const { app } = await import('../src/app.js');
+// Alle Tests laufen von derselben IP: das Anmelde-Limit hier anheben, der 429-Test am Dateiende zählt bis dahin weiter
+process.env.RATE_LIMIT_AUTH_MAX = '200';
+const { app, logSafe } = await import('../src/app.js');
 const { ceviDbService } = await import('../src/services/ceviDbService.js');
 const { envConfig } = await import('../src/config/env.js');
 const { COURSE_NODES } = await import('../src/domain/courseTreeData.js');
@@ -181,11 +183,9 @@ test('API: Pfad zu unbekanntem Kurs oder Prototyp-Schlüssel liefert einen JSON-
   }
 });
 
-test('API: Pfad zu unbekanntem Kurs ist ein Client-Fehler (4xx), kein Serverfehler', {
-  todo: 'Bug #53: /api/tree/path/<unbekannt> antwortet mit 500, weil der Fehler der Engine keinen Status trägt (src/app.js:280, src/domain/courseTreeEngine.js:201); /api/planner/propose gibt im selben Fall 400'
-}, async () => {
+test('API: Pfad zu unbekanntem Kurs ist ein Client-Fehler (404), kein Serverfehler (#53)', async () => {
   const res = await request('/api/tree/path/gibt_es_nicht');
-  assert.ok(res.status >= 400 && res.status < 500, `Status ${res.status}`);
+  assert.equal(res.status, 404);
 });
 
 // -----------------------------------------------------------------------------
@@ -319,13 +319,16 @@ test('Login: signiertes, kurzlebiges state-Cookie passend zur Weiterleitung, Moc
 
 test('OAuth-Callback: Abbruch, fehlender Code und Vorbereitungsmodus führen ohne Session zurück und löschen das state-Cookie', async (t) => {
   t.mock.method(console, 'error', () => {});
-  const { state, cookie } = await startLogin();
+  // Jeder Fall mit eigenem Login: ein State ist serverseitig nur einmal einlösbar
   const cases = [
-    [`error=access_denied&error_description=${encodeURIComponent('Zugriff verweigert')}`, `/?error=${encodeURIComponent('Zugriff verweigert')}`],
-    [`state=${state}`, '/?error=missing_code'],
-    [`state=${state}&code=abc`, '/?error=preparation_mode']
+    // Anbieter-Text bleibt im Log; der Client sieht nur den festen Code (keine fremden Inhalte in der URL)
+    [() => `error=access_denied&error_description=${encodeURIComponent('Zugriff verweigert')}`, '/?error=provider_error'],
+    [state => `state=${state}`, '/?error=missing_code'],
+    [state => `state=${state}&code=abc`, '/?error=preparation_mode']
   ];
-  for (const [query, location] of cases) {
+  for (const [buildQuery, location] of cases) {
+    const { state, cookie } = await startLogin();
+    const query = buildQuery(state);
     const res = await request(`/api/auth/callback?${query}`, { cookie });
     assert.equal(res.status, 302, query);
     assert.equal(res.headers.get('location'), location, query);
@@ -362,7 +365,8 @@ test('OAuth-Callback: fehlgeschlagener Token-Tausch legt keine Session an', asyn
   t.mock.method(ceviDbService, 'exchangeCodeForToken', async () => { throw new Error('Token abgelehnt'); });
   const { state, cookie } = await startLogin();
   const res = await request(`/api/auth/callback?code=abc&state=${state}`, { cookie });
-  assert.equal(res.headers.get('location'), `/?error=${encodeURIComponent('Token abgelehnt')}`);
+  // Interne Fehlertexte gehören nicht in die URL: fester Code statt err.message
+  assert.equal(res.headers.get('location'), '/?error=callback_failed');
   assert.equal(setCookieLine(res, 'cevi_session_id'), undefined);
 });
 
@@ -410,10 +414,9 @@ test('Logout: nur per POST, beendet die Session serverseitig und löscht das Coo
   assert.deepEqual(await res.json(), { success: true });
   assert.match(setCookieLine(res, 'cevi_session_id'), /Expires=Thu, 01 Jan 1970/);
 
-  // Altes Cookie erneut gesendet: die Session ist serverseitig weg, es gilt wieder das Demo-Profil
+  // Altes Cookie erneut gesendet: die Session ist serverseitig weg; im Live-Modus ist man damit abgemeldet
   const me = await (await request('/api/auth/me', { cookie })).json();
-  assert.equal(me.isMock, true);
-  assert.notEqual(me.user.id, 'p_4');
+  assert.deepEqual(me, { authenticated: false });
 });
 
 test('Session: Cookie mit falscher Signatur oder ohne Signatur wird ignoriert', async (t) => {
@@ -421,7 +424,8 @@ test('Session: Cookie mit falscher Signatur oder ohne Signatur wird ignoriert', 
   const signed = cookiePair(await login({ id: 'p_5', roles: [] }));
   const sessionId = decodeURIComponent(signed).split(':')[1].split('.')[0];
   for (const cookie of [signed.replace(/\.[^.]+$/, '.falsch'), `cevi_session_id=${sessionId}`]) {
-    assert.equal((await (await request('/api/auth/me', { cookie })).json()).isMock, true, cookie);
+    // Gefälschte Cookies zählen im Live-Modus als nicht angemeldet, nie als Demo-Profil
+    assert.deepEqual(await (await request('/api/auth/me', { cookie })).json(), { authenticated: false }, cookie);
   }
   assert.equal((await (await request('/api/auth/me', { cookie: signed })).json()).user.id, 'p_5');
 });
@@ -432,8 +436,10 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
   let reply = () => Response.json({ data: [{ id: '7', type: 'events', attributes: { name: 'GLK 3 Herbst' } }] });
   const remote = t.mock.method(globalThis, 'fetch', async () => reply());
 
-  // Ohne Login bleibt die Demo-Session bei den Testdaten, statt die Cevi-DB mit ihrem Mock-Token abzufragen
-  assert.deepEqual(await (await request('/api/courses')).json(), ceviDbService.getMockCourses());
+  // Ohne Login gibt es im Live-Modus keinen Zugriff und keinen Abruf der Cevi-DB
+  const anon = await request('/api/courses');
+  assert.equal(anon.status, 401);
+  assert.deepEqual(await anon.json(), { error: 'Nicht angemeldet' });
   assert.equal(remote.mock.callCount(), 0);
 
   const courses = await request('/api/courses', { cookie });
@@ -453,4 +459,88 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
     assert.equal(res.status, expected, `Cevi-DB ${upstream}`);
     assert.match((await res.json()).error, /Cevi-DB Abruf fehlgeschlagen/);
   }
+});
+
+// -----------------------------------------------------------------------------
+// Härtung: Header, CSRF-Schutz, Fehlerbehandlung, Rate Limit (Issue #18, Audit #19)
+// -----------------------------------------------------------------------------
+
+test('Security-Header stehen auf Seiten und API, personenbezogene JSON-Antworten sind no-store', async () => {
+  for (const path of ['/', '/api/system/status']) {
+    const res = await request(path);
+    assert.ok(res.headers.get('content-security-policy').includes("default-src 'self'"), path);
+    assert.equal(res.headers.get('x-content-type-options'), 'nosniff', path);
+    assert.equal(res.headers.get('x-frame-options'), 'DENY', path);
+    assert.equal(res.headers.get('referrer-policy'), 'strict-origin-when-cross-origin', path);
+    // HSTS gehört zu HTTPS: lokal (ohne TLS) darf der Header nicht gesetzt sein
+    assert.equal(res.headers.get('strict-transport-security'), null, path);
+  }
+  assert.equal((await request('/api/auth/me')).headers.get('cache-control'), 'no-store');
+});
+
+test('CSRF-Schutz: Schreibzugriffe mit fremder Herkunft werden abgelehnt, eigene und headerlose nicht', async () => {
+  const foreign = await httpFetch(`${baseUrl}/api/auth/logout`, { method: 'POST', headers: { Origin: 'https://boese.example' } });
+  assert.equal(foreign.status, 403);
+  assert.deepEqual(await foreign.json(), { error: 'Anfrage von fremder Herkunft abgelehnt' });
+
+  const foreignReferer = await httpFetch(`${baseUrl}/api/auth/logout`, { method: 'POST', headers: { Referer: 'https://boese.example/seite' } });
+  assert.equal(foreignReferer.status, 403);
+
+  // Eigene Herkunft (Browser gleicher Origin) und Clients ohne Origin/Referer (curl, Tests) bleiben erlaubt
+  const own = await httpFetch(`${baseUrl}/api/auth/logout`, { method: 'POST', headers: { Origin: baseUrl } });
+  assert.equal(own.status, 200);
+  assert.equal((await request('/api/auth/logout', { method: 'POST' })).status, 200);
+
+  // Lesezugriffe mit fremder Herkunft bleiben möglich (kein CORS-Leak: Antwort liest der fremde Kontext ohnehin nicht)
+  assert.equal((await httpFetch(`${baseUrl}/api/system/status`, { headers: { Origin: 'https://boese.example' } })).status, 200);
+});
+
+test('Kaputtes JSON und zu grosse Bodies geben einen JSON-Fehler ohne Interna', async (t) => {
+  t.mock.method(console, 'error', () => {});
+  const broken = await httpFetch(`${baseUrl}/api/planner/propose`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{kaputt'
+  });
+  assert.equal(broken.status, 400);
+  assert.deepEqual(await broken.json(), { error: 'Ungültige Anfrage' });
+
+  const huge = await httpFetch(`${baseUrl}/api/planner/propose`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes: 'x'.repeat(60 * 1024) })
+  });
+  assert.equal(huge.status, 413);
+  assert.deepEqual(await huge.json(), { error: 'Ungültige Anfrage' });
+});
+
+test('logSafe entfernt Zeilenumbrüche und Steuerzeichen und begrenzt die Länge', () => {
+  assert.equal(logSafe('a\r\nFAKE-LOGZEILE\x1b[31m\x00b'), 'a FAKE-LOGZEILE [31m b');
+  assert.equal(logSafe('x'.repeat(500)).length, 300);
+  assert.equal(logSafe(null), '');
+});
+
+test('OAuth-Callback: ein State ist nur einmal einlösbar, auch mit gültigem Cookie', async (t) => {
+  t.mock.method(ceviDbService, 'isPreparationMode', () => false);
+  const exchange = t.mock.method(ceviDbService, 'exchangeCodeForToken', async code => ({ access_token: `live_${code}` }));
+  t.mock.method(ceviDbService, 'getUserInfo', async () => ({ id: 'p_9', roles: [] }));
+  const { state, cookie } = await startLogin();
+  const first = await request(`/api/auth/callback?code=abc&state=${state}`, { cookie });
+  assert.equal(first.headers.get('location'), '/?login=success');
+  // Wiederholung mit demselben Cookie und State: abgewiesen, ohne erneuten Token-Tausch
+  const replay = await request(`/api/auth/callback?code=abc&state=${state}`, { cookie });
+  assert.equal(replay.headers.get('location'), '/?error=invalid_state');
+  assert.equal(exchange.mock.callCount(), 1);
+});
+
+// Bleibt der letzte Test der Datei: danach ist das Auth-Kontingent dieser Instanz aufgebraucht
+test('Rate Limit: Anmelde-Endpunkte drosseln nach zu vielen Versuchen mit 429', async () => {
+  let limited;
+  for (let i = 0; i < 250; i++) {
+    limited = await request('/api/auth/mock-login');
+    if (limited.status === 429) break;
+  }
+  assert.equal(limited.status, 429);
+  assert.deepEqual(await limited.json(), { error: 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.' });
+  assert.ok(limited.headers.get('ratelimit-policy') || limited.headers.get('ratelimit'), 'RateLimit-Header fehlt');
 });

@@ -3,8 +3,9 @@ import { app } from './app.js';
 
 // Server starten
 const validation = validateEnv();
-if (!validation.valid && envConfig.app.isProduction) {
-  console.error('\n❌ FEHLER: Ungültige Konfiguration in Produktionsumgebung!');
+// Nur lokal darf mit Konfigurationsfehlern gestartet werden; development und production laufen auf geteilten Servern
+if (!validation.valid && !envConfig.app.isLocal) {
+  console.error(`\n❌ FEHLER: Ungültige Konfiguration (${envConfig.app.env})!`);
   validation.errors.forEach(e => console.error('  -', e));
   process.exit(1);
 }
