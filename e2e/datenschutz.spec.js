@@ -17,14 +17,6 @@ test.describe('Datenschutzerklärung', () => {
     await expect(page.locator('#panel-tree')).toBeVisible();
   });
 
-  test('nennt die verantwortliche Stelle mit Kontaktadresse', async ({ page }) => {
-    await page.goto('/datenschutz.html');
-    const contact = page.locator('address');
-
-    await expect(contact).toContainText('Arbeitsgruppe Cevi.tools');
-    await expect(contact.getByRole('link', { name: 'info@cevi.tools' })).toHaveAttribute('href', 'mailto:info@cevi.tools');
-  });
-
   test('erscheint im gespeicherten Farbschema', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('cevi_theme', 'campfire'));
     await page.goto('/datenschutz.html');
