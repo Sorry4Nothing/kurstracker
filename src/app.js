@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { execFileSync } from 'child_process';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -30,9 +31,87 @@ const releaseVersion = readReleaseVersion();
 
 export const app = express();
 
+// Eine Zeile, ein Eintrag: Zeilenumbrüche und Steuerzeichen aus Nutzereingaben dürfen keine Log-Zeilen fälschen
+export function logSafe(value) {
+  return String(value ?? '').replace(/[\r\n\u0000-\u001f\u007f]+/g, ' ').slice(0, 300);
+}
+
+// Fehler mit gesetztem err.status (eigene Service-Fehler wie 401/502) geben ihre kuratierte Meldung weiter;
+// alles ohne Status ist unerwartet und bleibt intern (kein err.message, kein Stack an den Client)
+function sendError(res, err, context) {
+  if (!Number.isInteger(err?.status)) {
+    console.error(logSafe(`[${context}] ${err?.stack || err?.message || err}`));
+    return res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+  res.status(err.status).json({ error: String(err.message || 'Anfrage fehlgeschlagen').slice(0, 300) });
+}
+
+// Security-Header für alle Antworten (Seiten, Statics und API)
+// Inline-Handler (onclick) und style="" im HTML brauchen 'unsafe-inline'; externe Quellen bleiben auf Fonts/Icons begrenzt
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
+  "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
+  `img-src 'self' data: ${new URL(envConfig.ceviDb.baseUrl).origin}`,
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'"
+].join('; ');
+
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', CSP);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (envConfig.app.isProduction) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
 // Middlewares
-app.use(express.json());
+app.use(express.json({ limit: '50kb' }));
 app.use(cookieParser(envConfig.auth.sessionSecret));
+
+// CSRF-Schutz: Schreibende API-Aufrufe nur von der eigenen Seite (Browser senden Origin bei POST immer mit).
+// Clients ohne Origin/Referer (curl, Tests) tragen keine fremden Cookies und bleiben erlaubt.
+function requireSameOrigin(req, res, next) {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  const source = req.headers.origin ?? req.headers.referer;
+  if (!source) return next();
+  try {
+    if (new URL(source).host === req.headers.host) return next();
+  } catch {
+    // unlesbarer Origin/Referer zählt als fremd
+  }
+  res.status(403).json({ error: 'Anfrage von fremder Herkunft abgelehnt' });
+}
+
+// Rate Limits pro IP (hinter einem Reverse Proxy zusätzlich app.set('trust proxy', 1) setzen, sonst zählt die Proxy-IP)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.RATE_LIMIT_AUTH_MAX || 30),
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({ error: 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.' })
+});
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.RATE_LIMIT_API_MAX || 600),
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({ error: 'Zu viele Anfragen. Bitte später erneut versuchen.' })
+});
+
+app.use('/api', (req, res, next) => {
+  // Personenbezogene JSON-Antworten gehören in keinen Proxy-/Browser-Cache
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+}, requireSameOrigin, apiLimiter);
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 Tage
 const COOKIE_OPTIONS = {
@@ -45,17 +124,20 @@ const COOKIE_OPTIONS = {
 // In-Memory Session Store
 // shortcut: Sessions liegen im Prozess-Speicher (weg nach Neustart, nicht zwischen Prozessen geteilt), bei mehreren Prozessen auf einen gemeinsamen Store umstellen
 const activeSessions = new Map();
+const MAX_ACTIVE_SESSIONS = 5000;
 
 function getSession(req) {
   const sessionId = req.signedCookies?.cevi_session_id;
   const session = sessionId && activeSessions.get(sessionId);
-  if (session && Date.now() - session.createdAt < SESSION_MAX_AGE_MS) {
-    return session;
+  if (session) {
+    if (Date.now() - session.createdAt < SESSION_MAX_AGE_MS) return session;
+    activeSessions.delete(sessionId);
   }
-  // Auto-login: Login pausieren / skippen - Standardmässig mit Siro's Profil arbeiten
-  const defaultUser = ceviDbService.getMockUser();
+  // Nur der Vorbereitungsmodus arbeitet ohne Login mit dem Demo-Profil.
+  // Im Live-Betrieb gibt es ohne gültige Session keinen Zugriff (null → 401 in requireAuth/requirePlanner).
+  if (!ceviDbService.isPreparationMode()) return null;
   return {
-    user: defaultUser,
+    user: ceviDbService.getMockUser(),
     accessToken: 'mock_token_cevi_auto',
     isMock: true,
     isDefaultSession: true
@@ -67,6 +149,10 @@ function setSession(res, sessionData) {
   // Abgelaufene Sessions entfernen, damit der Store nicht endlos wächst
   for (const [id, session] of activeSessions) {
     if (now - session.createdAt >= SESSION_MAX_AGE_MS) activeSessions.delete(id);
+  }
+  // Harte Obergrenze gegen Speicher-DoS: die ältesten Sessions weichen zuerst (Map hält Einfüge-Reihenfolge)
+  while (activeSessions.size >= MAX_ACTIVE_SESSIONS) {
+    activeSessions.delete(activeSessions.keys().next().value);
   }
 
   const sessionId = crypto.randomUUID();
@@ -80,16 +166,29 @@ function setSession(res, sessionData) {
   return sessionId;
 }
 
+function requireAuth(req, res, next) {
+  if (getSession(req)) return next();
+  res.status(401).json({ error: 'Nicht angemeldet' });
+}
+
 // Rollen mit Zugriff auf den Stufenleiter-Planer
 const PLANNER_ROLES = ['abteilungsleiter', 'stufenleiter', 'kader', 'kursleiter', 'admin'];
 
 function canUsePlanner(user) {
-  const roles = (user?.roles || []).map(r => String(r).toLowerCase());
-  return roles.some(r => PLANNER_ROLES.some(allowed => r.includes(allowed)));
+  // Wortweise vergleichen statt Substring: "J+S Kursleiter" und "Stufenleiterin" zählen, "Ex-Abteilungsleiter-Kurs" als Teilwort nicht
+  return (user?.roles || []).some(role =>
+    String(role).toLowerCase().replace(/[*:]/g, '').split(/[^a-zäöüéèà]+/).some(word =>
+      PLANNER_ROLES.some(allowed => word === allowed || word === `${allowed}in`)
+    )
+  );
 }
 
 function requirePlanner(req, res, next) {
-  if (canUsePlanner(getSession(req).user)) {
+  const session = getSession(req);
+  if (!session) {
+    return res.status(401).json({ error: 'Nicht angemeldet' });
+  }
+  if (canUsePlanner(session.user)) {
     return next();
   }
   res.status(403).json({ error: 'Kein Zugriff auf den Stufenleiter-Planer' });
@@ -100,6 +199,8 @@ function requirePlanner(req, res, next) {
 // -----------------------------------------------------------------------------
 
 // OAuth Login Initiation
+app.use(['/api/auth/login', '/api/auth/mock-login', '/api/auth/callback', '/api/auth/logout'], authLimiter);
+
 app.get('/api/auth/login', (req, res) => {
   const state = crypto.randomUUID();
   res.cookie('cevi_oauth_state', state, { ...COOKIE_OPTIONS, maxAge: 10 * 60 * 1000 });
@@ -120,8 +221,9 @@ app.get('/api/auth/callback', async (req, res) => {
   res.clearCookie('cevi_oauth_state');
 
   if (error) {
-    console.error('[OAuth Callback Error]:', error, error_description);
-    return res.redirect(`/?error=${encodeURIComponent(error_description || error)}`);
+    // Werte stammen aus der URL: fürs Log entschärfen, an den Client nur ein fester Code statt fremdem Text
+    console.error('[OAuth Callback] Anbieter-Fehler:', logSafe(error), logSafe(error_description));
+    return res.redirect('/?error=provider_error');
   }
 
   if (!state || state !== expectedState) {
@@ -149,14 +251,18 @@ app.get('/api/auth/callback', async (req, res) => {
 
     res.redirect('/?login=success');
   } catch (err) {
-    console.error('[OAuth Callback Exception]:', err.message);
-    res.redirect(`/?error=${encodeURIComponent(err.message)}`);
+    // err.message kann Upstream-Antworten enthalten: bleibt im Log, nie in der URL
+    console.error('[OAuth Callback] Abbruch:', logSafe(err.message));
+    res.redirect('/?error=callback_failed');
   }
 });
 
-// Aktuell eingeloggter Benutzer (Login direkt übersprungen / aktiv)
+// Aktuell eingeloggter Benutzer; im Live-Betrieb ohne Session ehrlich "nicht angemeldet"
 app.get('/api/auth/me', (req, res) => {
   const session = getSession(req);
+  if (!session) {
+    return res.json({ authenticated: false });
+  }
   res.json({
     authenticated: true,
     user: session.user,
@@ -176,18 +282,18 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Kurse abrufen (Cevi & J+S)
-app.get('/api/courses', async (req, res) => {
+app.get('/api/courses', requireAuth, async (req, res) => {
   try {
     const session = getSession(req);
     const courses = await ceviDbService.getCourses(session.accessToken);
     res.json(courses);
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    sendError(res, err, 'Kurse');
   }
 });
 
 // Bisherige und angemeldete Kursteilnahmen (Kurshistorie)
-app.get('/api/user/history', async (req, res) => {
+app.get('/api/user/history', requireAuth, async (req, res) => {
   try {
     const session = getSession(req);
     const participations = await ceviDbService.getUserParticipations(
@@ -196,12 +302,12 @@ app.get('/api/user/history', async (req, res) => {
     );
     res.json(participations);
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    sendError(res, err, 'Kurshistorie');
   }
 });
 
 // Qualifikationen (J+S Lagersport/Trekking, Scharleiter, SLRG etc.)
-app.get('/api/user/qualifications', async (req, res) => {
+app.get('/api/user/qualifications', requireAuth, async (req, res) => {
   try {
     const session = getSession(req);
     const qualifications = await ceviDbService.getUserQualifications(
@@ -210,7 +316,7 @@ app.get('/api/user/qualifications', async (req, res) => {
     );
     res.json(qualifications);
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    sendError(res, err, 'Qualifikationen');
   }
 });
 
@@ -256,7 +362,7 @@ async function resolveActivePerson(req) {
 }
 
 // Liefert die Bewertung des Ausbildungsbaums für den aktuellen Benutzer
-app.get('/api/tree/evaluation', async (req, res) => {
+app.get('/api/tree/evaluation', requireAuth, async (req, res) => {
   try {
     const person = await resolveActivePerson(req);
     const evaluation = courseTreeEngine.evaluatePersonInTree(person);
@@ -265,19 +371,24 @@ app.get('/api/tree/evaluation', async (req, res) => {
       evaluation
     });
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    sendError(res, err, 'Baumbewertung');
   }
 });
 
 // Berechnet den Pfad zu einem Zielkurs via GET
-app.get('/api/tree/path/:courseId', async (req, res) => {
+app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
   try {
     const { courseId } = req.params;
+    // Unbekannter Zielkurs ist ein Client-Fehler (404), kein Serverfehler (Bug #53)
+    const resolved = courseTreeEngine.resolveCourseId(courseId);
+    if (!Object.hasOwn(COURSE_NODES, resolved)) {
+      return res.status(404).json({ error: `Zielkurs '${String(courseId).slice(0, 40)}' existiert nicht im Ausbildungsbaum.` });
+    }
     const person = await resolveActivePerson(req);
     const pathResult = courseTreeEngine.findPathToTarget(person, courseId);
     res.json(pathResult);
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    sendError(res, err, 'Pfadberechnung');
   }
 });
 
@@ -343,7 +454,7 @@ app.get('/api/planner/overview', requirePlanner, (req, res) => {
       nominations: stufenleiterPlanningEngine.getAllNominations()
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err, 'Planer-Übersicht');
   }
 });
 
@@ -377,27 +488,31 @@ app.post('/api/planner/propose', requirePlanner, (req, res) => {
       pathCheck: result.pathCheck
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err, 'Kursvorschlag');
   }
 });
 
 // System Status & Diagnose
 app.get('/api/system/status', (req, res) => {
   const preparationMode = ceviDbService.isPreparationMode();
-  res.json({
+  const status = {
     status: 'online',
     version: releaseVersion,
-    appEnv: envConfig.app.env,
-    nodeEnv: envConfig.app.nodeEnv,
     preparationMode,
-    ceviDbBaseUrl: envConfig.ceviDb.baseUrl,
     ceviDbStatus: {
       // Nur der konfigurierte Modus, eine echte Verbindungsprüfung gibt es noch nicht
       message: preparationMode ? 'Vorbereitungsmodus (Testdaten)' : 'Live-Modus'
     },
-    configValidation: validateEnv(),
     timestamp: new Date().toISOString()
-  });
+  };
+  // Konfigurationsdiagnose (fehlende Secrets, Umgebung, interne URLs) ist Betriebswissen: nicht in Produktion ausliefern
+  if (!envConfig.app.isProduction) {
+    status.appEnv = envConfig.app.env;
+    status.nodeEnv = envConfig.app.nodeEnv;
+    status.ceviDbBaseUrl = envConfig.ceviDb.baseUrl;
+    status.configValidation = validateEnv();
+  }
+  res.json(status);
 });
 
 // Unbekannte API-Routen: JSON-Fehler statt index.html
@@ -412,4 +527,18 @@ app.use(express.static(path.join(projectRoot, 'public')));
 // Express 5 wildcard syntax: a named splat, in braces so it also matches "/"
 app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(projectRoot, 'public', 'index.html'));
+});
+
+// Letzte Instanz: auch Parser- und Routingfehler antworten als JSON, nie mit Stacktrace
+// (Express' Default-Handler hängt an NODE_ENV und liefert sonst den Stack an den Client)
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = Number.isInteger(err?.status) ? err.status
+    : Number.isInteger(err?.statusCode) ? err.statusCode
+    : 500;
+  if (status >= 400 && status < 500) {
+    return res.status(status).json({ error: 'Ungültige Anfrage' });
+  }
+  console.error(logSafe(`[Unbehandelter Fehler] ${err?.stack || err}`));
+  res.status(500).json({ error: 'Interner Serverfehler' });
 });

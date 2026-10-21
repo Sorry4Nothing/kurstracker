@@ -22,7 +22,8 @@ if (fs.existsSync(envLocalPath)) {
   dotenv.config(); // fallback
 }
 
-const rawAppEnv = (process.env.APP_ENV || 'local').toLowerCase().trim();
+// Ohne APP_ENV zählt NODE_ENV=production: sonst liefe ein Produktions-Deployment mit allen Dev-Lockerungen (Default-Secret, volle Diagnose)
+const rawAppEnv = (process.env.APP_ENV || (process.env.NODE_ENV === 'production' ? 'production' : 'local')).toLowerCase().trim();
 const normalizedAppEnv = ['local', 'development', 'production'].includes(rawAppEnv)
   ? rawAppEnv
   : 'local';
@@ -38,7 +39,8 @@ export const envConfig = {
   },
   server: {
     port: parseInt(process.env.PORT || '3000', 10),
-    host: process.env.HOST || (normalizedAppEnv === 'local' ? 'localhost' : '0.0.0.0'),
+    // Nur Produktion (hinter Proxy) lauscht auf allen Interfaces; lokal und development bleiben auf localhost
+    host: process.env.HOST || (normalizedAppEnv === 'production' ? '0.0.0.0' : 'localhost'),
     url: process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`
   },
   ceviDb: {
@@ -93,6 +95,10 @@ export function validateEnv() {
 
   if (envConfig.app.isDevelopment && !envConfig.ceviDb.preparationMode && !envConfig.ceviDb.clientSecret) {
     errors.push('DEVELOPMENT: Entweder Cevi-DB Credentials eintragen oder CEVI_DB_PREPARATION_MODE=true setzen.');
+  }
+
+  if (!envConfig.app.isProduction && envConfig.auth.sessionSecret.includes('change-in-production')) {
+    warnings.push('SESSION_SECRET ist der unsichere Entwicklungs-Default. Für alles ausser lokalem Testen ein eigenes Secret setzen.');
   }
 
   return {
