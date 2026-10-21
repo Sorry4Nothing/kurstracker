@@ -74,23 +74,24 @@ test.describe('Navigation', () => {
     await expect(card).not.toHaveClass(/active/);
   });
 
-  test('Profilkarte öffnet das Profil per Leertaste und Enter', async ({ page }) => {
+  test('Knopf «Profil & Cockpit» öffnet das Profil per Leertaste und Enter', async ({ page }) => {
+    // Die Karte ist nur Klickfläche für die Maus, auf der Tastatur bedient man ihren Knopf
     const card = page.locator('#userNavActions');
+    const button = card.getByRole('button', { name: 'Profil & Cockpit' });
 
-    await card.press('Space');
+    await button.press('Space');
     await expect(page.locator('#panel-profile')).toBeVisible();
     await expect(card).toHaveClass(/active/);
 
     await page.getByRole('button', { name: 'Ausbildungsbaum' }).click();
     await expect(page.locator('#panel-tree')).toBeVisible();
 
-    await card.press('Enter');
+    await button.press('Enter');
     await expect(page.locator('#panel-profile')).toBeVisible();
   });
 
   test('Knopf «Profil & Cockpit» in der Profilkarte öffnet das Profil', async ({ page }) => {
-    // exact: die ganze Karte ist selbst ein role=button und enthält den Text ebenfalls
-    await page.getByRole('button', { name: 'Profil & Cockpit', exact: true }).click();
+    await page.getByRole('button', { name: 'Profil & Cockpit' }).click();
     await expect(page.locator('#panel-profile')).toBeVisible();
     await expect(page.locator('#topbarPageTitle')).toHaveText('Mein Profil & Qualifikationen');
   });
