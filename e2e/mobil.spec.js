@@ -59,6 +59,9 @@ test.describe('Mobil 375 x 812', () => {
         await expect(page.locator(panel)).toBeVisible();
         await expect(page.locator('#appSidebar')).toBeHidden();
         await expectFitsScreenWidth(page);
+        // Die Profil-Felder scrollen senkrecht und gelten oben darum als Container: seitlich darf in ihnen nichts überstehen
+        const sideways = await page.locator(`${panel} .bento-card-body`).evaluateAll(els => els.map(el => el.scrollWidth - el.clientWidth));
+        expect(sideways.filter(px => px > 0), 'Inhalt ragt seitlich aus einem Profil-Feld').toEqual([]);
       });
     }
   }

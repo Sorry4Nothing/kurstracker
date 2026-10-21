@@ -185,7 +185,8 @@ test.describe('Profil', () => {
 
     // Das Kursangebot ist länger als sein Feld und scrollt darin; Überschrift und Kopfzeile bleiben stehen
     const courses = page.getByRole('region', { name: 'Aktuelles Kursangebot (Cevi & J+S)' });
-    expect(await courses.evaluate(el => [getComputedStyle(el).overflowY, el.scrollHeight > el.clientHeight])).toEqual(['auto', true]);
+    expect(await courses.evaluate(el => [getComputedStyle(el).overflowY, getComputedStyle(el).overscrollBehaviorY, el.scrollHeight > el.clientHeight]))
+      .toEqual(['auto', 'contain', true]);
     const fixed = [page.getByRole('heading', { name: 'Aktuelles Kursangebot (Cevi & J+S)' }), page.locator('.profile-page-hero')];
     const before = await Promise.all(fixed.map(el => el.boundingBox()));
     await courses.hover();
@@ -193,5 +194,46 @@ test.describe('Profil', () => {
     await expect.poll(() => courses.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
     expect(await Promise.all(fixed.map(el => el.boundingBox()))).toEqual(before);
     expect(await page.evaluate(() => scrollY)).toBe(0);
+  });
+
+  test('in niedrigen Fenstern und auf dem Handy scrollt die Seite, die Bereiche bleiben gross und scrollen in sich', async ({ page }) => {
+    const courses = page.getByRole('region', { name: 'Aktuelles Kursangebot (Cevi & J+S)' });
+    // 1280 x 600: zwei Spalten, aber zu niedrig, um das Fenster zu füllen (z. B. Full HD mit 150 % Skalierung)
+    for (const size of [{ width: 1280, height: 600 }, { width: 375, height: 812 }]) {
+      await page.setViewportSize(size);
+      const label = `${size.width} x ${size.height}`;
+      expect(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight), `Seite scrollt nicht bei ${label}`).toBe(true);
+      // Am Ende des Felds scrollt das Mausrad die Seite weiter, statt im Feld hängen zu bleiben
+      const [overflowY, overscroll, scrolls, share] = await courses.evaluate(el => [
+        getComputedStyle(el).overflowY, getComputedStyle(el).overscrollBehaviorY, el.scrollHeight > el.clientHeight, el.clientHeight / innerHeight
+      ]);
+      expect([overflowY, overscroll, scrolls], label).toEqual(['auto', 'auto', true]);
+      // Höchstens 60 % der Fensterhöhe, aber nicht zusammengedrückt
+      expect(share, label).toBeGreaterThan(0.5);
+      expect(share, label).toBeLessThanOrEqual(0.6);
+    }
+  });
+
+  test('die vier Bereiche heben sich in allen Themes von der Seite ab, ihre Karten vom Feld', async ({ page }) => {
+    for (const [theme, label] of THEMES) {
+      // Wie setAppTheme in theme.js, ohne die gespeicherte Wahl zu ändern
+      await page.evaluate(id => document.documentElement.setAttribute('data-theme', id), theme);
+      const problems = await page.evaluate(() => {
+        const style = el => getComputedStyle(el);
+        // Deckend und anders als der Grund; ein fehlender Rahmen oder eine fehlende Fläche ist transparent
+        const standsOut = (colour, ground) => colour.startsWith('rgb(') && colour !== ground;
+        const pageBg = style(document.querySelector('.app-main')).backgroundColor;
+        return [...document.querySelectorAll('#panel-profile .bento-card')].flatMap(panel => {
+          const { borderTopStyle, borderTopWidth, borderTopColor, backgroundColor } = style(panel);
+          const name = panel.querySelector('h3').textContent;
+          return [
+            borderTopStyle === 'solid' && parseFloat(borderTopWidth) >= 1 && standsOut(borderTopColor, pageBg) ? [] : `${name}: kein sichtbarer Rahmen`,
+            standsOut(backgroundColor, pageBg) ? [] : `${name}: Fläche wie die Seite`,
+            [...panel.querySelectorAll('.card')].every(card => standsOut(style(card).backgroundColor, backgroundColor)) ? [] : `${name}: Karte wie das Feld`
+          ].flat();
+        });
+      });
+      expect(problems, label).toEqual([]);
+    }
   });
 });
