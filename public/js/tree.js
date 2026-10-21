@@ -32,11 +32,20 @@ export async function loadCourseTree() {
     currentTreeEvaluation = await evalRes.json();
 
     renderTree();
-    setupInteractiveMap();
+    setupInteractiveMap(pickStartCourse());
   } catch (err) {
     console.error('Fehler beim Laden des Kursbaums:', err);
     container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursbaums: ${esc(err.message)}</div>`;
   }
+}
+
+// Kurs, auf den die Karte beim Oeffnen zentriert: der erste angemeldete Kurs in Kartenreihenfolge,
+// sonst der erste bereite, sonst der zuletzt absolvierte
+function pickStartCourse() {
+  const nodeStates = currentTreeEvaluation?.evaluation?.nodes || currentTreeEvaluation?.evaluation?.nodeStates || {};
+  const ids = Object.keys(COURSE_MAP_COORDS);
+  const withStatus = status => id => nodeStates[id]?.status === status;
+  return ids.find(withStatus('IN_PROGRESS')) || ids.find(withStatus('AVAILABLE')) || ids.findLast(withStatus('COMPLETED')) || 'voku';
 }
 
 export function renderTree() {
@@ -256,4 +265,6 @@ export function updateTreeInspector(targetNode, pathResult) {
 
   checksContainer.innerHTML = checksHtml;
   actionsContainer.style.display = 'block';
+  // Ab 1201 px scrollt der Inspektor selbst: einen neuen Kurs von oben zeigen
+  document.getElementById('treeInspector').scrollTop = 0;
 }

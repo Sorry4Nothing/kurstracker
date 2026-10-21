@@ -41,9 +41,9 @@ test.describe('Stufenleiter-Planer', () => {
       await expect(page.getByRole('dialog', { name: 'Kurs vorschlagen' })).toBeVisible();
       await expect(modal).toHaveCSS('display', 'flex');
       await expect(page.getByLabel('Teilnehmer / Leiter')).toHaveValue(participant.ceviname);
-      await expect(page.getByLabel('Zielkurs')).toHaveValue(recommendedCourses[0].courseId);
+      await expect(page.getByRole('combobox', { name: 'Zielkurs' })).toHaveValue(recommendedCourses[0].courseId);
       // Fokus springt in den Dialog, der Hintergrund ist für Tab und Screenreader gesperrt
-      await expect(page.getByLabel('Zielkurs')).toBeFocused();
+      await expect(page.getByRole('combobox', { name: 'Zielkurs' })).toBeFocused();
       await expect(layout).toHaveJSProperty('inert', true);
       await close();
       await expect(modal).toBeHidden();
@@ -63,7 +63,7 @@ test.describe('Stufenleiter-Planer', () => {
     const row = page.locator('#plannerTableBody tr').first();
     const ceviname = await row.locator('strong').textContent();
     await row.getByRole('button', { name: 'Vorschlagen' }).click();
-    await page.getByLabel('Zielkurs').selectOption('slrg_pool');
+    await page.getByRole('combobox', { name: 'Zielkurs' }).selectOption('slrg_pool');
     await page.getByLabel('Bemerkungen').fill(note);
     await page.getByRole('button', { name: 'Vorschlag speichern' }).click();
 

@@ -34,59 +34,96 @@ export const mapTransform = {
   y: 0,
   zoom: 0.88,
   isPanning: false,
+  pointerId: null,
   startX: 0,
   startY: 0
 };
 
-export function setupInteractiveMap() {
+const NODE_WIDTH = 220;
+const NODE_HEIGHT = 80;
+const CANVAS_WIDTH = 2360;
+const CANVAS_HEIGHT = 840;
+
+// Kurs, auf den die Startansicht zentriert (setzt tree.js ueber setupInteractiveMap)
+let startCourseId = 'voku';
+
+export function setupInteractiveMap(courseId = 'voku') {
   const viewport = document.getElementById('treeMapViewport');
   const canvas = document.getElementById('treeMapCanvas');
   const container = document.getElementById('treeCanvasWrapper');
+  startCourseId = courseId;
   if (!viewport || !canvas || window._mapEventsInitialized) return;
   window._mapEventsInitialized = true;
 
-  // Initiale Zentrierung
-  fitMapToScreen();
+  resetMapTransform();
 
-  // Mouse Drag zum Bewegen im Raum (Pan)
-  viewport.addEventListener('mousedown', (e) => {
-    if (e.button !== 0 || e.target.closest('.tree-node-card')) return;
-    mapTransform.isPanning = true;
+  // Ziehen mit Maus, Finger oder Stift verschiebt die Karte, auch auf einem Kurs. Erst ab 4 px Bewegung (Finger und
+  // Stift 15 px: so weit darf ein Tipp wandern), damit Klick und Tipp den Kurs auswaehlen; Pointer Capture erst dann,
+  // sonst trifft der Klick den Kurs nicht mehr
+  viewport.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button !== 0) return;
+    mapTransform.pointerId = e.pointerId;
+    mapTransform.isPanning = false;
     mapTransform.startX = e.clientX - mapTransform.x;
     mapTransform.startY = e.clientY - mapTransform.y;
-    container?.classList.add('is-panning');
-    e.preventDefault();
   });
 
-  window.addEventListener('mousemove', (e) => {
-    if (!mapTransform.isPanning) return;
-    mapTransform.x = e.clientX - mapTransform.startX;
-    mapTransform.y = e.clientY - mapTransform.startY;
+  window.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== mapTransform.pointerId) return;
+    // Loslassen nicht mitbekommen (z.B. ueber einem Kontextmenue): Ziehen beenden
+    if (!e.buttons) return endDrag(e);
+    const x = e.clientX - mapTransform.startX;
+    const y = e.clientY - mapTransform.startY;
+    if (!mapTransform.isPanning) {
+      if (Math.hypot(x - mapTransform.x, y - mapTransform.y) <= (e.pointerType === 'mouse' ? 4 : 15)) return;
+      mapTransform.isPanning = true;
+      viewport.setPointerCapture(e.pointerId);
+      container?.classList.add('is-panning');
+    }
+    mapTransform.x = x;
+    mapTransform.y = y;
     applyMapTransform();
   });
 
-  window.addEventListener('mouseup', () => {
-    if (mapTransform.isPanning) {
-      mapTransform.isPanning = false;
-      container?.classList.remove('is-panning');
-    }
+  const endDrag = (e) => {
+    if (e.pointerId !== mapTransform.pointerId) return;
+    mapTransform.pointerId = null;
+    container?.classList.remove('is-panning');
+    // Der Klick nach dem Loslassen gehoert noch zum Ziehen (siehe unten), erst danach zuruecksetzen
+    setTimeout(() => { mapTransform.isPanning = false; });
+  };
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+
+  // Ein Finger verschiebt nur die Karte: sonst erkennt der Browser dazu eine Wischgeste, die den naechsten Tipp
+  // verschluckt. Zwei Finger zoomen weiter die Seite
+  viewport.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1 && e.cancelable) e.preventDefault();
+  }, { passive: false });
+
+  // Ein Ziehen waehlt den Kurs nicht aus, auf dem es begonnen hat; andere Klicks laufen weiter (Menues schliessen)
+  viewport.addEventListener('click', (e) => {
+    if (mapTransform.isPanning && e.target.closest('.tree-node-card')) e.stopPropagation();
+  }, true);
+
+  // Tastatur: einen fokussierten Kurs ausserhalb des Ausschnitts ganz ins Bild schieben. Der Browser wuerde
+  // sonst den Viewport scrollen, das geht nur nach rechts und unten und am Verschieben vorbei
+  viewport.addEventListener('focusin', (e) => {
+    if (!e.target.matches('.tree-node-card:focus-visible')) return;
+    viewport.scrollTo(0, 0);
+    const view = viewport.getBoundingClientRect();
+    const card = e.target.getBoundingClientRect();
+    const shift = (start, end, min, max) => Math.max(min + 24 - start, 0) + Math.min(max - 24 - end, 0);
+    mapTransform.x += shift(card.left, card.right, view.left, view.right);
+    mapTransform.y += shift(card.top, card.bottom, view.top, view.bottom);
+    applyMapTransform();
   });
 
   // Mausrad Zoom (fluessig zentriert auf Cursor)
   viewport.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-    const newZoom = Math.min(Math.max(mapTransform.zoom * zoomFactor, 0.45), 1.6);
-    
     const rect = viewport.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    mapTransform.x = mouseX - (mouseX - mapTransform.x) * (newZoom / mapTransform.zoom);
-    mapTransform.y = mouseY - (mouseY - mapTransform.y) * (newZoom / mapTransform.zoom);
-    mapTransform.zoom = newZoom;
-
-    applyMapTransform();
+    zoomAround(mapTransform.zoom * (e.deltaY < 0 ? 1.08 : 0.92), e.clientX - rect.left, e.clientY - rect.top, rect);
   }, { passive: false });
 }
 
@@ -95,6 +132,7 @@ export function applyMapTransform() {
   const zoomLabel = document.getElementById('treeZoomLabel');
   if (canvas) {
     canvas.style.transform = `translate(${mapTransform.x}px, ${mapTransform.y}px) scale(${mapTransform.zoom})`;
+    canvas.style.setProperty('--map-zoom', mapTransform.zoom);
   }
   if (zoomLabel) {
     zoomLabel.textContent = `${Math.round(mapTransform.zoom * 100)}%`;
@@ -102,41 +140,56 @@ export function applyMapTransform() {
 }
 
 export function zoomMap(delta) {
-  const newZoom = Math.min(Math.max(mapTransform.zoom + delta, 0.45), 1.6);
   const viewport = document.getElementById('treeMapViewport');
   const rect = viewport ? viewport.getBoundingClientRect() : { width: 1000, height: 600 };
-  const centerX = rect.width / 2;
-  const centerY = rect.height / 2;
+  zoomAround(mapTransform.zoom + delta, rect.width / 2, rect.height / 2, rect);
+}
 
-  mapTransform.x = centerX - (centerX - mapTransform.x) * (newZoom / mapTransform.zoom);
-  mapTransform.y = centerY - (centerY - mapTransform.y) * (newZoom / mapTransform.zoom);
+// Zoomt um einen Punkt im Viewport, hoechstens auf 160 %. Die untere Grenze ist der Zoom, bei dem die ganze
+// Flaeche hineinpasst, aber nie mehr als 45 %; dort steht die Flaeche in der Mitte (Uebersicht ueber den Baum)
+function zoomAround(zoom, pointX, pointY, rect) {
+  const minZoom = Math.min(0.45, fitZoom(rect));
+  if (zoom <= minZoom) {
+    centerCanvas(minZoom, rect);
+    return;
+  }
+  const newZoom = Math.min(zoom, 1.6);
+  mapTransform.x = pointX - (pointX - mapTransform.x) * (newZoom / mapTransform.zoom);
+  mapTransform.y = pointY - (pointY - mapTransform.y) * (newZoom / mapTransform.zoom);
   mapTransform.zoom = newZoom;
   applyMapTransform();
 }
 
+// Startansicht: 100 %, zentriert auf den Kurs, an dem die Person steht. Ragen die Kurse ueber den Viewport
+// hinaus, bleibt neben dem aeussersten Kurs hoechstens 24 px leere Flaeche; passen sie hinein, stehen sie in der Mitte.
 export function resetMapTransform() {
   const viewport = document.getElementById('treeMapViewport');
   const rect = viewport ? viewport.getBoundingClientRect() : { width: 1000, height: 600 };
+  const course = COURSE_MAP_COORDS[startCourseId];
+  const xs = Object.values(COURSE_MAP_COORDS).map(c => c.x);
+  const ys = Object.values(COURSE_MAP_COORDS).map(c => c.y);
+  // offset zentriert den Kurs; first/last: Rand der aeussersten Kurse auf der Flaeche
+  const place = (offset, view, first, last) => (last - first <= view
+    ? (view - first - last) / 2
+    : Math.min(Math.max(offset, view - last - 24), 24 - first));
+  viewport?.scrollTo(0, 0);
   mapTransform.zoom = 1.0;
-  mapTransform.x = (rect.width / 2) - 1250;
-  mapTransform.y = (rect.height / 2) - 300;
+  mapTransform.x = place(rect.width / 2 - course.x - NODE_WIDTH / 2, rect.width, Math.min(...xs), Math.max(...xs) + NODE_WIDTH);
+  mapTransform.y = place(rect.height / 2 - course.y - NODE_HEIGHT / 2, rect.height, Math.min(...ys), Math.max(...ys) + NODE_HEIGHT);
   applyMapTransform();
 }
 
-export function fitMapToScreen() {
-  const viewport = document.getElementById('treeMapViewport');
-  if (!viewport) return;
-  const rect = viewport.getBoundingClientRect();
-  const canvasWidth = 2360;
-  const canvasHeight = 840;
+// Zoom, bei dem die ganze Flaeche mit 20 px Rand in den Viewport passt
+function fitZoom(rect) {
+  return Math.min((rect.width - 40) / CANVAS_WIDTH, (rect.height - 40) / CANVAS_HEIGHT);
+}
 
-  const scaleX = (rect.width - 40) / canvasWidth;
-  const scaleY = (rect.height - 40) / canvasHeight;
-  const fitZoom = Math.min(Math.max(Math.min(scaleX, scaleY), 0.45), 1.0);
-
-  mapTransform.zoom = fitZoom;
-  mapTransform.x = Math.max(10, (rect.width - (canvasWidth * fitZoom)) / 2);
-  mapTransform.y = Math.max(10, (rect.height - (canvasHeight * fitZoom)) / 2);
+// Auch einen Scroll des Viewports aufheben, den der Browser selbst setzt (z.B. beim Suchen auf der Seite)
+function centerCanvas(zoom, rect) {
+  document.getElementById('treeMapViewport')?.scrollTo(0, 0);
+  mapTransform.zoom = zoom;
+  mapTransform.x = (rect.width - CANVAS_WIDTH * zoom) / 2;
+  mapTransform.y = (rect.height - CANVAS_HEIGHT * zoom) / 2;
   applyMapTransform();
 }
 
@@ -146,9 +199,6 @@ export function fitMapToScreen() {
 export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null, routeIds = null) {
   const svg = document.getElementById('treeSvgLines');
   if (!svg || !treeStructure || !treeStructure.nodes) return;
-
-  const NODE_WIDTH = 220;
-  const NODE_HEIGHT = 80;
 
   const paths = [];
 
