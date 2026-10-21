@@ -435,7 +435,7 @@
   margin-top: var(--sp-5);
 }
 
-.legal-page :is(p, ul, address) {
+.legal-page :is(p, ul) {
   margin-top: var(--sp-3);
 }
 
@@ -445,10 +445,6 @@
 
 .legal-page li + li {
   margin-top: var(--sp-1);
-}
-
-.legal-page address {
-  font-style: normal;
 }
 
 .legal-page code {
