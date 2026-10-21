@@ -118,14 +118,17 @@ export async function selectTargetCourse(courseId) {
       updateTreeInspector(targetNode, pathResult);
     }
 
-    // Vorgelagerte Kursknoten hervorheben
+    // Vorgelagerte Kursknoten hervorheben (Pflicht und empfohlene Vorstufen) und die
+    // Route auf diese Kurse beschraenken: herausgewachsene Vorstufen bleiben grau
     if (pathResult.pathSteps) {
-      pathResult.pathSteps.forEach(step => {
+      const routeSteps = [...pathResult.pathSteps, ...(pathResult.recommendedSteps || [])];
+      routeSteps.forEach(step => {
         const stepCard = document.getElementById(`nodeCard-${step.id}`);
         if (stepCard && step.id !== courseId) {
           stepCard.classList.add('is-path-highlight');
         }
       });
+      renderTreeSvgLines(treeStructure, selectedTargetCourseId, new Set(routeSteps.map(s => s.id)));
     }
   } catch (err) {
     console.error('Fehler bei Pfadberechnung:', err);
@@ -183,17 +186,33 @@ export function updateTreeInspector(targetNode, pathResult) {
     qualificationChecks.forEach(q => {
       checkItems.push({
         title: `Zertifikat: ${q.id.toUpperCase()}`,
-        desc: q.isFulfilled 
-          ? 'Qualifikation in der Cevi-DB bestaetigt.' 
+        desc: q.isFulfilled
+          ? 'Qualifikation in der Cevi-DB bestaetigt.'
           : 'Anerkennung fehlt noch im Profil.',
         isFulfilled: q.isFulfilled
       });
     });
   }
 
-  // Berechnung Fortschrittsring
-  const fulfilledCount = checkItems.filter(c => c.isFulfilled).length;
-  const totalCount = checkItems.length;
+  // Zuletzt: empfohlene Vorstufen (z.B. Heku, GLK 1, GLK 2 vor GLK 3), nur ein Hinweis
+  // ohne Schrittnummer, zaehlt nicht zum Fortschritt
+  const recommendedSteps = pathResult.recommendedSteps || [];
+  if (recommendedSteps.length > 0) {
+    const missingRecommended = pathResult.missingRecommended || [];
+    checkItems.push({
+      title: 'Empfohlene Vorstufen',
+      desc: missingRecommended.length === 0
+        ? 'Alle empfohlenen Vorstufen absolviert.'
+        : `Empfohlen, keine Pflicht: ${missingRecommended.map(m => m.title).join(', ')}.`,
+      isFulfilled: missingRecommended.length === 0,
+      isOptional: true
+    });
+  }
+
+  // Berechnung Fortschrittsring (nur Pflicht-Voraussetzungen)
+  const requiredItems = checkItems.filter(c => !c.isOptional);
+  const fulfilledCount = requiredItems.filter(c => c.isFulfilled).length;
+  const totalCount = requiredItems.length;
   const progressPct = totalCount > 0 ? Math.round((fulfilledCount / totalCount) * 100) : 100;
   const circumference = 56.55; // 2 * PI * 9
   const strokeOffset = circumference - (circumference * progressPct / 100);
@@ -213,10 +232,15 @@ export function updateTreeInspector(targetNode, pathResult) {
     </div>
   `;
 
-  checkItems.forEach((item, idx) => {
+  let stepNumber = 0;
+  checkItems.forEach(item => {
+    if (!item.isOptional) stepNumber += 1;
+    const badge = item.isFulfilled
+      ? '<i class="fa-solid fa-check"></i>'
+      : item.isOptional ? '<i class="fa-regular fa-lightbulb" aria-hidden="true"></i>' : stepNumber;
     checksHtml += `
-      <div class="check-item ${item.isFulfilled ? 'check-fulfilled' : 'check-unfulfilled'}">
-        <div class="check-step-badge">${item.isFulfilled ? '<i class="fa-solid fa-check"></i>' : idx + 1}</div>
+      <div class="check-item ${item.isFulfilled ? 'check-fulfilled' : 'check-unfulfilled'}${item.isOptional ? ' check-optional' : ''}">
+        <div class="check-step-badge">${badge}</div>
         <div class="check-text-content">
           <div class="check-title">${item.title}</div>
           <div class="check-desc">${item.desc}</div>
