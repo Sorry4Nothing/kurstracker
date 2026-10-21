@@ -1,0 +1,391 @@
+/* ==============================================================================
+   CEVI KURSTRACKER - APP SHELL
+   Sidebar (brand, navigation, footer slot), sticky topbar with the page title,
+   content area, global footer, and the off-canvas drawer at 1024px and below.
+   Tokens only: colours, type, spacing and motion come from variables.css.
+   The theme dropup (components.css) and the profile card (profile.css) sit in
+   .sidebar-footer but are styled in their own files.
+   ============================================================================== */
+
+/* ------------------------------------------------------------------------------
+   1. Shell
+   The sidebar header and the topbar share --shell-header-h, so their bottom
+   borders form one continuous line across the window.
+   ------------------------------------------------------------------------------ */
+.app-layout {
+  --shell-sidebar-w: 256px;
+  --shell-header-h: 76px; /* 24/32 title + 14/20 subtitle, 12px above and below */
+
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--bg-main);
+}
+
+.app-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100vh;
+  background-color: var(--bg-main);
+}
+
+.app-content-area {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: var(--sp-6) var(--sp-8) var(--sp-8);
+}
+
+/* ------------------------------------------------------------------------------
+   2. Sidebar
+   ------------------------------------------------------------------------------ */
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sidebar);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: var(--shell-sidebar-w);
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border-subtle);
+}
+
+/* The sidebar header is the left end of the header band (see the topbar) */
+.sidebar-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-height: var(--shell-header-h);
+  padding: 0 var(--sp-5);
+  background-color: var(--band-bg);
+  border-bottom: 3px solid var(--band-rule);
+}
+
+/* Logo mark on a white plate (its Cevi-Blau would vanish on the band) plus
+   a two-weight wordmark */
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  border-radius: var(--radius-md);
+  color: var(--on-brand);
+  text-decoration: none;
+}
+
+.brand-logo-svg {
+  display: block;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: var(--sp-1);
+  border-radius: var(--radius-md);
+  background-color: var(--logo-plate);
+}
+
+.brand-text {
+  min-width: 0;
+}
+
+.brand-title {
+  display: block;
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-bold);
+  color: var(--on-brand);
+  white-space: nowrap;
+}
+
+.brand-title .highlight {
+  font-weight: var(--fw-regular);
+  color: var(--band-ink-muted);
+}
+
+/* Navigation */
+.sidebar-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-4);
+}
+
+.sidebar-nav-group-title {
+  margin-bottom: var(--sp-1);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+}
+
+/* auth.js shows #tabPlanner with an inline display: flex.
+   Label in ink, icon in Cevi-Blau (interaction); the current view takes the
+   solid primary fill (see below). */
+.sidebar-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: var(--control-h);
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-medium);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.sidebar-nav-item .nav-icon {
+  flex-shrink: 0;
+  width: 20px;
+  font-size: var(--fs-14);
+  text-align: center;
+  color: var(--blue-ink);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.sidebar-nav-item .nav-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-nav-item:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Current view: a solid primary fill (Cevi-Rot).
+   Same specificity as :hover and later, so it keeps its fill under the
+   pointer. */
+.sidebar-nav-item.active,
+.sidebar-nav-item.active .nav-icon {
+  color: var(--primary-ink);
+}
+
+.sidebar-nav-item.active {
+  background-color: var(--primary);
+}
+
+.sidebar-nav-item.active:hover {
+  background-color: var(--primary-hover);
+}
+
+/* forced-colors drops the fill; a transparent border keeps the marker */
+.sidebar-nav-item.active::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  border-radius: inherit;
+}
+
+.sidebar-footer {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ------------------------------------------------------------------------------
+   3. Topbar: sticky and opaque. The h1 is the page title of every view.
+      Together with the sidebar header it forms the header band: the theme's
+      brand colour with a 3px rule in the accent below.
+   ------------------------------------------------------------------------------ */
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  min-height: var(--shell-header-h);
+  padding: 0 var(--sp-8);
+  background-color: var(--band-bg);
+  border-bottom: 3px solid var(--band-rule);
+}
+
+.topbar-left {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+/* Hamburger (#sidebarToggleBtn): ghost icon button, shown at 1024px and below */
+.sidebar-toggle-btn {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--band-ink-muted);
+  font-size: var(--fs-16);
+  line-height: 1;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: var(--band-hover);
+  color: var(--on-brand);
+}
+
+.topbar-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar-page-title {
+  overflow: hidden;
+  font-size: var(--fs-24);
+  line-height: var(--lh-24);
+  font-weight: var(--fw-bold);
+  color: var(--on-brand);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.topbar-page-subtitle {
+  overflow: hidden;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-regular);
+  color: var(--band-ink-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------------------------
+   4. Global footer: one quiet 12px line. Colour is set on the footer, not on
+      .footer-item, so the .text-dim utility and the status icon colour from
+      system.js (.text-success / .text-danger) still apply.
+   ------------------------------------------------------------------------------ */
+.app-global-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-6);
+  padding: var(--sp-3) var(--sp-8);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-global-footer .footer-left,
+.app-global-footer .footer-center,
+.app-global-footer .footer-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------------------
+   5. Drawer at 1024px and below
+   The sidebar floats below the sticky topbar, so the hamburger stays reachable
+   to close it. Closed, it sits fully off-canvas (shadow included) and is
+   hidden from focus once the 200ms slide has finished; visibility only
+   switches, it does not animate.
+   ------------------------------------------------------------------------------ */
+@media (max-width: 1024px) {
+  .app-sidebar {
+    position: fixed;
+    top: var(--shell-header-h);
+    bottom: 0;
+    left: 0;
+    height: auto;
+    max-width: calc(100vw - var(--sp-12));
+    border-right: 0; /* --shadow-float carries its own hairline ring */
+    box-shadow: var(--shadow-float);
+    transform: translateX(calc(-100% - var(--sp-8)));
+    visibility: hidden;
+    transition:
+      transform var(--dur-med) var(--ease),
+      visibility 0s linear var(--dur-med);
+  }
+
+  .app-sidebar.open {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--dur-med) var(--ease);
+  }
+
+  .sidebar-toggle-btn {
+    display: inline-flex;
+  }
+
+  /* Pressed look while the drawer is open */
+  .app-layout:has(.app-sidebar.open) .sidebar-toggle-btn {
+    background-color: var(--band-hover);
+    color: var(--on-brand);
+  }
+
+  .app-topbar {
+    padding: 0 var(--sp-6);
+  }
+
+  .app-content-area {
+    padding: var(--sp-6);
+  }
+
+  .app-global-footer {
+    padding: var(--sp-3) var(--sp-6);
+  }
+}
+
+@media (max-width: 640px) {
+  .app-layout {
+    --shell-header-h: 56px; /* 18/24 title + 12/16 subtitle, 8px above and below */
+  }
+
+  .app-topbar {
+    padding: 0 var(--sp-4);
+  }
+
+  .topbar-page-title {
+    font-size: var(--fs-18);
+    line-height: var(--lh-18);
+  }
+
+  .topbar-page-subtitle {
+    font-size: var(--fs-12);
+    line-height: var(--lh-12);
+  }
+
+  .app-content-area {
+    padding: var(--sp-4);
+  }
+
+  .app-global-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--sp-3) var(--sp-4);
+  }
+}

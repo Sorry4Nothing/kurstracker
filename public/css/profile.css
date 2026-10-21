@@ -1,0 +1,700 @@
+/* ==============================================================================
+   CEVI KURSTRACKER - PROFIL & QUALIFIKATIONEN
+   Sidebar profile card (Kokonut UI), profile header with a stat row, and the four profile
+   sections: Stammdaten, Anerkennungen, Werdegang (timeline), Kursangebot.
+   The sections are plain: a heading over a 1px rule, no box and no fill, so
+   the cards that components.css draws inside them never sit in another card.
+   Tokens only. .card, .cards-grid, .badge, .btn, inputs and dropdowns are
+   owned by components.css and are not redefined here.
+   ============================================================================== */
+
+/* ------------------------------------------------------------------------------
+   1. Sidebar profile card (#userNavActions): the Kokonut UI Pro profile card.
+   Same anatomy as the Kokonut component: a 5:4 portrait (placeholder with
+   initials, the photo on top when there is one), name with the verified
+   badge, role, three stats over a rule and a full-width button, drawn with
+   the design tokens. The whole card opens the profile; the button is the
+   control that also works from the keyboard.
+   ------------------------------------------------------------------------------ */
+.kokonut-pro-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  padding: var(--sp-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.kokonut-pro-card:hover {
+  border-color: var(--border-strong);
+}
+
+/* Profile open: the card edge takes the red of the active nav marker */
+.kokonut-pro-card.active {
+  border-color: var(--primary-text);
+}
+
+/* Empty portrait in the theme's band colour with white initials, like the
+   avatar in the profile header */
+.koko-photo-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 5 / 4;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background-color: var(--band-bg);
+}
+
+/* Placeholder initials, as in the Kokonut card: the name below carries the
+   information, the initials only mark the empty portrait */
+.koko-initials-fallback {
+  font-size: var(--fs-30);
+  line-height: var(--lh-30);
+  font-weight: var(--fw-semibold);
+  color: var(--on-brand);
+}
+
+.koko-photo-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+/* Hairline inside the portrait edge, over initials and photo alike */
+.koko-photo-ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Sync status dot in the portrait corner, ringed in the card colour */
+.koko-online-badge {
+  position: absolute;
+  right: var(--sp-2);
+  bottom: var(--sp-2);
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--bg-surface-elevated);
+  border-radius: var(--radius-full);
+  background-color: var(--ok-ink);
+}
+
+.koko-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-2) var(--sp-2);
+}
+
+.koko-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.koko-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
+  color: var(--text-main);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The ceviname is a second name, not a link: muted ink, here and in the
+   profile header (see .profile-hero-titles .text-accent) */
+.koko-ceviname {
+  flex: none;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
+}
+
+/* Verified badge in Cevi-Blau (identity) in every theme, the slot of the
+   Kokonut check badge */
+.koko-verified {
+  display: inline-flex;
+  flex: none;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--blue-ink);
+}
+
+.koko-title {
+  overflow: hidden;
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Three stats over a rule: value on top, label below */
+.koko-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.koko-stat-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Values by column: courses in blue, qualifications in teal (this also
+   outranks the .text-accent on the Qualis count) */
+.koko-stats-grid .koko-stat-number {
+  overflow: hidden;
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-main);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.koko-stat-col:nth-child(1) .koko-stat-number {
+  color: var(--blue-ink);
+}
+
+.koko-stat-col:nth-child(2) .koko-stat-number {
+  color: var(--teal-ink);
+}
+
+/* "Aktiv" is a status, so it keeps the ok ink */
+.koko-stats-grid .koko-stat-number.text-success {
+  color: var(--ok-ink);
+}
+
+.koko-stat-label {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  color: var(--text-muted);
+}
+
+/* Full-width secondary button in the slot of the Kokonut "Follow" button,
+   same recipe as the tonal .btn-secondary in components.css */
+.koko-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--control-h);
+  margin-top: var(--sp-3);
+  padding: 0 var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background-color: var(--blue-soft);
+  color: var(--blue-ink);
+  font-family: inherit;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.koko-action-btn:hover {
+  background-color: var(--blue-soft-hover);
+}
+
+/* ------------------------------------------------------------------------------
+   2. Profile header: avatar, name, meta line and a plain stat row
+   ------------------------------------------------------------------------------ */
+
+/* The profile view sizes its layout from its own width, not the viewport */
+#panel-profile {
+  width: 100%;
+  container: profile / inline-size;
+}
+
+.profile-page-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-6) var(--sp-8);
+  margin-bottom: var(--sp-8);
+}
+
+.profile-hero-left {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.profile-hero-avatar-wrap {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background-color: var(--band-bg);
+}
+
+/* Identity in the band colour, like the portrait on the sidebar card */
+.profile-hero-avatar-initials {
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  font-weight: var(--fw-semibold);
+  color: var(--on-brand);
+}
+
+.profile-hero-avatar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+}
+
+/* overflow clips the separator that starts each wrapped meta line (see below) */
+.profile-hero-titles {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.profile-hero-titles h2 {
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  font-weight: var(--fw-semibold);
+  color: var(--text-main);
+}
+
+/* «Ceviname» after the real name: the markup gives it .text-accent, but it
+   is not a link or an action, so it reads as a muted second name */
+.profile-hero-titles .text-accent {
+  color: var(--text-muted);
+}
+
+/* Meta as plain text: "Abteilung Cevi Winti · Region Zürich · J+S Leiter …".
+   Every item carries a 24px separator in front; the list is pulled 24px to the
+   left so the separator of the first item on each line falls into the clipped
+   gutter and no line starts with a dot. */
+.profile-hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: var(--sp-1);
+  margin-left: calc(-1 * var(--sp-6));
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
+}
+
+.profile-badge-pill {
+  min-width: 0;
+}
+
+.profile-badge-pill::before {
+  content: "·";
+  display: inline-block;
+  width: var(--sp-6);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* Stat row: label above value, cells split by 1px rules, no tiles */
+.profile-hero-metrics {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+}
+
+.profile-metric-card {
+  display: flex;
+  flex-direction: column-reverse; /* label above value; the DOM still reads "7 Kurse" */
+  justify-content: flex-start;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: 0 var(--sp-6);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.profile-metric-card:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+/* Coloured by figure, overriding the .text-success/.text-accent/.text-gold
+   utilities in the markup: courses in blue, recognitions in teal, the next
+   milestone in the primary tint (the step that comes next) */
+.profile-metric-value {
+  font-size: var(--fs-24);
+  line-height: var(--lh-24);
+  font-weight: var(--fw-medium);
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.profile-metric-card:nth-child(1) .profile-metric-value {
+  color: var(--blue-ink);
+}
+
+.profile-metric-card:nth-child(2) .profile-metric-value {
+  color: var(--teal-ink);
+}
+
+.profile-metric-card:nth-child(3) .profile-metric-value {
+  color: var(--primary-soft-ink);
+}
+
+.profile-metric-label {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+}
+
+@container profile (max-width: 599px) {
+  .profile-hero-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .profile-metric-card {
+    padding: 0 var(--sp-3);
+  }
+
+  .profile-metric-card:first-child {
+    padding-left: 0;
+  }
+
+  .profile-metric-value {
+    font-size: var(--fs-18);
+    line-height: var(--lh-18);
+    white-space: normal;
+  }
+}
+
+/* ------------------------------------------------------------------------------
+   3. Profile sections (former bento tiles)
+   One column by default; from 1024px of view width a 1:2 split. The narrow
+   column holds the personal record (Stammdaten, Werdegang), the wide one the
+   card lists (Anerkennungen, Kursangebot), so .cards-grid keeps two columns.
+   ------------------------------------------------------------------------------ */
+.profile-bento-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-8);
+}
+
+@container profile (min-width: 1024px) {
+  .profile-bento-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: var(--sp-12) var(--sp-8);
+  }
+
+  /* The course list beside the timeline is far longer. The timeline stays
+     in view while the list scrolls past (within its own grid row) and
+     scrolls on its own when it is taller than the window. */
+  .bento-history {
+    position: sticky;
+    top: calc(var(--shell-header-h) + var(--sp-6));
+    max-height: calc(100dvh - var(--shell-header-h) - var(--sp-12));
+    overflow-y: auto;
+  }
+}
+
+.bento-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bento-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.bento-title-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+/* Section headings in Cevi-Blau, like .card-header-flex h3 (components.css) */
+.bento-title-left h3 {
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
+  color: var(--blue-ink);
+}
+
+/* ------------------------------------------------------------------------------
+   4. Stammdaten: the two ID tags open the record (the name is already in the
+      profile header), then label-above-value fields
+   ------------------------------------------------------------------------------ */
+.bento-stammdaten {
+  container: stammdaten / inline-size;
+}
+
+.stammdaten-hero-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sp-2) var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+
+.stammdaten-id-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+/* .stammdaten-id-pill and .role-chip are the tags from components.css. An ID
+   is identity, so the blue pair; a function (role) is a category, so the
+   teal pair. .pill-cevi / .pill-js and .chip-js get no hue of their own:
+   an ID or a role is not an organisation tag. The ID value is set apart
+   by weight. */
+.stammdaten-id-pill {
+  background-color: var(--blue-soft);
+  border-color: transparent;
+  color: var(--blue-ink);
+}
+
+.stammdaten-id-pill strong {
+  font-weight: var(--fw-semibold);
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.stammdaten-val .role-chip {
+  background-color: var(--teal-soft);
+  border-color: transparent;
+  color: var(--teal-ink);
+}
+
+/* The rows only pair the fields in the markup; the grid decides the columns */
+.stammdaten-sections {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4) var(--sp-6);
+}
+
+.stammdaten-row {
+  display: contents;
+}
+
+@container stammdaten (min-width: 400px) {
+  .stammdaten-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container stammdaten (min-width: 640px) {
+  .stammdaten-sections {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.stammdaten-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.stammdaten-label {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+}
+
+.stammdaten-val {
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.stammdaten-val:has(> .role-chip) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+/* ------------------------------------------------------------------------------
+   5. Anerkennungen and Kursangebot: .cards-grid, .card, .filter-bar and the
+      loading line come from components.css unchanged.
+      profile.js gives a qualification's sub_title an inline font-size of
+      0.8rem (12.8px) and a 0.4rem margin; !important puts it on the 12px step
+      and the 4px grid until the template drops the inline style.
+   ------------------------------------------------------------------------------ */
+.qual-card .card-subtitle[style] {
+  margin-bottom: var(--sp-1) !important;
+  font-size: var(--fs-12) !important;
+  line-height: var(--lh-12);
+}
+
+/* Validity as a 3px top rule in the status hue: valid green, in training
+   gold, expired red */
+.qual-card:has(.card-top > .badge-success) {
+  border-top: 3px solid var(--ok-solid);
+}
+
+.qual-card:has(.card-top > .badge-warning) {
+  border-top: 3px solid var(--warn-ink);
+}
+
+.qual-card:has(.card-top > .badge-danger) {
+  border-top: 3px solid var(--bad-ink);
+}
+
+/* The issuer line ("Ausgestellt von: BASPO / Cevi Schweiz") names an
+   organisation, so it reads in teal; the sub-title above it (.text-dim)
+   stays grey */
+.qual-card .card-subtitle:not(.text-dim) {
+  color: var(--teal-ink);
+}
+
+/* Status colour only where it tells something apart. Nearly every course is
+   "Offen für Anmeldung" and every past course "Erfolgreich bestanden", so
+   those chips are grey; the warn chips ("Ausgebucht (Warteliste)",
+   "Voranmeldung möglich") keep their tint and stand out. */
+#coursesContainer .badge-success,
+#historyContainer .badge-success {
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
+/* Deadlines ("Anmeldeschluss") are gold: courses.js writes them in
+   --cevi-gold inline, and !important pins them to the gold ink */
+#coursesContainer .meta-item > strong[style] {
+  color: var(--warn-ink) !important;
+}
+
+/* "Bestätigt" is the same on every qualification. The validity chip at the
+   top stays the card's one status mark; here only the check keeps ok ink. */
+.qual-card .meta-item > strong.text-success {
+  color: var(--text-main);
+}
+
+.qual-card .meta-item > strong.text-success > i {
+  color: var(--ok-ink);
+}
+
+/* ------------------------------------------------------------------------------
+   6. Ausbildungs-Werdegang: flat entries on a 1px rail with small Cevi-Blau
+      dots and dates. Entries are not interactive, so they have no hover state
+      (and never turn dark under the pointer).
+   ------------------------------------------------------------------------------ */
+.timeline-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  padding-left: var(--sp-6);
+}
+
+.timeline-item {
+  position: relative;
+  min-width: 0;
+}
+
+/* Dot, centred on the first line (the 20px date and status row) */
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: calc(-1 * var(--sp-6));
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  background-color: var(--blue-solid);
+}
+
+/* Rail segment from this dot down to the next one */
+.timeline-item:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: calc(-1 * (var(--sp-5) + 10px));
+  left: calc(-1 * var(--sp-6) + 4px);
+  width: 1px;
+  background-color: var(--border-subtle);
+}
+
+.timeline-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+  min-height: 20px;
+}
+
+.timeline-year {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--blue-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-item h4 {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-semibold);
+  color: var(--text-main);
+}
+
+/* Role line and note under the title. profile.js sets them inline at 0.85rem
+   and 0.78rem (13.6 / 12.5px) with 0.2 / 0.3rem margins; !important puts them
+   on the 14px and 12px steps and the 4px grid until the template drops them. */
+.timeline-item > h4 + p {
+  margin-top: var(--sp-1) !important;
+  font-size: var(--fs-14) !important;
+  line-height: var(--lh-14);
+}
+
+.timeline-item > p + p {
+  margin-top: var(--sp-1) !important;
+  font-size: var(--fs-12) !important;
+  line-height: var(--lh-12);
+}

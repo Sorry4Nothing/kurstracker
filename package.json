@@ -8,9 +8,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "env:check": "node scripts/check-env.js",
-    "git:status": "git status -s",
-    "switch:dev": "node scripts/safe-git-switch.js develop",
-    "switch:main": "node scripts/safe-git-switch.js main"
+    "test": "node --test",
+    "test:tree": "node --test"
   },
   "keywords": [
     "cevi",
@@ -24,7 +23,6 @@
   "license": "ISC",
   "dependencies": {
     "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2"
   }

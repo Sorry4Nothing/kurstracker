@@ -1,126 +1,71 @@
-# ==============================================================================
-# CEVI KURSTRACKER - .gitignore
-# ==============================================================================
-
-# ------------------------------------------------------------------------------
-# 1. AI & LLM TOOLS / ASSISTANTS (Strict Rule: NEVER COMMIT ANY AI FILES)
-# ------------------------------------------------------------------------------
-# Gemini & Google Antigravity
-.*gemini*
-*gemini*
-.agents/
-.agents*
-*brain*
-brain/
-
-# Claude & Anthropic
-.*claude*
-*claude*
-.anthropic*
-*clinerules*
-CLAUDE*
-
-# Cursor & Windsurf & Codeium
-.*cursor*
-*cursor*
-.cursorrules*
-.cursorignore*
-.*windsurf*
-*windsurf*
-.*codeium*
-*codeium*
-
-# Copilot & OpenAI & Prompt/AI Artifacts
-.*copilot*
-*copilot*
-*openai*
-*.prompt
-*.prompts
-prompt_*.txt
-*.chat
-*.ai
-ai-context/
-ai_logs/
-ai-artifacts/
-
-
-# ------------------------------------------------------------------------------
-# 2. ENVIRONMENT & SECRETS (Multi-Environment Separation)
-# ------------------------------------------------------------------------------
-# Ignore all actual environment and secret files
-.env
-.env.local
-.env.development
-.env.staging
-.env.production
-.env.*.local
-*.local.json
-secrets/
-
-# DO NOT IGNORE the example templates:
-!.env.example
-!.env.local.example
-!.env.development.example
-!.env.production.example
-
-# ------------------------------------------------------------------------------
-# 3. DEPENDENCIES & PACKAGE MANAGERS
-# ------------------------------------------------------------------------------
+# Dependencies
 node_modules/
+dist/
+build/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+*.p12
+
+# AI & Assistant Configurations
+.gemini/
+.agents/
+.cursor/
+.cursorrules
+.claude/
+CLAUDE.md
+AGENTS.md
+.copilot/
+.windsurf/
+skills-lock.json
+skills/
+graphify-out/
+.taste-skill/
+.hallmark/
+.omniroute/
+
+# Local Documentation
+docs/
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# Build, Bundlers & Caches
+.cache/
+.turbo/
+.next/
+.nuxt/
+.vite/
+.parcel-cache/
+
+# Logs & Debug
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
-.pnpm-store/
 
-# ------------------------------------------------------------------------------
-# 4. BUILD ARTIFACTS & CACHES
-# ------------------------------------------------------------------------------
-dist/
-build/
-out/
-.next/
-.cache/
-.parcel-cache/
-.turbo/
-coverage/
-*.tsbuildinfo
-
-# ------------------------------------------------------------------------------
-# 5. OS & EDITOR ARTIFACTS
-# ------------------------------------------------------------------------------
-# Windows
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-[Dd]esktop.ini
-$RECYCLE.BIN/
-
-# macOS
+# Operating System & IDE Files
 .DS_Store
-.AppleDouble
-.LSOverride
-._*
-
-# IDEs & Editors
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.tmp
+*.temp
+*.swp
+*.bak
+*.orig
+.vscode/
 .idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
-*~
-
-# ------------------------------------------------------------------------------
-# 6. RUNTIME DATA & LOGS
-# ------------------------------------------------------------------------------
-logs/
-*.log
-tmp/
-temp/
-scratch/
+.playwright-mcp/

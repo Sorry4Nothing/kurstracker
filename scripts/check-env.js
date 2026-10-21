@@ -17,7 +17,7 @@ console.log(`🏕️  Cevi-DB Base URL            : ${envConfig.ceviDb.baseUrl}`
 console.log(`🔑 Cevi-DB Client ID           : ${envConfig.ceviDb.clientId ? 'Konfiguriert ✅' : 'FEHLT ❌'}`);
 console.log(`🔐 Cevi-DB Secret              : ${envConfig.ceviDb.clientSecret ? 'Konfiguriert ✅' : 'FEHLT ❌'}`);
 console.log(`🔄 Cevi-DB Redirect URI        : ${envConfig.ceviDb.redirectUri}`);
-console.log(`📦 Cevi-DB Mock-Modus          : ${envConfig.ceviDb.useMock ? 'AKTIVIERT 🟡 (Lokale Testdaten aktiv)' : 'DEAKTIVIERT 🟢 (Echte Cevi-DB)'}`);
+console.log(`📦 Cevi-DB Vorbereitungsmodus : ${envConfig.ceviDb.preparationMode ? 'AKTIVIERT 🟡 (Lokale Testdaten aktiv)' : 'DEAKTIVIERT 🟢 (Echte Cevi-DB)'}`);
 console.log('======================================================');
 
 if (validation.valid) {
@@ -25,5 +25,5 @@ if (validation.valid) {
 } else {
   console.log('\n⚠️  Warnungen in der Konfiguration:');
   validation.errors.forEach(err => console.log(`   - ${err}`));
-  console.log('\n💡 Hinweis: Für lokale Tests kann CEVI_DB_USE_MOCK=true gesetzt werden.\n');
+  console.log('\n💡 Hinweis: Für lokale Tests kann CEVI_DB_PREPARATION_MODE=true gesetzt werden.\n');
 }

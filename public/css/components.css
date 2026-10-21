@@ -1,0 +1,578 @@
+/* ==============================================================================
+   CEVI KURSTRACKER - SHARED COMPONENTS
+   The only home of the generic building blocks: view panels and section
+   headers, buttons, status badges and neutral tags, the search input, custom
+   dropdowns, cards and the loading state. View files only add local variants
+   on top.
+   Tokens only (css/variables.css), no colour literals. Motion is feedback
+   only: 120ms hover (var(--transition)) and 200ms menus, limited to colour,
+   opacity and transform. Focus uses the global :focus-visible ring.
+   ============================================================================== */
+
+/* ------------------------------------------------------------------------------
+   1. View panels and section headers
+   ------------------------------------------------------------------------------ */
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+/* A view opens with a control row (tree legend, planner actions). The
+   topbar h1 already names the view, so the row has no title of its own. */
+.panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3) var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+
+.panel-header > * {
+  min-width: 0;
+}
+
+/* Section headings in Cevi-Blau. The topbar h1 (layout.css) names the page
+   and stays ink; these name its parts. The views add their own headings in
+   the same colour (.inspector-section-title, .bento-title-left h3). */
+.panel-header h2,
+.card-header-flex h3 {
+  color: var(--blue-ink);
+}
+
+/* ------------------------------------------------------------------------------
+   2. Buttons. .btn-primary (Cevi-Rot) at most once per
+      view; .btn-secondary is a tonal Cevi-Blau button (tint, no border);
+      .btn-outline stays a bordered neutral. Hover only changes colour: no
+      movement, no halo, no pressed effect.
+   ------------------------------------------------------------------------------ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: var(--control-h);
+  padding: 0 var(--sp-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition: var(--transition);
+}
+
+/* Unavailable reads as neutral, not as a faded brand colour; the text keeps
+   its contrast. Beats every variant (two classes' worth of specificity). */
+.btn:disabled {
+  background-color: var(--bg-subtle);
+  border-color: var(--border-subtle);
+  color: var(--text-dim);
+  cursor: not-allowed;
+}
+
+.btn-sm {
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-3);
+  gap: var(--sp-1);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--primary-ink);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--blue-soft);
+  border-color: transparent;
+  color: var(--blue-ink);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--blue-soft-hover);
+}
+
+.btn-outline {
+  border-color: var(--border-strong);
+  color: var(--text-main);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+/* Icon-only buttons are square: .btn-icon, or any .btn that carries an
+   aria-label and contains nothing but an icon (the tree zoom controls).
+   :where() keeps the specificity of a single class. */
+.btn-icon,
+.btn:where([aria-label]:has(> i:only-child)) {
+  width: var(--control-h);
+  padding: 0;
+}
+
+.btn-icon.btn-sm,
+.btn-sm:where([aria-label]:has(> i:only-child)) {
+  width: var(--control-h-sm);
+}
+
+.btn-icon > i,
+.btn:where([aria-label]) > i:only-child {
+  font-size: var(--fs-14);
+}
+
+/* ------------------------------------------------------------------------------
+   3. Status badges: 4px chips with one ok / warn / bad / info pair each,
+      then the neutral tags
+   ------------------------------------------------------------------------------ */
+.badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--sp-1);
+  height: 20px;
+  padding: 0 var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.badge-success {
+  background-color: var(--ok-bg);
+  color: var(--ok-ink);
+}
+
+.badge-warning {
+  background-color: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+.badge-danger {
+  background-color: var(--bad-bg);
+  color: var(--bad-ink);
+}
+
+.badge-info {
+  background-color: var(--info-bg);
+  color: var(--info-ink);
+}
+
+/* Tags: an ID, a role or an organisation is not a status. This is their one
+   shape: a 4px chip, grey with a hairline by default. The view files give
+   each kind its hue family as a borderless tint, like the status badges:
+   IDs blue (profile.css), roles teal (profile.css, planner.css),
+   organisations Cevi red / J+S blue / SLRG teal (tree.css). */
+.role-badge,
+.role-chip,
+.stammdaten-id-pill,
+.node-org-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-1);
+  height: 20px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------------------
+   4. Filter bar and search input
+   ------------------------------------------------------------------------------ */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+/* Search takes the free space. The filter dropdown keeps its basis and only
+   grows once it wraps onto a line of its own on narrow screens. */
+.filter-bar > .search-input-wrapper {
+  flex: 999 1 240px;
+  min-width: 0;
+}
+
+.filter-bar > .custom-dropdown {
+  flex: 1 1 200px;
+}
+
+.search-input-wrapper {
+  position: relative;
+}
+
+.search-input-wrapper .search-icon {
+  position: absolute;
+  top: 50%;
+  left: var(--sp-3);
+  transform: translateY(-50%);
+  font-size: var(--fs-14);
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+/* Block box: no line-box slack, so the absolutely placed icon stays centred.
+   Focus uses the global :focus-visible ring. */
+.search-input {
+  display: block;
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.search-input:hover {
+  border-color: var(--text-muted);
+}
+
+.search-input-wrapper .search-input {
+  padding-left: calc(var(--sp-3) + var(--sp-6));
+}
+
+/* ------------------------------------------------------------------------------
+   5. Custom dropdowns. The theme switcher is a .custom-dropup that opens
+      upwards from the sidebar footer. theme.js toggles .open on the wrapper,
+      aria-expanded on the trigger and .active on the chosen item.
+   ------------------------------------------------------------------------------ */
+/* 200px keeps the menu (same width as the trigger) wide enough for its items */
+.custom-dropdown {
+  position: relative;
+  min-width: 200px;
+}
+
+/* Same box as the search input */
+.custom-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-regular);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: var(--transition);
+}
+
+.custom-dropdown-trigger:hover,
+.custom-dropdown-trigger[aria-expanded="true"] {
+  border-color: var(--text-muted);
+}
+
+.trigger-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+/* Labels truncate instead of widening the control */
+.custom-dropdown-trigger span:not(.trigger-left) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trigger-icon {
+  flex-shrink: 0;
+  width: var(--sp-4);
+  font-size: var(--fs-14);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.trigger-chevron {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: var(--fs-12);
+  color: var(--text-muted);
+  transition: transform var(--dur-med) var(--ease);
+}
+
+.custom-dropdown.open .trigger-chevron,
+.custom-dropup.open .trigger-chevron {
+  transform: rotate(180deg);
+}
+
+/* Floating layer: the shadow carries its own hairline ring, so the border
+   stays transparent (it only shows up in forced-colors mode). Closed menus
+   stay rendered but hidden and inert, so opening and closing can fade;
+   visibility only waits for the fade-out before it hides the menu. */
+.custom-dropdown-menu {
+  position: absolute;
+  top: calc(100% + var(--sp-1));
+  left: 0;
+  z-index: var(--z-dropdown);
+  width: 100%;
+  padding: var(--sp-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface-elevated);
+  box-shadow: var(--shadow-float);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(calc(-1 * var(--sp-1)));
+  transform-origin: top center;
+  transition:
+    opacity var(--dur-med) var(--ease),
+    transform var(--dur-med) var(--ease),
+    visibility 0s linear var(--dur-med);
+}
+
+.custom-dropup .custom-dropup-menu {
+  top: auto;
+  bottom: calc(100% + var(--sp-1));
+  transform: translateY(var(--sp-1));
+  transform-origin: bottom center;
+}
+
+.custom-dropdown.open .custom-dropdown-menu,
+.custom-dropup.open .custom-dropup-menu {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  transition-delay: 0s;
+}
+
+.dropup-header-title {
+  padding: var(--sp-2) var(--sp-2) var(--sp-1);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+}
+
+.custom-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 32px;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  cursor: pointer;
+  user-select: none;
+  transition: var(--transition);
+}
+
+.custom-dropdown-item:hover {
+  background-color: var(--bg-hover);
+}
+
+/* The chosen item and its check in Cevi-Blau (interaction) */
+.custom-dropdown-item.active {
+  font-weight: var(--fw-medium);
+  color: var(--blue-ink);
+}
+
+.custom-dropdown-item .check-icon {
+  flex-shrink: 0;
+  width: var(--sp-4);
+  font-size: var(--fs-12);
+  text-align: center;
+  color: var(--blue-ink);
+  opacity: 0;
+}
+
+.custom-dropdown-item.active .check-icon {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------------------
+   6. Cards: an opaque fill and a 1px border, no shadow, no hover state.
+      .card also frames the planner panels. The profile's qualification grid
+      carries both .cards-grid and .quals-bento-grid; this file owns the
+      grid layout. Never put a bordered box inside a card.
+   ------------------------------------------------------------------------------ */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: var(--sp-4);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--sp-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
+}
+
+.card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+/* A category, so teal */
+.card-category {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--teal-ink);
+}
+
+.card-title {
+  margin-bottom: var(--sp-1);
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
+  color: var(--text-main);
+}
+
+.card-subtitle {
+  margin-bottom: var(--sp-4);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+}
+
+/* Label-value rows under a divider, pushed to the bottom of the card so the
+   rows line up across a grid row */
+.meta-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-top: auto;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-variant-numeric: tabular-nums;
+}
+
+.meta-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.meta-item > span {
+  flex-shrink: 0;
+}
+
+.meta-item > strong {
+  min-width: 0;
+  font-weight: var(--fw-medium);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------------------
+   7. Loading and inline error state: a single line of text, no icon, no box.
+      Inside a card grid it spans every column.
+   ------------------------------------------------------------------------------ */
+.loading-placeholder {
+  grid-column: 1 / -1;
+  padding: var(--sp-8) var(--sp-4);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------------------
+   8. Text colours at zero specificity, so the .text-* utilities that the JS
+      templates add win: .card-subtitle.text-dim, strong.text-success
+      ("Bestätigt") and .loading-placeholder.text-danger. The one exception,
+      .meta-item.text-accent, is set explicitly below.
+   ------------------------------------------------------------------------------ */
+:where(.card-subtitle),
+:where(.meta-item),
+:where(.loading-placeholder) {
+  color: var(--text-muted);
+}
+
+:where(.meta-item) > strong {
+  color: var(--text-main);
+}
+
+/* A highlighted row (Empfehlung) is a recommendation, so it reads in the info
+   ink and carries it into the value. Same colour as .text-accent in three
+   themes; in Lagerfeuer the accent is Glut-Amber, which next to the
+   warn-coloured deadlines (Anmeldeschluss) would look like a second warning. */
+.meta-item.text-accent {
+  color: var(--info-ink);
+}
+
+.meta-item.text-accent > strong {
+  color: inherit;
+}
+
+/* ------------------------------------------------------------------------------
+   9. Small screens and reduced motion
+   ------------------------------------------------------------------------------ */
+@media (max-width: 640px) {
+  /* 16px keeps iOS Safari from zooming into the field on focus */
+  .search-input {
+    font-size: var(--fs-16);
+    line-height: var(--lh-16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The global rule already shortens every duration; drop the hide delay too,
+     so a closed menu leaves the page (and the accessibility tree) at once. */
+  .custom-dropdown-menu {
+    transition-delay: 0s;
+  }
+}
