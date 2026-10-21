@@ -1,4 +1,5 @@
 import { test, expect, openApp } from './fixtures.js';
+import { COURSE_MAP_COORDS } from '../public/js/tree-map.js';
 
 const fetchStructure = async request => (await (await request.get('/api/tree/structure')).json()).nodes;
 const zoomPercent = async page => parseInt(await page.locator('#treeZoomLabel').textContent(), 10);
@@ -6,6 +7,35 @@ const zoomPercent = async page => parseInt(await page.locator('#treeZoomLabel').
 const renderedScale = page => page.locator('#nodeCard-voku').evaluate(el => el.getBoundingClientRect().width / el.offsetWidth);
 const ids = locator => locator.evaluateAll(els => els.map(el => el.id).sort());
 const edges = locator => locator.evaluateAll(paths => [...new Set(paths.map(p => p.dataset.edge))].sort());
+
+// Kurs der Startansicht, Regel wie in tree.js: erster angemeldeter Kurs in Kartenreihenfolge, sonst erster bereiter,
+// sonst zuletzt absolvierter
+async function startCourse(request) {
+  const { evaluation } = await (await request.get('/api/tree/evaluation')).json();
+  const courseIds = Object.keys(COURSE_MAP_COORDS);
+  const withStatus = status => id => evaluation.nodes[id]?.status === status;
+  return courseIds.find(withStatus('IN_PROGRESS')) || courseIds.find(withStatus('AVAILABLE'))
+    || courseIds.findLast(withStatus('COMPLETED')) || 'voku';
+}
+
+// Knoten, die nicht ganz im sichtbaren Ausschnitt der Karte liegen
+const outsideMap = page => page.locator('.tree-node-card').evaluateAll(cards => {
+  const map = document.getElementById('treeMapViewport').getBoundingClientRect();
+  return cards.filter(card => {
+    const r = card.getBoundingClientRect();
+    return r.left < map.left || r.top < map.top || r.right > map.right || r.bottom > map.bottom;
+  }).map(card => card.id);
+});
+
+// «Baum verkleinern», bis sich die Anzeige nicht mehr ändert: dann zeigt die Karte die Übersicht
+async function zoomOutFully(page) {
+  const label = page.locator('#treeZoomLabel');
+  let before;
+  do {
+    before = await label.textContent();
+    await page.getByRole('button', { name: 'Baum verkleinern' }).click();
+  } while (await label.textContent() !== before);
+}
 
 test.describe('Ausbildungsbaum', () => {
   test.beforeEach(async ({ page }) => openApp(page));
@@ -75,6 +105,8 @@ test.describe('Ausbildungsbaum', () => {
     const path = await (await request.get('/api/tree/path/glk3')).json();
     const highlighted = page.locator('.tree-node-card.is-path-highlight');
     const activeLines = page.locator('#treeSvgLines path.active-path');
+    // Die Startansicht (100 %) zeigt nur einen Ausschnitt, die Übersicht alle Kurse
+    await zoomOutFully(page);
 
     await page.getByRole('button', { name: /Gruppenleiterkurs 3/ }).click();
     await expect(page.locator('#inspectorTitle')).toContainText('Gruppenleiterkurs 3');
@@ -103,19 +135,30 @@ test.describe('Ausbildungsbaum', () => {
     await expect(page.locator('#inspectorTitle')).toContainText('Vorkurs (Voku)');
   });
 
-  test('Zoom-Knöpfe ändern Massstab und Anzeige, begrenzt auf 45 % bis 160 %', async ({ page }) => {
+  test('Tab auf einen Kurs ausserhalb des Ausschnitts schiebt ihn ganz ins Bild', async ({ page }) => {
+    // Voku ist der erste Kurs in der Tab-Reihenfolge und liegt links ausserhalb der Startansicht
+    expect(await outsideMap(page)).toContain('nodeCard-voku');
+    await page.getByRole('button', { name: 'Zoom zurücksetzen' }).focus();
+    await page.keyboard.press('Tab');
+
+    await expect(page.locator('#nodeCard-voku')).toBeFocused();
+    expect(await outsideMap(page)).not.toContain('nodeCard-voku');
+  });
+
+  test('Zoom-Knöpfe ändern Massstab und Anzeige: verkleinern bis zur Übersicht über den ganzen Baum, vergrössern bis 160 %', async ({ page }) => {
     const label = page.locator('#treeZoomLabel');
     const zoomIn = page.getByRole('button', { name: 'Baum vergrössern' });
-    const zoomOut = page.getByRole('button', { name: 'Baum verkleinern' });
     const start = await zoomPercent(page);
 
     await zoomIn.click();
     await expect(label).toHaveText(`${start + 15}%`);
     expect(await renderedScale(page)).toBeCloseTo((start + 15) / 100, 2);
 
-    for (let i = 0; i < 12; i++) await zoomOut.click();
-    await expect(label).toHaveText('45%');
-    expect(await renderedScale(page)).toBeCloseTo(0.45, 2);
+    // Übersicht: jeder Kurs ganz im Bild, die Anzeige nennt den gerenderten Massstab (gerundet), höchstens 45 %
+    await zoomOutFully(page);
+    expect(await outsideMap(page)).toEqual([]);
+    expect(Math.abs(await renderedScale(page) * 100 - await zoomPercent(page))).toBeLessThanOrEqual(0.5);
+    expect(await zoomPercent(page)).toBeLessThanOrEqual(45);
 
     for (let i = 0; i < 12; i++) await zoomIn.click();
     await expect(label).toHaveText('160%');
@@ -150,4 +193,43 @@ test.describe('Ausbildungsbaum', () => {
     expect(after.x - before.x).toBeCloseTo(120, 0);
     expect(after.y - before.y).toBeCloseTo(60, 0);
   });
+
+  test('Ziehen auf einem Kurs verschiebt die Karte, ohne ihn auszuwählen; ein Klick ohne Bewegung wählt ihn aus', async ({ page, request }) => {
+    const node = page.locator(`#nodeCard-${await startCourse(request)}`);
+    const before = await node.boundingBox();
+
+    await page.mouse.move(before.x + 20, before.y + 20);
+    await page.mouse.down();
+    await page.mouse.move(before.x + 80, before.y - 10, { steps: 4 });
+    await page.mouse.up();
+
+    const after = await node.boundingBox();
+    expect(after.x - before.x).toBeCloseTo(60, 0);
+    expect(after.y - before.y).toBeCloseTo(-30, 0);
+    await expect(node).not.toHaveClass(/is-selected/);
+    await expect(page.locator('#inspectorTitle')).toHaveText('Kurs auswählen');
+
+    await node.click();
+    await expect(node).toHaveClass(/is-selected/);
+    await expect(page.locator('#inspectorTitle')).not.toHaveText('Kurs auswählen');
+  });
 });
+
+// Startansicht: 100 %, damit die Kursnamen lesbar sind, und der aktuelle Kurs der Person ohne Verschieben im Bild
+for (const [width, height] of [[1440, 900], [375, 812]]) {
+  test.describe(`Ausbildungsbaum ${width} x ${height}`, () => {
+    test.use({ viewport: { width, height } });
+
+    test('startet bei 100 % mit dem aktuellen Kurs der Person ganz im Bild', async ({ page, request }) => {
+      await openApp(page);
+      await expect(page.locator('#treeZoomLabel')).toHaveText('100%');
+      expect(await renderedScale(page)).toBeCloseTo(1, 2);
+
+      const course = `nodeCard-${await startCourse(request)}`;
+      expect(await outsideMap(page)).not.toContain(course);
+      const box = await page.locator(`#${course}`).boundingBox();
+      expect(box.y + box.height, 'ohne Scrollen der Seite sichtbar').toBeLessThanOrEqual(height);
+    });
+  });
+}
+

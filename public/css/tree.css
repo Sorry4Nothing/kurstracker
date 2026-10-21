@@ -213,11 +213,14 @@
   cursor: grabbing;
 }
 
+/* One-finger drags pan the map (pointer events in JS), a two-finger pinch
+   still zooms the page */
 .tree-map-viewport {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
+  touch-action: pinch-zoom;
 }
 
 .tree-map-canvas {
@@ -710,13 +713,5 @@
 @media (max-width: 640px) {
   .tree-inspector-panel {
     padding: var(--sp-4);
-  }
-}
-
-/* Touch screens: JS pans with the mouse only, so let the viewport scroll
-   natively to reach the parts of the map outside the frame. */
-@media (hover: none) {
-  .tree-map-viewport {
-    overflow: auto;
   }
 }

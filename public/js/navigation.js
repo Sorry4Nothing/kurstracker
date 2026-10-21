@@ -3,7 +3,7 @@
  * Volle Bildschirm-Umschaltung zwischen Ausbildungsbaum, Mein Profil und Stufenleiter-Planer
  */
 
-import { renderTreeSvgLines, fitMapToScreen } from './tree-map.js';
+import { renderTreeSvgLines, resetMapTransform } from './tree-map.js';
 import { getTreeStructure, getSelectedTargetCourseId } from './tree.js';
 
 export function switchTab(tabId) {
@@ -52,7 +52,7 @@ export function switchTab(tabId) {
   if (tabId === 'tree') {
     setTimeout(() => {
       renderTreeSvgLines(getTreeStructure(), getSelectedTargetCourseId());
-      fitMapToScreen();
+      resetMapTransform();
     }, 60);
   }
 }
