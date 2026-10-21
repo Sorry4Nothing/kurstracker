@@ -63,6 +63,12 @@ test.describe('Mobil 375 x 812', () => {
     }
   }
 
+  test('Datenschutzerklärung passt ohne horizontales Scrollen auf den Bildschirm', async ({ page }) => {
+    await page.goto('/datenschutz.html');
+    await expect(page.getByRole('heading', { level: 1, name: 'Datenschutzerklärung' })).toBeVisible();
+    await expectFitsScreenWidth(page);
+  });
+
   test('Hamburger öffnet und schliesst die Sidebar', async ({ page }) => {
     await openApp(page);
     const sidebar = page.locator('#appSidebar');

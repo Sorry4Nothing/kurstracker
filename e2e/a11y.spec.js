@@ -14,6 +14,12 @@ const VIEWS = [
   ['Profil', showView('profile')]
 ];
 
+// Eigene Seite ausserhalb der App, im gespeicherten Theme
+const PRIVACY = ['Datenschutzerklärung', async page => {
+  await page.goto('/datenschutz.html');
+  await expect(page.getByRole('heading', { level: 1, name: 'Datenschutzerklärung' })).toBeVisible();
+}];
+
 const SCENARIOS = [
   ...VIEWS,
   ['Theme-Menü offen', async page => {
@@ -45,7 +51,8 @@ const SCENARIOS = [
     await showView('profile')(page);
     await expect(page.locator('#navUserPhoto')).toBeVisible();
     await expect(page.locator('#profileHeroPhoto')).toBeVisible();
-  }]
+  }],
+  PRIVACY
 ];
 
 async function openAppInTheme(page, theme) {
@@ -99,6 +106,7 @@ test.describe('Barrierefreiheit Mobil 375 x 812', () => {
     ['Sidebar aufgeklappt', async page => {
       await page.getByRole('button', { name: 'Menü ein-/ausblenden' }).click();
       await expect(page.locator('#appSidebar')).toBeVisible();
-    }]
+    }],
+    PRIVACY
   ], '375 x 812');
 });

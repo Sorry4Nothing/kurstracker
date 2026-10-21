@@ -1,7 +1,8 @@
 /* ==============================================================================
    CEVI KURSTRACKER - APP SHELL
    Sidebar (brand, navigation, footer slot), sticky topbar with the page title,
-   content area, global footer, and the off-canvas drawer at 1024px and below.
+   content area, global footer, and the off-canvas drawer at 1024px and below;
+   last the privacy notice, a page of its own (datenschutz.html).
    Tokens only: colours, type, spacing and motion come from variables.css.
    The theme dropup (components.css) and the profile card (profile.css) sit in
    .sidebar-footer but are styled in their own files.
@@ -224,7 +225,8 @@
 /* On the band --focus-ring vanishes (Cevi-Blau on Cevi-Blau in Klassik,
    1:1); a white ring like the band text stays visible in every theme */
 .sidebar-header :focus-visible,
-.app-topbar :focus-visible {
+.app-topbar :focus-visible,
+.legal-band :focus-visible {
   outline-color: var(--on-brand);
 }
 
@@ -314,6 +316,12 @@
   min-width: 0;
 }
 
+/* Link to the privacy notice: footer ink, set apart by the underline that
+   every link has (variables.css) */
+.app-global-footer a {
+  color: inherit;
+}
+
 /* ------------------------------------------------------------------------------
    5. Drawer at 1024px and below
    The sidebar floats below the sticky topbar, so the hamburger stays reachable
@@ -394,5 +402,76 @@
     flex-direction: column;
     align-items: flex-start;
     padding: var(--sp-3) var(--sp-4);
+  }
+}
+
+/* ------------------------------------------------------------------------------
+   6. Privacy notice (datenschutz.html), a page of its own outside the shell:
+      the header band with the logo, then one text column at 16/24.
+   ------------------------------------------------------------------------------ */
+.legal-band {
+  display: flex;
+  align-items: center;
+  padding: var(--sp-5) var(--sp-8);
+  background-color: var(--band-bg);
+  border-bottom: 3px solid var(--band-rule);
+}
+
+.legal-page {
+  max-width: 768px;
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-6) var(--sp-12);
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  color: var(--text-main);
+}
+
+.legal-page h2 {
+  margin-top: var(--sp-8);
+  color: var(--blue-ink);
+}
+
+.legal-page h3 {
+  margin-top: var(--sp-5);
+}
+
+.legal-page :is(p, ul, address) {
+  margin-top: var(--sp-3);
+}
+
+.legal-page ul {
+  padding-left: var(--sp-6);
+}
+
+.legal-page li + li {
+  margin-top: var(--sp-1);
+}
+
+.legal-page address {
+  font-style: normal;
+}
+
+.legal-page code {
+  font-size: var(--fs-14);
+}
+
+.legal-page .legal-meta {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
+}
+
+.legal-page .legal-back {
+  margin-top: var(--sp-8);
+}
+
+@media (max-width: 640px) {
+  .legal-band {
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .legal-page {
+    padding: var(--sp-6) var(--sp-4) var(--sp-8);
   }
 }
