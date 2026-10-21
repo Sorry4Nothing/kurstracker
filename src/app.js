@@ -54,7 +54,8 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
   "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
   `img-src 'self' data: ${new URL(envConfig.ceviDb.baseUrl).origin}`,
-  "connect-src 'self'",
+  // Stylesheet-Hosts auch für fetch: Werkzeuge wie axe lesen das CSSOM per fetch nach; Daten fliessen nur an 'self'
+  "connect-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -91,17 +92,19 @@ function requireSameOrigin(req, res, next) {
   res.status(403).json({ error: 'Anfrage von fremder Herkunft abgelehnt' });
 }
 
-// Rate Limits pro IP (hinter einem Reverse Proxy zusätzlich app.set('trust proxy', 1) setzen, sonst zählt die Proxy-IP)
+// Rate Limits pro IP (hinter einem Reverse Proxy zusätzlich app.set('trust proxy', 1) setzen, sonst zählt die Proxy-IP).
+// Grosszügig bemessen: in einem Lager-WLAN teilen sich viele Leitende eine IP. Passwörter laufen über die Cevi-DB,
+// hier geht es um Missbrauch der Token-Tauschs und um Last, nicht um Passwort-Raten.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: Number(process.env.RATE_LIMIT_AUTH_MAX || 30),
+  limit: Number(process.env.RATE_LIMIT_AUTH_MAX || 100),
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   handler: (req, res) => res.status(429).json({ error: 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.' })
 });
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: Number(process.env.RATE_LIMIT_API_MAX || 600),
+  limit: Number(process.env.RATE_LIMIT_API_MAX || 3000),
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   handler: (req, res) => res.status(429).json({ error: 'Zu viele Anfragen. Bitte später erneut versuchen.' })
