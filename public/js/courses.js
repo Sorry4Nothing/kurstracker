@@ -3,7 +3,7 @@
  * Kursdaten-Laden, Suche und Filterung nach Kategorien
  */
 
-import { formatEuropeanDate, formatEuropeanDateRange } from './utils.js';
+import { esc, formatEuropeanDate, formatEuropeanDateRange } from './utils.js';
 
 let allCourses = [];
 
@@ -19,7 +19,7 @@ export async function loadAllCourses() {
     renderCourses(allCourses);
   } catch (err) {
     console.error('Fehler beim Laden des Kursangebots:', err);
-    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursangebots: ${err.message}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursangebots: ${esc(err.message)}</div>`;
   }
 }
 
@@ -27,30 +27,31 @@ export function renderCourses(courses) {
   const container = document.getElementById('coursesContainer');
   const list = Array.isArray(courses) ? courses : (courses?.courses || []);
 
+  // Kursdaten kommen im Live-Betrieb aus der Cevi-DB (fremde Eingaben): alles escapen
   const html = list.map(c => `
     <div class="card">
       <div class="card-top">
-        <span class="card-category">${c.category}</span>
-        <span class="badge ${c.status.includes('Offen') ? 'badge-success' : 'badge-warning'}">${c.status}</span>
+        <span class="card-category">${esc(c.category)}</span>
+        <span class="badge ${String(c.status || '').includes('Offen') ? 'badge-success' : 'badge-warning'}">${esc(c.status)}</span>
       </div>
-      <h3 class="card-title">${c.title}</h3>
-      <p class="card-subtitle">${c.description}</p>
+      <h3 class="card-title">${esc(c.title)}</h3>
+      <p class="card-subtitle">${esc(c.description)}</p>
       <div class="meta-list">
         <div class="meta-item">
           <span>Veranstalter:</span>
-          <strong>${c.organizer}</strong>
+          <strong>${esc(c.organizer)}</strong>
         </div>
         <div class="meta-item">
           <span>Kursort:</span>
-          <strong>${c.location}</strong>
+          <strong>${esc(c.location)}</strong>
         </div>
         <div class="meta-item">
           <span>Kursdatum:</span>
-          <strong>${formatEuropeanDateRange(c.start_date, c.end_date)}</strong>
+          <strong>${esc(formatEuropeanDateRange(c.start_date, c.end_date))}</strong>
         </div>
         <div class="meta-item">
           <span>Anmeldeschluss:</span>
-          <strong style="color: var(--cevi-gold);">${formatEuropeanDate(c.registration_deadline)}</strong>
+          <strong style="color: var(--cevi-gold);">${esc(formatEuropeanDate(c.registration_deadline))}</strong>
         </div>
       </div>
     </div>
