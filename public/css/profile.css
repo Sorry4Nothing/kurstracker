@@ -416,8 +416,10 @@
    scrolls it too.
    One column by default: the page scrolls and every body stops at
    min(60vh, 32rem). From 900px of view width (a 1280px window beside the
-   sidebar) a 1:2 grid of two rows fills the window below the header and the
-   page itself stays put. The narrow column holds the personal record
+   sidebar) a 1:2 grid. In a window at least 700px tall its two rows fill
+   the window below the header and the page itself stays put; a lower
+   window keeps the page scroll and the capped bodies instead of crushing
+   the panels. The narrow column holds the personal record
    (Stammdaten, Werdegang), the wide one the card lists (Anerkennungen,
    Kursangebot).
    ------------------------------------------------------------------------------ */
@@ -475,29 +477,42 @@
 }
 
 @container profile (min-width: 900px) {
+  .profile-bento-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+
   /* Zero basis: the grid fills the height below the header, but its lists
      never make the page longer. The first row fits its content up to 40%,
-     the second takes the rest. Below 420px the page scrolls instead of
-     crushing the panels. */
-  .profile-bento-grid {
-    flex: 1 1 0;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-    grid-template-rows: fit-content(40%) minmax(0, 1fr);
-    align-items: stretch;
-    min-height: 420px;
-  }
+     the second takes the rest. The 420px floor only matters when the
+     header wraps. Screen only, so print keeps the page flow. */
+  @media screen and (min-height: 700px) {
+    .profile-bento-grid {
+      flex: 1 1 0;
+      grid-template-rows: fit-content(40%) minmax(0, 1fr);
+      align-items: stretch;
+      min-height: 420px;
+    }
 
-  /* The rows set the panel heights, not the content */
-  .bento-card {
-    min-height: 0;
-  }
+    /* The rows set the panel heights, not the content */
+    .bento-card {
+      min-height: 0;
+    }
 
-  /* Contain only here, where the page stays put. In one column a body at
-     its end hands the scroll on to the page, so a phone never gets stuck
-     in a panel. */
+    /* Contain only here, where the page stays put. Wherever the page
+       scrolls, a body at its end hands the scroll on to it, so the wheel
+       or a finger never gets stuck in a panel. */
+    .bento-card-body {
+      max-height: none;
+      overscroll-behavior: contain;
+    }
+  }
+}
+
+/* Paper does not scroll: print the lists in full */
+@media print {
   .bento-card-body {
     max-height: none;
-    overscroll-behavior: contain;
+    overflow: visible;
   }
 }
 
@@ -520,7 +535,9 @@
    4. Stammdaten: the two ID tags open the record (the name is already in the
       profile header), then label-above-value fields
    ------------------------------------------------------------------------------ */
-.bento-stammdaten {
+/* The query measures the field grid itself: the body's content box, inside
+   its padding and any scrollbar */
+.bento-stammdaten > .bento-card-body {
   container: stammdaten / inline-size;
 }
 
@@ -656,6 +673,12 @@
 #historyContainer .badge-success {
   background-color: var(--bg-subtle);
   color: var(--text-muted);
+}
+
+/* The history chips sit on the panel fill, not on a white card: the
+   hairline of the neutral tags (components.css) keeps their shape */
+#historyContainer .badge-success {
+  border-color: var(--border-subtle);
 }
 
 /* Deadlines ("Anmeldeschluss") are gold: courses.js writes them in
