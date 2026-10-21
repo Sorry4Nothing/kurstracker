@@ -15,8 +15,8 @@
    Colour roles on the map: status lives on the node fills (green =
    completed, blue = registered, teal = ready, grey = locked); the
    organisation tag carries its own hue (Cevi red, J+S blue, SLRG teal).
-   The selected target and its route use --route: Cevi-Rot, and ink in
-   Alpine, where Cevi-Blau already means "registered" and keyboard focus.
+   The selected target and its route use --route: Cevi-Rot (the lighter
+   red on the dark themes).
    ============================================================================== */
 
 /* ------------------------------------------------------------------------------
@@ -91,31 +91,26 @@
   color: var(--teal-ink);
 }
 
-/* Each swatch is a small node: the same fill and edge as the cards it
-   explains (section 6) */
+/* Each swatch is the solid status stripe of the nodes it explains
+   (section 6) */
 .legend-dot {
   flex-shrink: 0;
-  width: 16px;
+  width: 12px;
   height: 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 2px;
-  background-color: var(--bg-surface-elevated);
+  border-radius: 3px;
+  background-color: var(--border-strong);
 }
 
 .legend-dot.status-completed {
-  background-color: var(--ok-bg);
+  background-color: var(--ok-solid);
 }
 
 .legend-dot.status-in_progress {
-  background-color: var(--blue-soft);
+  background-color: var(--blue-solid);
 }
 
 .legend-dot.status-available {
-  background-color: var(--teal-soft);
-}
-
-.legend-dot.status-locked {
-  background-color: var(--bg-subtle);
+  background-color: var(--teal-solid);
 }
 
 /* ------------------------------------------------------------------------------
@@ -193,8 +188,8 @@
   position: relative;
   height: min(720px, 70vh);
   overflow: hidden;
-  background-color: var(--bg-surface);
-  background-image: radial-gradient(circle, var(--border-subtle) 1px, transparent 1px);
+  background-color: var(--canvas-bg);
+  background-image: radial-gradient(circle, var(--canvas-dot) 1px, transparent 1px);
   background-size: var(--sp-6) var(--sp-6);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -280,19 +275,27 @@
   transition: var(--transition);
 }
 
-/* Status: every state is a tint with the same hairline edge (green
-   completed, blue registered, teal ready, grey locked). The status label
-   repeats it in the matching ink. */
+/* Status: a tint plus a solid 4px stripe on the left edge (green completed,
+   blue registered, teal ready, grey locked). The stripe is a border, so the
+   border-box stays 220 x 80. The status label repeats it in the matching
+   ink. */
+.tree-node-card {
+  border-left: 4px solid var(--border-strong);
+}
+
 .tree-node-card.status-completed {
   background-color: var(--ok-bg);
+  border-left-color: var(--ok-solid);
 }
 
 .tree-node-card.status-in_progress {
   background-color: var(--blue-soft);
+  border-left-color: var(--blue-solid);
 }
 
 .tree-node-card.status-available {
   background-color: var(--teal-soft);
+  border-left-color: var(--teal-solid);
 }
 
 .tree-node-card.status-locked {
@@ -300,18 +303,25 @@
 }
 
 .tree-node-card:hover {
-  border-color: var(--text-muted);
+  border-top-color: var(--text-muted);
+  border-right-color: var(--text-muted);
+  border-bottom-color: var(--text-muted);
 }
 
-/* Prerequisites on the route to the selected target */
+/* Prerequisites on the route to the selected target. Hover, route and
+   selection recolour three sides; the left edge keeps the status stripe. */
 .tree-node-card.is-path-highlight {
-  border-color: var(--route);
+  border-top-color: var(--route);
+  border-right-color: var(--route);
+  border-bottom-color: var(--route);
 }
 
 /* Selected target: route-coloured border plus a 2px ring. The outline adds
    no size, so the box stays 220 x 80. */
 .tree-node-card.is-selected {
-  border-color: var(--route);
+  border-top-color: var(--route);
+  border-right-color: var(--route);
+  border-bottom-color: var(--route);
   outline: 2px solid var(--route);
   outline-offset: 2px;
 }
@@ -452,6 +462,7 @@
   padding: var(--sp-5);
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
+  border-top: 3px solid var(--primary);
   border-radius: var(--radius-md);
 }
 
@@ -460,13 +471,14 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-/* Panel label and section titles are headings: Cevi-Blau */
+/* Panel label in the primary hue, like the panel's top rule; section
+   titles are headings: Cevi-Blau */
 .inspector-badge {
   margin-bottom: var(--sp-1);
   font-size: var(--fs-12);
   line-height: var(--lh-12);
-  font-weight: var(--fw-medium);
-  color: var(--blue-ink);
+  font-weight: var(--fw-semibold);
+  color: var(--primary-text);
 }
 
 .inspector-header h3 {

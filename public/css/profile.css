@@ -39,8 +39,8 @@
   border-color: var(--primary-text);
 }
 
-/* Empty portrait in the identity colour: the blue pair, like the avatar in
-   the profile header */
+/* Empty portrait in the theme's band colour with white initials, like the
+   avatar in the profile header */
 .koko-photo-container {
   position: relative;
   display: flex;
@@ -50,7 +50,7 @@
   aspect-ratio: 5 / 4;
   overflow: hidden;
   border-radius: var(--radius-sm);
-  background-color: var(--blue-soft);
+  background-color: var(--band-bg);
 }
 
 /* Placeholder initials, as in the Kokonut card: the name below carries the
@@ -58,8 +58,8 @@
 .koko-initials-fallback {
   font-size: var(--fs-30);
   line-height: var(--lh-30);
-  font-weight: var(--fw-medium);
-  color: var(--blue-ink);
+  font-weight: var(--fw-semibold);
+  color: var(--on-brand);
 }
 
 .koko-photo-img {
@@ -256,17 +256,16 @@
   width: 56px;
   height: 56px;
   overflow: hidden;
-  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
-  background-color: var(--blue-soft);
+  background-color: var(--band-bg);
 }
 
-/* Identity in the blue pair, like the portrait on the sidebar card */
+/* Identity in the band colour, like the portrait on the sidebar card */
 .profile-hero-avatar-initials {
   font-size: var(--fs-18);
   line-height: var(--lh-18);
   font-weight: var(--fw-semibold);
-  color: var(--blue-ink);
+  color: var(--on-brand);
 }
 
 .profile-hero-avatar-img {
@@ -570,6 +569,20 @@
   margin-bottom: var(--sp-1) !important;
   font-size: var(--fs-12) !important;
   line-height: var(--lh-12);
+}
+
+/* Validity as a 3px top rule in the status hue: valid green, in training
+   gold, expired red */
+.qual-card:has(.card-top > .badge-success) {
+  border-top: 3px solid var(--ok-solid);
+}
+
+.qual-card:has(.card-top > .badge-warning) {
+  border-top: 3px solid var(--warn-ink);
+}
+
+.qual-card:has(.card-top > .badge-danger) {
+  border-top: 3px solid var(--bad-ink);
 }
 
 /* The issuer line ("Ausgestellt von: BASPO / Cevi Schweiz") names an

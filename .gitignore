@@ -68,3 +68,4 @@ Desktop.ini
 *.ntvs*
 *.njsproj
 *.sln
+.playwright-mcp/

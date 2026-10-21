@@ -4,10 +4,10 @@
  */
 
 const THEME_NAMES = {
-  'cevi-tools': 'Cevi CD (Offiziell)',
-  'midnight': 'Midnight (Dark)',
-  'alpine-light': 'Alpine Pure (Light)',
-  'campfire': 'Campfire (Dark)'
+  'cevi-tools': 'Cevi Klassik',
+  'midnight': 'Sternennacht',
+  'alpine-light': 'Morgenrot',
+  'campfire': 'Lagerfeuer'
 };
 
 export function initTheme() {
@@ -124,5 +124,19 @@ export function closeAllDropdowns() {
 function setupGlobalClickDismiss() {
   document.addEventListener('click', () => {
     closeAllDropdowns();
+  });
+
+  // Tastatur: Enter/Leertaste loesen div-Buttons (Baumknoten, Profilkarte) und
+  // Dropdown-Eintraege aus, Escape schliesst offene Dropdowns
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeAllDropdowns();
+      return;
+    }
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const target = e.target.closest?.('[role="button"]:not(button), [role="option"]');
+    if (!target) return;
+    e.preventDefault();
+    target.click();
   });
 }

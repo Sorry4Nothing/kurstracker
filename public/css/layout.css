@@ -53,35 +53,41 @@
   height: 100dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background-color: var(--bg-surface);
+  background-color: var(--sidebar-bg);
   border-right: 1px solid var(--border-subtle);
 }
 
+/* The sidebar header is the left end of the header band (see the topbar) */
 .sidebar-header {
   display: flex;
   flex-shrink: 0;
   align-items: center;
   min-height: var(--shell-header-h);
   padding: 0 var(--sp-5);
-  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--band-bg);
+  border-bottom: 3px solid var(--band-rule);
 }
 
-/* Logo mark plus a two-weight wordmark; the brand colour lives in the mark */
+/* Logo mark on a white plate (its Cevi-Blau would vanish on the band) plus
+   a two-weight wordmark */
 .brand-link {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   min-width: 0;
   border-radius: var(--radius-md);
-  color: var(--text-main);
+  color: var(--on-brand);
   text-decoration: none;
 }
 
 .brand-logo-svg {
   display: block;
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
+  padding: var(--sp-1);
+  border-radius: var(--radius-md);
+  background-color: var(--logo-plate);
 }
 
 .brand-text {
@@ -92,14 +98,14 @@
   display: block;
   font-size: var(--fs-16);
   line-height: var(--lh-16);
-  font-weight: var(--fw-semibold);
-  color: var(--text-main);
+  font-weight: var(--fw-bold);
+  color: var(--on-brand);
   white-space: nowrap;
 }
 
 .brand-title .highlight {
   font-weight: var(--fw-regular);
-  color: var(--text-muted);
+  color: var(--band-ink-muted);
 }
 
 /* Navigation */
@@ -122,7 +128,7 @@
 
 /* auth.js shows #tabPlanner with an inline display: flex.
    Label in ink, icon in Cevi-Blau (interaction); the current view takes the
-   primary tint (Cevi-Rot, Cevi-Blau in Alpine) for label and icon. */
+   solid primary fill (see below). */
 .sidebar-nav-item {
   position: relative;
   display: flex;
@@ -164,28 +170,29 @@
   background-color: var(--bg-hover);
 }
 
-/* Current view: same specificity as :hover and later, so it keeps its tint
-   under the pointer */
+/* Current view: a solid primary fill (Cevi-Rot).
+   Same specificity as :hover and later, so it keeps its fill under the
+   pointer. */
 .sidebar-nav-item.active,
 .sidebar-nav-item.active .nav-icon {
-  color: var(--primary-soft-ink);
+  color: var(--primary-ink);
 }
 
 .sidebar-nav-item.active {
-  background-color: var(--primary-soft);
+  background-color: var(--primary);
 }
 
-/* Active marker: a 2px bar on the left edge, out of flow so the label never
-   shifts. Drawn as a border so it survives forced-colors mode. A stroke, so
-   it takes --primary-text: the same Cevi-Rot on the light themes, the lighter
-   red on the dark ones (Cevi-Rot itself is under 3:1 on a dark sidebar). */
+.sidebar-nav-item.active:hover {
+  background-color: var(--primary-hover);
+}
+
+/* forced-colors drops the fill; a transparent border keeps the marker */
 .sidebar-nav-item.active::before {
   content: "";
   position: absolute;
-  top: var(--sp-2);
-  bottom: var(--sp-2);
-  left: 0;
-  border-left: 2px solid var(--primary-text);
+  inset: 0;
+  border: 1px solid transparent;
+  border-radius: inherit;
 }
 
 .sidebar-footer {
@@ -199,6 +206,8 @@
 
 /* ------------------------------------------------------------------------------
    3. Topbar: sticky and opaque. The h1 is the page title of every view.
+      Together with the sidebar header it forms the header band: the theme's
+      brand colour with a 3px rule in the accent below.
    ------------------------------------------------------------------------------ */
 .app-topbar {
   position: sticky;
@@ -208,8 +217,8 @@
   align-items: center;
   min-height: var(--shell-header-h);
   padding: 0 var(--sp-8);
-  background-color: var(--bg-main);
-  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--band-bg);
+  border-bottom: 3px solid var(--band-rule);
 }
 
 .topbar-left {
@@ -232,7 +241,7 @@
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   background-color: transparent;
-  color: var(--text-muted);
+  color: var(--band-ink-muted);
   font-size: var(--fs-16);
   line-height: 1;
   cursor: pointer;
@@ -240,8 +249,8 @@
 }
 
 .sidebar-toggle-btn:hover {
-  background-color: var(--bg-hover);
-  color: var(--text-main);
+  background-color: var(--band-hover);
+  color: var(--on-brand);
 }
 
 .topbar-titles {
@@ -255,7 +264,7 @@
   font-size: var(--fs-24);
   line-height: var(--lh-24);
   font-weight: var(--fw-bold);
-  color: var(--text-main);
+  color: var(--on-brand);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -265,7 +274,7 @@
   font-size: var(--fs-14);
   line-height: var(--lh-14);
   font-weight: var(--fw-regular);
-  color: var(--text-muted);
+  color: var(--band-ink-muted);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -334,8 +343,8 @@
 
   /* Pressed look while the drawer is open */
   .app-layout:has(.app-sidebar.open) .sidebar-toggle-btn {
-    background-color: var(--bg-hover);
-    color: var(--text-main);
+    background-color: var(--band-hover);
+    color: var(--on-brand);
   }
 
   .app-topbar {

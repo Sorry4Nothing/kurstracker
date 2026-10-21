@@ -4,9 +4,10 @@
    Logo-Schwarz #141412 and white. Typeface: Archivo.
    This is the only stylesheet that may contain colour literals. Every other
    file references the custom properties defined here.
-   Colour roles: five hue families, one meaning each. Large surfaces (page,
-   sidebar, cards) stay neutral; colour sits on headings, chips, numbers,
-   statuses, icons and buttons.
+   Colour roles: five hue families, one meaning each. The header band carries
+   the theme's brand colour (--band-*); page and cards stay neutral, the
+   sidebar and canvas take a faint tint, and colour sits on headings, chips,
+   numbers, statuses, icons and buttons.
    - Red (Cevi-Rot): primary action, the active / current state, selected
      path, Cevi organisation tags, urgent.
    - Blue (Cevi-Blau): section headings, interaction (secondary buttons,
@@ -17,7 +18,7 @@
    - Gold (--warn-*): deadlines, "in Ausbildung", warnings.
    Hue tokens: *-soft is a fill, *-ink is text or an icon on that fill or on
    the page, *-solid is for dots, lines and bars. --primary-soft(-ink) is the
-   tint of the primary hue (red, blue in Alpine); --info-* is the blue family.
+   tint of the primary hue (Cevi-Rot); --info-* is the blue family.
    ============================================================================== */
 
 /* ------------------------------------------------------------------------------
@@ -29,6 +30,10 @@
   --cevi-blue: #323394;
   --cevi-red: #C41333;
   --cevi-black: #141412;
+  /* Text and icons on a saturated brand fill (band, active nav, avatar),
+     and the plate the logo sits on inside the band */
+  --on-brand: #FFFFFF;
+  --logo-plate: #FFFFFF;
 
   /* Typography */
   --font-sans: 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -94,12 +99,23 @@
 }
 
 /* ------------------------------------------------------------------------------
-   2. Theme "Cevi CD (Offiziell)": default, light. White ground, Cevi-Rot is the
-      only brand accent, Cevi-Blau carries interaction and info.
+   2. Theme "Cevi Klassik": default, light. White ground under a Cevi-Blau
+      header band with a Cevi-Rot rule; Cevi-Rot marks action and the
+      current state, Cevi-Blau carries interaction and info.
    ------------------------------------------------------------------------------ */
 :root,
 [data-theme="cevi-tools"] {
   color-scheme: light;
+
+  /* Shell: header band across sidebar and topbar, tinted sidebar, canvas */
+  --band-bg: #323394;
+  --band-ink-muted: #C9CAEE;
+  --band-hover: #45469F;
+  --band-rule: #C41333;
+  --sidebar-bg: #F5F5FB;
+  --canvas-bg: #F7F7FC;
+  --canvas-dot: #D9DAF0;
+  --ok-solid: #1F8A4C;
 
   --bg-main: #FFFFFF;
   --bg-surface: #FAFAF8;
@@ -154,72 +170,97 @@
 }
 
 /* ------------------------------------------------------------------------------
-   3. Theme "Alpine Pure": light, cool grey ground. Cevi-Blau is the primary
-      accent (so --primary-soft is the blue tint); Cevi-Rot appears only in
-      the logo and on the Cevi organisation tags.
+   3. Theme "Morgenrot": light. Klassik with the two logo colours swapped in
+      the frame: a deep Cevi-Rot band with a Cevi-Blau rule over a near-white
+      page; the sidebar and the tree canvas take a faint blush of the band.
+      Roles as in Klassik: Cevi-Rot marks action and the current state,
+      Cevi-Blau carries interaction and info.
    ------------------------------------------------------------------------------ */
 [data-theme="alpine-light"] {
   color-scheme: light;
 
-  --bg-main: #F5F6F8;
+  /* Band: Cevi-Rot's hue at about the depth of Klassik's blue band, so the
+     brighter Cevi-Rot nav pill stands out from it and it stays clear of
+     --bad-ink. Rule: Cevi-Blau's hue at Cevi-Rot's lightness, 1.8:1 above
+     the band like Klassik's red rule, 5.0:1 on the sidebar */
+  --band-bg: #89061D;
+  --band-ink-muted: #ECD9D4;
+  --band-hover: #9D1029;
+  --band-rule: #555ACA;
+  --sidebar-bg: #F9EEEB;
+  --canvas-bg: #FEF7F6;
+  --canvas-dot: #E8D2CE;
+  --ok-solid: #1F8A4C;
+
+  --bg-main: #FBF8F7;
   --bg-surface: #FFFFFF;
   --bg-surface-elevated: #FFFFFF;
-  --bg-subtle: #EEF0F3;
-  --bg-hover: #EBEEF2;
+  /* Locked and neutral fills: warm grey, never pink (urgent) or gold */
+  --bg-subtle: #EDEAE6;
+  /* Neutral grey, so the nav hover still shows on the blush sidebar */
+  --bg-hover: #E6E4E1;
 
-  --border-subtle: #E1E4EA;
-  --border-strong: #858A95; /* 3.2:1 on --bg-main, 3.5:1 on white */
+  --border-subtle: #E6DED9;
+  --border-strong: #857C77; /* 3.9:1 on --bg-main, 3.4:1 on --bg-subtle */
 
-  --text-main: #12131A;
-  --text-muted: #565A66;
-  --text-dim: #666B78;
+  --text-main: #141412;
+  --text-muted: #59524F;
+  --text-dim: #645C58;
 
-  --primary: #323394;
-  --primary-hover: #28297A;
+  --primary: #C41333;
+  --primary-hover: #A30F2A;
   --primary-ink: #FFFFFF;
-  --primary-text: #323394;
+  --primary-text: #C41333;
   --cevi-accent: #323394;
   --focus-ring: #323394;
-  /* Ink, not blue: Cevi-Blau already marks "angemeldet" and keyboard focus
-     here, and red stays in the logo */
-  --route: var(--text-main);
+  --route: var(--primary-text);
 
-  --ok-bg: #E7F4EC;
+  --ok-bg: #DFF1E5;
   --ok-ink: #17703A;
-  --warn-bg: #FFF4D6;
+  --warn-bg: #FFF0C9;
   --warn-ink: #8A5A00;
-  --bad-bg: #FCE9EC;
+  --bad-bg: #FBE4E8;
   --bad-ink: #9E1B2C;
 
-  --red-soft: #FBEAED;
+  --red-soft: #FAE4E8;
   --red-ink: #A30F2A;
   --red-solid: #C41333;
-  --blue-soft: #ECECF8;
-  --blue-soft-hover: #DFDFF3;
+  --blue-soft: #E7E7F8;
+  --blue-soft-hover: #DADAF2;
   --blue-ink: #323394;
   --blue-solid: #323394;
-  --teal-soft: #E3F2F6;
+  --teal-soft: #DBEFF5;
   --teal-ink: #1D6274;
   --teal-solid: #2C7C91;
-  --primary-soft: var(--blue-soft);
-  --primary-soft-ink: var(--blue-ink);
+  --primary-soft: var(--red-soft);
+  --primary-soft-ink: var(--red-ink);
   --info-bg: var(--blue-soft);
   --info-ink: var(--blue-ink);
 
-  --scrollbar-thumb: #C3C7CF;
-  --scrim: rgba(18, 19, 26, 0.48);
+  --scrollbar-thumb: #CFC5C0;
+  --scrim: rgba(20, 20, 18, 0.48);
   --shadow-float:
-    0 0 0 1px rgba(18, 19, 26, 0.06),
-    0 12px 32px -8px rgba(18, 19, 26, 0.16),
-    0 2px 6px rgba(18, 19, 26, 0.06);
+    0 0 0 1px rgba(20, 20, 18, 0.06),
+    0 12px 32px -8px rgba(20, 20, 18, 0.16),
+    0 2px 6px rgba(20, 20, 18, 0.06);
 }
 
 /* ------------------------------------------------------------------------------
-   4. Theme "Midnight": dark neutral (no navy, no slate). Cevi-Rot stays the
-      fill colour; red text and strokes use the lighter --primary-text.
+   4. Theme "Sternennacht": dark neutral under a Cevi-Blau band. Cevi-Rot
+      stays the fill colour; red text and strokes use the lighter
+      --primary-text.
    ------------------------------------------------------------------------------ */
 [data-theme="midnight"] {
   color-scheme: dark;
+
+  --band-bg: #2A2B7E;
+  --band-ink-muted: #C2C3EC;
+  --band-hover: #393A90;
+  --band-rule: #E5485D;
+  --sidebar-bg: #17172A;
+  --canvas-bg: #161620;
+  --canvas-dot: #2C2C44;
+  --ok-solid: #3FBF77;
 
   --bg-main: #141414;
   --bg-surface: #1B1B1B;
@@ -273,11 +314,21 @@
 }
 
 /* ------------------------------------------------------------------------------
-   5. Theme "Campfire": warm dark. Glut-Amber for interaction, Cevi-Rot as
-      fill, light blue focus ring so focus never reads as a warning.
+   5. Theme "Lagerfeuer": warm dark under an ember-red band. Glut-Amber for
+      interaction, Cevi-Rot as fill, light blue focus ring so focus never
+      reads as a warning.
    ------------------------------------------------------------------------------ */
 [data-theme="campfire"] {
   color-scheme: dark;
+
+  --band-bg: #6B1A14;
+  --band-ink-muted: #F2CBB8;
+  --band-hover: #80241C;
+  --band-rule: #EFB06A;
+  --sidebar-bg: #1C1611;
+  --canvas-bg: #1A1511;
+  --canvas-dot: #3A3027;
+  --ok-solid: #4FBF7E;
 
   --bg-main: #17130F;
   --bg-surface: #1F1A15;

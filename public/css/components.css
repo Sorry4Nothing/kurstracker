@@ -44,7 +44,7 @@
 }
 
 /* ------------------------------------------------------------------------------
-   2. Buttons. .btn-primary (Cevi-Rot, Cevi-Blau in Alpine) at most once per
+   2. Buttons. .btn-primary (Cevi-Rot) at most once per
       view; .btn-secondary is a tonal Cevi-Blau button (tint, no border);
       .btn-outline stays a bordered neutral. Hover only changes colour: no
       movement, no halo, no pressed effect.
@@ -548,7 +548,7 @@
 
 /* A highlighted row (Empfehlung) is a recommendation, so it reads in the info
    ink and carries it into the value. Same colour as .text-accent in three
-   themes; in Campfire the accent is Glut-Amber, which next to the
+   themes; in Lagerfeuer the accent is Glut-Amber, which next to the
    warn-coloured deadlines (Anmeldeschluss) would look like a second warning. */
 .meta-item.text-accent {
   color: var(--info-ink);
