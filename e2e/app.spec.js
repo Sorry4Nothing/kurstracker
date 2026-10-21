@@ -163,4 +163,35 @@ test.describe('Profil', () => {
     await page.getByRole('option', { name: 'Alle Kategorien' }).click();
     await expect(cards).toHaveCount(courses.length);
   });
+
+  test('vier Bereiche scrollen je für sich, die Seite selbst steht auf dem Desktop still', async ({ page }) => {
+    // 1280 x 720 ist die engste dieser Grössen: neben der Sidebar bleiben dem Profil 960px
+    for (const size of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }, { width: 1440, height: 900 }]) {
+      await page.setViewportSize(size);
+      const overflow = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
+      expect(overflow, `Seite scrollt bei ${size.width} x ${size.height}`).toBeLessThanOrEqual(0);
+    }
+
+    // Jeder Bereich hat genau eine Scrollfläche: per Tab erreichbar und nach seiner Überschrift benannt
+    const names = ['Cevi-DB Stammdaten', 'J+S & Cevi Anerkennungen', 'Ausbildungs-Werdegang', 'Aktuelles Kursangebot (Cevi & J+S)'];
+    await expect(page.locator('#panel-profile').getByRole('region')).toHaveCount(names.length);
+    for (const name of names) {
+      await expect(page.getByRole('heading', { name, exact: true })).toBeInViewport({ ratio: 1 });
+      const body = page.getByRole('region', { name, exact: true });
+      await expect(body).toHaveAttribute('tabindex', '0');
+      await body.focus();
+      await expect(body).toBeFocused();
+    }
+
+    // Das Kursangebot ist länger als sein Feld und scrollt darin; Überschrift und Kopfzeile bleiben stehen
+    const courses = page.getByRole('region', { name: 'Aktuelles Kursangebot (Cevi & J+S)' });
+    expect(await courses.evaluate(el => [getComputedStyle(el).overflowY, el.scrollHeight > el.clientHeight])).toEqual(['auto', true]);
+    const fixed = [page.getByRole('heading', { name: 'Aktuelles Kursangebot (Cevi & J+S)' }), page.locator('.profile-page-hero')];
+    const before = await Promise.all(fixed.map(el => el.boundingBox()));
+    await courses.hover();
+    await page.mouse.wheel(0, 600);
+    await expect.poll(() => courses.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    expect(await Promise.all(fixed.map(el => el.boundingBox()))).toEqual(before);
+    expect(await page.evaluate(() => scrollY)).toBe(0);
+  });
 });
