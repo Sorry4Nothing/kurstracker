@@ -350,7 +350,8 @@ app.get('/api/planner/overview', requirePlanner, (req, res) => {
 // Kursvorschlag für eine Person erfassen
 app.post('/api/planner/propose', requirePlanner, (req, res) => {
   try {
-    const { personId, targetCourseId, proposedSeason, notes, proposedBy } = req.body;
+    // Express 5 leaves req.body undefined when no JSON body was sent
+    const { personId, targetCourseId, proposedSeason, notes, proposedBy } = req.body ?? {};
     const person = defaultDemoGroup.find(p => p.id === personId);
     if (!person) {
       return res.status(404).json({ error: 'Person nicht gefunden' });
@@ -408,6 +409,7 @@ app.use('/api', (req, res) => {
 app.use(express.static(path.join(projectRoot, 'public')));
 
 // SPA Fallback
-app.get('*', (req, res) => {
+// Express 5 wildcard syntax: a named splat, in braces so it also matches "/"
+app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(projectRoot, 'public', 'index.html'));
 });
