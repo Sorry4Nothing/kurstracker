@@ -171,6 +171,30 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: 'Nicht angemeldet' });
 }
 
+// OAuth-States sind serverseitig je einmal einlösbar: das signierte Cookie allein liesse sich beliebig oft wiederverwenden
+const STATE_TTL_MS = 10 * 60 * 1000;
+const MAX_PENDING_STATES = 10000;
+const pendingStates = new Map(); // state -> Ablaufzeit
+
+function issueState() {
+  const now = Date.now();
+  for (const [state, expiresAt] of pendingStates) {
+    if (expiresAt <= now) pendingStates.delete(state);
+  }
+  while (pendingStates.size >= MAX_PENDING_STATES) {
+    pendingStates.delete(pendingStates.keys().next().value);
+  }
+  const state = crypto.randomUUID();
+  pendingStates.set(state, now + STATE_TTL_MS);
+  return state;
+}
+
+function consumeState(state) {
+  const expiresAt = pendingStates.get(state);
+  pendingStates.delete(state);
+  return expiresAt !== undefined && expiresAt > Date.now();
+}
+
 // Rollen mit Zugriff auf den Stufenleiter-Planer
 const PLANNER_ROLES = ['abteilungsleiter', 'stufenleiter', 'kader', 'kursleiter', 'admin'];
 
@@ -202,7 +226,7 @@ function requirePlanner(req, res, next) {
 app.use(['/api/auth/login', '/api/auth/mock-login', '/api/auth/callback', '/api/auth/logout'], authLimiter);
 
 app.get('/api/auth/login', (req, res) => {
-  const state = crypto.randomUUID();
+  const state = issueState();
   res.cookie('cevi_oauth_state', state, { ...COOKIE_OPTIONS, maxAge: 10 * 60 * 1000 });
   res.redirect(ceviDbService.getAuthorizationUrl(state));
 });
@@ -226,7 +250,8 @@ app.get('/api/auth/callback', async (req, res) => {
     return res.redirect('/?error=provider_error');
   }
 
-  if (!state || state !== expectedState) {
+  // Reihenfolge wichtig: erst Cookie-Abgleich, dann einlösen, damit gefälschte Versuche einen echten State nicht verbrauchen
+  if (!state || state !== expectedState || !consumeState(state)) {
     return res.redirect('/?error=invalid_state');
   }
 

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -28,6 +29,10 @@ const normalizedAppEnv = ['local', 'development', 'production'].includes(rawAppE
   ? rawAppEnv
   : 'local';
 
+// Platzhalter aus .env.example und der frühere Default stehen öffentlich im Repo: sie zählen als "kein Secret gesetzt"
+const SECRET_PLACEHOLDERS = ['change-this-to-a-secure-random-secret', 'dev-insecure-secret-key-change-in-production'];
+const configuredSessionSecret = SECRET_PLACEHOLDERS.includes(process.env.SESSION_SECRET) ? '' : (process.env.SESSION_SECRET || '');
+
 export const envConfig = {
   app: {
     name: process.env.APP_NAME || 'Cevi Kurstracker',
@@ -56,7 +61,10 @@ export const envConfig = {
     preparationMode: process.env.CEVI_DB_PREPARATION_MODE !== 'false' || !process.env.CEVI_DB_CLIENT_ID || process.env.CEVI_DB_CLIENT_ID.startsWith('local_')
   },
   auth: {
-    sessionSecret: process.env.SESSION_SECRET || 'dev-insecure-secret-key-change-in-production',
+    // Lokal ohne eigenes Secret: pro Start zufällig (Sessions liegen ohnehin nur im Speicher und enden mit dem Prozess).
+    // development und production starten ohne echtes Secret nicht (siehe validateEnv).
+    sessionSecret: configuredSessionSecret || (normalizedAppEnv === 'local' ? crypto.randomBytes(32).toString('hex') : ''),
+    sessionSecretConfigured: Boolean(configuredSessionSecret),
     cookieSecure: process.env.COOKIE_SECURE === 'true' || normalizedAppEnv === 'production'
   },
   logging: {
@@ -85,8 +93,8 @@ export function validateEnv() {
         errors.push('PRODUKTION: CEVI_DB_CLIENT_SECRET fehlt oder ist noch der Platzhalter.');
       }
     }
-    if (envConfig.auth.sessionSecret.includes('change-in-production') || envConfig.auth.sessionSecret.length < 32) {
-      errors.push('PRODUKTION: SESSION_SECRET muss mindestens 32 Zeichen lang und kryptografisch sicher sein.');
+    if (!envConfig.auth.sessionSecretConfigured || envConfig.auth.sessionSecret.length < 32) {
+      errors.push('PRODUKTION: SESSION_SECRET muss gesetzt, mindestens 32 Zeichen lang und kryptografisch sicher sein (kein Platzhalter).');
     }
     if (!envConfig.server.url.startsWith('https://')) {
       errors.push('PRODUKTION: APP_URL sollte mit https:// beginnen.');
@@ -97,8 +105,8 @@ export function validateEnv() {
     errors.push('DEVELOPMENT: Entweder Cevi-DB Credentials eintragen oder CEVI_DB_PREPARATION_MODE=true setzen.');
   }
 
-  if (!envConfig.app.isProduction && envConfig.auth.sessionSecret.includes('change-in-production')) {
-    warnings.push('SESSION_SECRET ist der unsichere Entwicklungs-Default. Für alles ausser lokalem Testen ein eigenes Secret setzen.');
+  if (envConfig.app.isDevelopment && !envConfig.auth.sessionSecretConfigured) {
+    errors.push('DEVELOPMENT: SESSION_SECRET muss gesetzt sein (kein Platzhalter). Erzeugen z. B. mit: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
   }
 
   return {

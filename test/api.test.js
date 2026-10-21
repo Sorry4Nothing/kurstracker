@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 // Vor dem Import setzen: env.js liest die Variablen beim Laden, dotenv überschreibt sie nicht
 process.env.CEVI_DB_PREPARATION_MODE = 'true';
+// Alle Tests laufen von derselben IP: das Anmelde-Limit hier anheben, der 429-Test am Dateiende zählt bis dahin weiter
+process.env.RATE_LIMIT_AUTH_MAX = '200';
 const { app, logSafe } = await import('../src/app.js');
 const { ceviDbService } = await import('../src/services/ceviDbService.js');
 const { envConfig } = await import('../src/config/env.js');
@@ -181,11 +183,9 @@ test('API: Pfad zu unbekanntem Kurs oder Prototyp-Schlüssel liefert einen JSON-
   }
 });
 
-test('API: Pfad zu unbekanntem Kurs ist ein Client-Fehler (4xx), kein Serverfehler', {
-  todo: 'Bug #53: /api/tree/path/<unbekannt> antwortet mit 500, weil der Fehler der Engine keinen Status trägt (src/app.js:280, src/domain/courseTreeEngine.js:201); /api/planner/propose gibt im selben Fall 400'
-}, async () => {
+test('API: Pfad zu unbekanntem Kurs ist ein Client-Fehler (404), kein Serverfehler (#53)', async () => {
   const res = await request('/api/tree/path/gibt_es_nicht');
-  assert.ok(res.status >= 400 && res.status < 500, `Status ${res.status}`);
+  assert.equal(res.status, 404);
 });
 
 // -----------------------------------------------------------------------------
@@ -319,14 +319,16 @@ test('Login: signiertes, kurzlebiges state-Cookie passend zur Weiterleitung, Moc
 
 test('OAuth-Callback: Abbruch, fehlender Code und Vorbereitungsmodus führen ohne Session zurück und löschen das state-Cookie', async (t) => {
   t.mock.method(console, 'error', () => {});
-  const { state, cookie } = await startLogin();
+  // Jeder Fall mit eigenem Login: ein State ist serverseitig nur einmal einlösbar
   const cases = [
     // Anbieter-Text bleibt im Log; der Client sieht nur den festen Code (keine fremden Inhalte in der URL)
-    [`error=access_denied&error_description=${encodeURIComponent('Zugriff verweigert')}`, '/?error=provider_error'],
-    [`state=${state}`, '/?error=missing_code'],
-    [`state=${state}&code=abc`, '/?error=preparation_mode']
+    [() => `error=access_denied&error_description=${encodeURIComponent('Zugriff verweigert')}`, '/?error=provider_error'],
+    [state => `state=${state}`, '/?error=missing_code'],
+    [state => `state=${state}&code=abc`, '/?error=preparation_mode']
   ];
-  for (const [query, location] of cases) {
+  for (const [buildQuery, location] of cases) {
+    const { state, cookie } = await startLogin();
+    const query = buildQuery(state);
     const res = await request(`/api/auth/callback?${query}`, { cookie });
     assert.equal(res.status, 302, query);
     assert.equal(res.headers.get('location'), location, query);
@@ -518,10 +520,23 @@ test('logSafe entfernt Zeilenumbrüche und Steuerzeichen und begrenzt die Länge
   assert.equal(logSafe(null), '');
 });
 
+test('OAuth-Callback: ein State ist nur einmal einlösbar, auch mit gültigem Cookie', async (t) => {
+  t.mock.method(ceviDbService, 'isPreparationMode', () => false);
+  const exchange = t.mock.method(ceviDbService, 'exchangeCodeForToken', async code => ({ access_token: `live_${code}` }));
+  t.mock.method(ceviDbService, 'getUserInfo', async () => ({ id: 'p_9', roles: [] }));
+  const { state, cookie } = await startLogin();
+  const first = await request(`/api/auth/callback?code=abc&state=${state}`, { cookie });
+  assert.equal(first.headers.get('location'), '/?login=success');
+  // Wiederholung mit demselben Cookie und State: abgewiesen, ohne erneuten Token-Tausch
+  const replay = await request(`/api/auth/callback?code=abc&state=${state}`, { cookie });
+  assert.equal(replay.headers.get('location'), '/?error=invalid_state');
+  assert.equal(exchange.mock.callCount(), 1);
+});
+
 // Bleibt der letzte Test der Datei: danach ist das Auth-Kontingent dieser Instanz aufgebraucht
 test('Rate Limit: Anmelde-Endpunkte drosseln nach zu vielen Versuchen mit 429', async () => {
   let limited;
-  for (let i = 0; i < 31; i++) {
+  for (let i = 0; i < 250; i++) {
     limited = await request('/api/auth/mock-login');
     if (limited.status === 429) break;
   }
