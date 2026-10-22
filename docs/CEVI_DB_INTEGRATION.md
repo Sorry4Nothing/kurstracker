@@ -54,7 +54,7 @@ Hitobito setzt auf den offenen Standard **JSON:API (v1.1)**:
 | **Kurse & Events** | `GET /api/events?filter[type]=Event::Course&filter[after_or_on]=<heute>&include=dates,kind` | Laufende und kommende Kursanlässe mit Terminen, Anmeldeschluss und Plätzen. Das Kürzel der Kursart (z. B. `GLK1`, `VOKU`) ordnet den Anlass dem Kurs im Baum zu |
 | **Kurs-Details** | `GET /api/events/:id` | Daten, Zeiten, Ort, Kosten, Anmeldefrist |
 | **Kursteilnahmen** | `GET /api/event_participations/` | Werdegang, bisherige Teilnahmen, Status (bestanden) |
-| **Qualifikationen** | `GET /api/qualifications/` | J+S-Leiterrechte, BASPO-Anerkennung, Verfallsdaten. Den Endpunkt gibt es in der JSON:API nicht; die Quelle ist offen (#23) |
+| **Qualifikationen** | `GET /api/qualifications/` | J+S-Leiterrechte, BASPO-Anerkennung, Verfallsdaten. Den Endpunkt hat Hitobito seit April 2026 (OAuth-Scope `qualifications` oder `api`); ob db.cevi.ch ihn schon anbietet, ist ungeprüft (#23) |
 | **Personen & Rollen** | `GET /api/people/:id`, `/api/roles/` | Ceviname, Abteilung, Leiterfunktion |
 
 Listen kommen seitenweise (`page[size]`, `page[number]`); der Kurstracker liest alle Seiten.
