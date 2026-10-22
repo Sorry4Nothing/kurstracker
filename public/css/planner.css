@@ -342,7 +342,7 @@
 }
 
 /* Completed courses arrive as .badge.badge-success chips, one per course code.
-   They are a list, not a status, so they read as grey text: "HLK, GLK, SLK".
+   They are a list, not a status, so they read as grey text: "Heku, GLK 3, SLK".
    planner.js sets font-size 0.68rem and margin-right 0.2rem inline, which only
    !important can override; the comma and space come from ::after. */
 .data-table .badge {

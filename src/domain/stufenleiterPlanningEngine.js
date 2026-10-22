@@ -155,9 +155,15 @@ export class StufenleiterPlanningEngine {
     // Vorhandene Planung/Vorschlag abrufen
     const activeNomination = this.nominations.get(participant.id) || null;
 
+    // Kürzel aus den Kursdaten (Alias 'hlk' wird «Heku»), unbekannte IDs bleiben stehen
+    const completedCourseCodes = [...new Set(
+      (participant.completedCourses || []).map(id => COURSE_NODES[id]?.code ?? id)
+    )];
+
     return {
       participant,
       age,
+      completedCourseCodes,
       currentLevel: treeState.currentMaxLevel,
       availableNextCourses: treeState.availableNextCourses,
       recommendedCourses,
