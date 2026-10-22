@@ -415,7 +415,7 @@ test('Kurstitel folgen `gender` aus der Cevi-DB, ohne Angabe gilt die neutrale W
     assert.equal(withGenderTitles(COURSE_NODES, gender).glk1.title, glk1, gender);
     const tree = courseTreeEngine.forGender(gender);
     assert.equal(tree.evaluatePersonInTree({ birthdate: birthdateForAge(14) }).nodes.glk1.title, glk1, gender);
-    assert.match(tree.findPathToTarget({}, 'glk2').summary, new RegExp(glk1.replace(/[()/+]/g, '\\$&')), gender);
+    assert.ok(tree.findPathToTarget({}, 'glk2').summary.includes(glk1), gender);
     // Planer: das Geschlecht der jeweiligen Person
     const planner = new StufenleiterPlanningEngine();
     const person = { id: 'tn', gender, birthdate: birthdateForAge(15) };
