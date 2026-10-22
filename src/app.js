@@ -9,7 +9,7 @@ import { envConfig, validateEnv } from './config/env.js';
 import { ceviDbService } from './services/ceviDbService.js';
 import { courseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
-import { COURSE_NODES } from './domain/courseTreeData.js';
+import { COURSE_NODES, withGenderTitles } from './domain/courseTreeData.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -374,7 +374,7 @@ app.get('/api/user/qualifications', requireAuth, async (req, res) => {
 // Liefert die vollständige Baumstruktur
 app.get('/api/tree/structure', (req, res) => {
   res.json({
-    nodes: COURSE_NODES
+    nodes: withGenderTitles(COURSE_NODES, getSession(req)?.user?.gender)
   });
 });
 
@@ -401,6 +401,7 @@ async function resolveActivePerson(req) {
     id: user.id,
     name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
     ceviname: user.nickname || user.ceviname || '',
+    gender: user.gender,
     birthdate: user.birthday,
     completedCourses: completed,
     inProgressCourses: inProgress,
@@ -412,7 +413,7 @@ async function resolveActivePerson(req) {
 app.get('/api/tree/evaluation', requireAuth, async (req, res) => {
   try {
     const person = await resolveActivePerson(req);
-    const evaluation = courseTreeEngine.evaluatePersonInTree(person);
+    const evaluation = courseTreeEngine.forGender(person.gender).evaluatePersonInTree(person);
     res.json({
       person,
       evaluation
@@ -432,7 +433,7 @@ app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
       return res.status(404).json({ error: `Zielkurs '${String(courseId).slice(0, 40)}' existiert nicht im Ausbildungsbaum.` });
     }
     const person = await resolveActivePerson(req);
-    const pathResult = courseTreeEngine.findPathToTarget(person, courseId);
+    const pathResult = courseTreeEngine.forGender(person.gender).findPathToTarget(person, courseId);
     res.json(pathResult);
   } catch (err) {
     sendError(res, err, 'Pfadberechnung');
@@ -448,6 +449,7 @@ const defaultDemoGroup = [
     id: 'tn_1',
     name: 'Noah Keller',
     ceviname: 'Fuchs',
+    gender: 'm',
     birthdate: '2011-04-10', // 15 Jahre
     currentRole: 'Teilnehmer',
     completedCourses: []
@@ -456,6 +458,7 @@ const defaultDemoGroup = [
     id: 'tn_2',
     name: 'Lea Meier',
     ceviname: 'Amsel',
+    gender: 'w',
     birthdate: '2009-09-12', // 17 Jahre
     currentRole: 'Hilfsleiterin',
     completedCourses: ['heku'],
@@ -465,6 +468,7 @@ const defaultDemoGroup = [
     id: 'tn_3',
     name: 'Marc Brunner',
     ceviname: 'Milan',
+    gender: 'm',
     birthdate: '2007-01-20', // 19 Jahre
     currentRole: 'Gruppenleiter',
     completedCourses: ['heku', 'glk3'],
@@ -475,6 +479,7 @@ const defaultDemoGroup = [
     id: 'tn_4',
     name: 'Sara Wyss',
     ceviname: 'Kolibri',
+    gender: 'w',
     birthdate: '2010-06-05', // 16 Jahre
     currentRole: 'Hilfsleiterin',
     completedCourses: ['heku'],
@@ -484,6 +489,7 @@ const defaultDemoGroup = [
     id: 'tn_5',
     name: 'Luca Frei',
     ceviname: 'Biber',
+    gender: 'm',
     birthdate: '2005-03-18', // 21 Jahre
     currentRole: 'Scharleiter',
     completedCourses: ['heku', 'glk3', 'slk'],

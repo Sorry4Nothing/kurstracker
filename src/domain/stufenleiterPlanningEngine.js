@@ -73,32 +73,34 @@ export class StufenleiterPlanningEngine {
    * @param {object} participant
    */
   analyzeParticipant(participant) {
-    const age = this.treeEngine.calculateAge(participant.birthdate);
-    const treeState = this.treeEngine.evaluatePersonInTree(participant);
+    // Kurstitel in der Form fur das Geschlecht der jeweiligen Person
+    const tree = this.treeEngine.forGender(participant.gender);
+    const age = tree.calculateAge(participant.birthdate);
+    const treeState = tree.evaluatePersonInTree(participant);
     const recommendedCourses = [];
 
-    const completed = this.treeEngine.normalizeCourseSet(participant.completedCourses || []);
+    const completed = tree.normalizeCourseSet(participant.completedCourses || []);
     const hasHlk = completed.has('heku');
     const hasGlk = completed.has('glk3');
     const hasSlk = completed.has('slk');
 
     // 1. Empfehlung: Helferkurs (Heku)
     if (!hasHlk && !hasGlk && age >= 14 && age <= 16) {
-      const courseTitle = COURSE_NODES.heku ? COURSE_NODES.heku.title : 'Helferkurs (Heku)';
+      const courseTitle = tree.nodes.heku.title;
       recommendedCourses.push({
         courseId: 'heku',
         title: courseTitle,
         courseTitle: courseTitle,
         priority: age >= 15 ? 'HOCH' : 'NORMAL',
         reason: age >= 15
-          ? `Ideales Einstiegsalter (${age} Jahre) für den Hilfsleiterkurs.`
+          ? `Ideales Einstiegsalter (${age} Jahre) für den ${courseTitle}.`
           : 'Berechtigt für Heku (ab 13-14 Jahren).'
       });
     }
 
     // 2. Empfehlung: Gruppenleiterkurs 3 (GLK 3 / J+S Leiter)
     if (!hasGlk && age >= 17) {
-      const courseTitle = COURSE_NODES.glk3 ? COURSE_NODES.glk3.title : 'Gruppenleiterkurs 3 (GLK 3 / J+S Leiter)';
+      const courseTitle = tree.nodes.glk3.title;
       recommendedCourses.push({
         courseId: 'glk3',
         title: courseTitle,
@@ -115,7 +117,7 @@ export class StufenleiterPlanningEngine {
       const leaderRole = (participant.currentRole || '').toLowerCase();
       const isLeader = leaderRole.includes('leiter') || leaderRole.includes('kader');
       if (isLeader) {
-        const courseTitle = COURSE_NODES.slk ? COURSE_NODES.slk.title : 'Stufenleitenden-Kurs (SLK)';
+        const courseTitle = tree.nodes.slk.title;
         recommendedCourses.push({
           courseId: 'slk',
           title: courseTitle,
@@ -140,7 +142,7 @@ export class StufenleiterPlanningEngine {
         const monthsRemaining = (validUntil - new Date()) / (1000 * 60 * 60 * 24 * 30.5);
         if (monthsRemaining <= 12) {
           hasExpiringJsLeiter = true;
-          const courseTitle = COURSE_NODES.mf_lst ? COURSE_NODES.mf_lst.title : 'Modul Fortbildung Lagersport/Trekking (MF)';
+          const courseTitle = tree.nodes.mf_lst.title;
           recommendedCourses.unshift({
             courseId: 'mf_lst',
             title: courseTitle,
@@ -184,13 +186,14 @@ export class StufenleiterPlanningEngine {
    * @returns {object} Das erstellte Vorschlags-Objekt mit Eignungsprüfung
    */
   proposeCourse(participant, nominationData) {
-    const course = COURSE_NODES[nominationData.courseId];
+    const tree = this.treeEngine.forGender(participant.gender);
+    const course = tree.nodes[nominationData.courseId];
     if (!course) {
       throw new Error(`Ungültiger Kurs: '${nominationData.courseId}'`);
     }
 
     // Eignungsprüfung durchführen
-    const pathCheck = this.treeEngine.findPathToTarget(participant, nominationData.courseId);
+    const pathCheck = tree.findPathToTarget(participant, nominationData.courseId);
 
     const nomination = {
       id: 'nom_' + participant.id + '_' + nominationData.courseId,

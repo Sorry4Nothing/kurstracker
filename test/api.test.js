@@ -114,6 +114,8 @@ test('API: Kurse und Historie verweisen nur auf Kurse im Baum, Qualifikationen n
   assert.equal(structure.status, 200);
   const { nodes } = await structure.json();
   assert.deepEqual(Object.keys(nodes).sort(), Object.keys(COURSE_NODES).sort());
+  // Demo-Profil hat gender 'm'
+  assert.equal(nodes.glk1.title, 'Gruppenleiterkurs 1 (GLK 1)');
   const known = id => Object.hasOwn(nodes, id);
 
   for (const course of await (await request('/api/courses')).json()) {
