@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 // Vor dem Import setzen: env.js liest die Variablen beim Laden, dotenv überschreibt sie nicht
 process.env.CEVI_DB_PREPARATION_MODE = 'true';
+// Ein Service-Token aus .env.local lädt Kurse live; die Tests setzen ihn nur gezielt
+process.env.CEVI_DB_SERVICE_TOKEN = '';
 // Alle Tests laufen von derselben IP: das Anmelde-Limit hier anheben, der 429-Test am Dateiende zählt bis dahin weiter
 process.env.RATE_LIMIT_AUTH_MAX = '200';
 const { app, logSafe } = await import('../src/app.js');
@@ -446,14 +448,15 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
 
   const courses = await request('/api/courses', { cookie });
   assert.equal(courses.status, 200);
-  assert.deepEqual(await courses.json(), [{ id: '7', name: 'GLK 3 Herbst' }]);
+  assert.deepEqual((await courses.json()).map(c => c.title), ['GLK 3 Herbst']);
   const [url, init] = remote.mock.calls[0].arguments;
-  assert.equal(url, `${ceviDbService.baseUrl}/api/events?filter[type]=Course`);
+  const today = new Date().toISOString().slice(0, 10);
+  assert.equal(url, `${ceviDbService.baseUrl}/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind&page[size]=100&page[number]=1`);
   assert.equal(init.headers.Authorization, 'Bearer live_abc');
 
   // Teilnahmen nur der eingeloggten Person abfragen
   await request('/api/user/history', { cookie });
-  assert.equal(remote.mock.calls[1].arguments[0], `${ceviDbService.baseUrl}/api/event_participations?filter[person_id]=p_6`);
+  assert.equal(remote.mock.calls[1].arguments[0], `${ceviDbService.baseUrl}/api/event_participations?filter[person_id]=p_6&page[size]=100&page[number]=1`);
 
   for (const [upstream, expected] of [[401, 401], [500, 502]]) {
     reply = () => new Response('Fehler', { status: upstream });
@@ -461,6 +464,63 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
     assert.equal(res.status, expected, `Cevi-DB ${upstream}`);
     assert.match((await res.json()).error, /Cevi-DB Abruf fehlgeschlagen/);
   }
+});
+
+test('Service-Token: Kurse kommen live per X-Token, auch im Vorbereitungsmodus, Seite für Seite und dem Baum zugeordnet (#11)', async (t) => {
+  ceviDbService.serviceToken = 'svc_test';
+  t.after(() => { ceviDbService.serviceToken = ''; });
+  const event = (id, kind, dates = []) => ({
+    id: String(id),
+    type: 'courses',
+    attributes: { name: `Anlass ${id}`, location: 'Flaach', application_closing_at: '2000-01-31', maximum_participants: 20, participant_count: 15, group_ids: [3] },
+    relationships: { kind: { data: { type: 'event_kinds', id: kind } }, dates: { data: dates.map(id => ({ type: 'event_dates', id })) } }
+  });
+  // Seite 1 ist voll (100 Anlässe GLK 1), Seite 2 bringt einen Anlass mit unbekannter Kursart und ohne Termine
+  const pages = [
+    {
+      data: [event(1, '1', ['b', 'a']), ...Array.from({ length: 99 }, (_, i) => event(i + 2, '1'))],
+      included: [
+        { type: 'event_kinds', id: '1', attributes: { label: 'Gruppenleiter/-innen-Kurs 1', short_name: 'GLK 1' } },
+        // Termine verkehrt herum: der früheste zählt als Kursbeginn, der späteste als Kursende
+        { type: 'event_dates', id: 'b', attributes: { start_at: '2099-10-14T08:00:00+02:00', finish_at: '2099-10-17T16:00:00+02:00' } },
+        { type: 'event_dates', id: 'a', attributes: { start_at: '2099-10-12T08:00:00+02:00', finish_at: '2099-10-12T18:00:00+02:00' } }
+      ]
+    },
+    { data: [event(101, '9')], included: [{ type: 'event_kinds', id: '9', attributes: { label: 'Kochkurs', short_name: 'KOCH' } }] }
+  ];
+  const pageOf = url => Number(/page\[number\]=(\d+)/.exec(url)[1]);
+  const remote = t.mock.method(globalThis, 'fetch', async url => Response.json(pages[pageOf(url) - 1]));
+
+  const res = await request('/api/courses');
+  assert.equal(res.status, 200);
+  const courses = await res.json();
+
+  assert.deepEqual(remote.mock.calls.map(call => pageOf(call.arguments[0])), [1, 2]);
+  for (const { arguments: [url, init] } of remote.mock.calls) {
+    assert.match(url, /\/api\/events\?filter\[type\]=Event::Course&/);
+    assert.equal(init.headers['X-Token'], 'svc_test');
+    assert.equal(init.headers.Authorization, undefined);
+  }
+  assert.equal(courses.length, 101);
+  assert.deepEqual(courses[0], {
+    id: '1',
+    course_node_id: 'glk1',
+    title: 'Anlass 1',
+    code: 'GLK 1',
+    category: COURSE_NODES.glk1.category,
+    organizer: '',
+    location: 'Flaach',
+    start_date: '2099-10-12',
+    end_date: '2099-10-17',
+    registration_deadline: '2000-01-31',
+    status: 'Anmeldeschluss vorbei',
+    description: '',
+    free_places: 5,
+    registration_url: `${ceviDbService.baseUrl}/groups/3/events/1`
+  });
+  // Unbekannte Kursart: im Kursangebot, aber keinem Kurs im Baum zugeordnet
+  assert.equal(courses[100].course_node_id, null);
+  assert.equal(courses[100].category, 'Kochkurs');
 });
 
 // -----------------------------------------------------------------------------

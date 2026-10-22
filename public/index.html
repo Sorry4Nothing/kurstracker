@@ -237,6 +237,12 @@
                 </div>
               </div>
 
+              <!-- Nächste Durchführungen aus der Cevi-DB -->
+              <div class="inspector-section">
+                <h4 class="inspector-section-title">Nächste Termine</h4>
+                <div class="inspector-meta-text" id="inspectorDates">Kein Kurs gewählt</div>
+              </div>
+
               <!-- Nächste Schritte / Aktionen -->
               <div class="inspector-actions" id="inspectorActions">
                 <button class="btn btn-primary btn-block" disabled>
@@ -583,7 +589,9 @@
         </div>
         <div class="form-group">
           <label for="modalSeason">Geplante Saison / Jahr:</label>
-          <input type="text" id="modalSeason" class="form-input" value="Herbst 2026">
+          <!-- Vorschläge aus den echten Durchführungen des Zielkurses, eigene Eingabe bleibt möglich -->
+          <input type="text" id="modalSeason" class="form-input" list="modalSeasonOptions" placeholder="z. B. Herbst 2027">
+          <datalist id="modalSeasonOptions"></datalist>
         </div>
         <div class="form-group">
           <label for="modalNotes">Bemerkungen / Motivation:</label>

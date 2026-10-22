@@ -51,11 +51,13 @@ Hitobito setzt auf den offenen Standard **JSON:API (v1.1)**:
 ### 3.1 Für den Kurstracker relevante Endpunkte:
 | Ressource | Endpunkt | Zweck im Kurstracker |
 | :--- | :--- | :--- |
-| **Kurse & Events** | `GET /api/events/` | Liste aller Kurse (GLK, SLK, Sicherheitsmodule) |
+| **Kurse & Events** | `GET /api/events?filter[type]=Event::Course&filter[after_or_on]=<heute>&include=dates,kind` | Laufende und kommende Kursanlässe mit Terminen, Anmeldeschluss und Plätzen. Das Kürzel der Kursart (z. B. `GLK1`, `VOKU`) ordnet den Anlass dem Kurs im Baum zu |
 | **Kurs-Details** | `GET /api/events/:id` | Daten, Zeiten, Ort, Kosten, Anmeldefrist |
 | **Kursteilnahmen** | `GET /api/event_participations/` | Werdegang, bisherige Teilnahmen, Status (bestanden) |
-| **Qualifikationen** | `GET /api/qualifications/` | J+S-Leiterrechte, BASPO-Anerkennung, Verfallsdaten |
+| **Qualifikationen** | `GET /api/qualifications/` | J+S-Leiterrechte, BASPO-Anerkennung, Verfallsdaten. Den Endpunkt gibt es in der JSON:API nicht; die Quelle ist offen (#23) |
 | **Personen & Rollen** | `GET /api/people/:id`, `/api/roles/` | Ceviname, Abteilung, Leiterfunktion |
+
+Listen kommen seitenweise (`page[size]`, `page[number]`); der Kurstracker liest alle Seiten.
 
 ---
 
@@ -84,7 +86,7 @@ Sobald die OAuth-Applikation bei `cevidb@cevi.ch` genehmigt wurde oder ein Servi
    CEVI_DB_CLIENT_ID=deine_offizielle_client_id
    CEVI_DB_CLIENT_SECRET=dein_offizielles_client_secret
 
-   # Optional für Hintergrund-Sync von Kursen:
+   # Optional: Kurse live laden, auch im Vorbereitungsmodus (Token braucht Leserecht auf Anlässe):
    CEVI_DB_SERVICE_TOKEN=dein_ortsruppen_service_token
    ```
 2. Server neu starten (`npm run dev` bzw. `npm start`).

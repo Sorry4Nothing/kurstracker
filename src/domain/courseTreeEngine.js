@@ -26,12 +26,12 @@ export class CourseTreeEngine {
   }
 
   /**
-   * Bildet eine Kurs-ID (auch Aliase wie 'glk') auf die Baum-ID ab
+   * Bildet eine Kurs-ID (auch Aliase wie 'glk' und Kürzel der Cevi-DB wie 'GLK 1') auf die Baum-ID ab
    * @param {string} courseId
    * @returns {string}
    */
   resolveCourseId(courseId) {
-    const id = String(courseId || '').toLowerCase().trim();
+    const id = String(courseId || '').toLowerCase().replace(/\s+/g, '');
     return COURSE_ALIASES[id] || id;
   }
 
