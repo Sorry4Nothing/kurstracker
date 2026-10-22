@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COURSE_NODES } from '../src/domain/courseTreeData.js';
+import { COURSE_NODES, withGenderTitles } from '../src/domain/courseTreeData.js';
 import { courseTreeEngine } from '../src/domain/courseTreeEngine.js';
 import { StufenleiterPlanningEngine } from '../src/domain/stufenleiterPlanningEngine.js';
 import { COURSE_MAP_COORDS } from '../public/js/tree-map.js';
@@ -167,7 +167,7 @@ test('Status: empfohlene Vorstufen sind keine Pflicht, fehlende Pflichtkurse spe
   const sixteen = courseTreeEngine.evaluatePersonInTree({ birthdate: birthdateForAge(16) }).nodes;
   assert.equal(sixteen.glk2.status, 'AVAILABLE'); // GLK 1 ist nur empfohlen
   assert.equal(sixteen.pionier.status, 'LOCKED'); // GLK 1 ist für Pioniertechnik Pflicht
-  assert.match(sixteen.pionier.blockers.join(), /Fehlende Vorgangerkurse: Gruppenleiterkurs 1/);
+  assert.match(sixteen.pionier.blockers.join(), /Fehlende Vorgangerkurse: Gruppenleiter\/-innen-Kurs 1/);
   assert.equal(courseTreeEngine.evaluatePersonInTree({ birthdate: birthdateForAge(17) }).nodes.glk3.status, 'AVAILABLE');
 });
 
@@ -403,4 +403,28 @@ test('Planer: Vorschlag für unbekannten Kurs wirft und speichert nichts', () =>
     assert.throws(() => engine.proposeCourse({ id: 'tn' }, { courseId }), Error, courseId);
   }
   assert.deepEqual(engine.getAllNominations(), []);
+});
+
+test('Kurstitel folgen `gender` aus der Cevi-DB, ohne Angabe gilt die neutrale Website-Form', () => {
+  const cases = [
+    ['w', 'Gruppenleiterinnenkurs 1 (GLK 1)', 'Helferinnenkurs (Heku)'],
+    ['m', 'Gruppenleiterkurs 1 (GLK 1)', 'Helferkurs (Heku)'],
+    [undefined, 'Gruppenleiter/-innen-Kurs 1 (GLK 1)', 'Helfer/-innen-Kurs (Heku)']
+  ];
+  for (const [gender, glk1, heku] of cases) {
+    assert.equal(withGenderTitles(COURSE_NODES, gender).glk1.title, glk1, gender);
+    const tree = courseTreeEngine.forGender(gender);
+    assert.equal(tree.evaluatePersonInTree({ birthdate: birthdateForAge(14) }).nodes.glk1.title, glk1, gender);
+    assert.match(tree.findPathToTarget({}, 'glk2').summary, new RegExp(glk1.replace(/[()/+]/g, '\\$&')), gender);
+    // Planer: das Geschlecht der jeweiligen Person
+    const planner = new StufenleiterPlanningEngine();
+    const person = { id: 'tn', gender, birthdate: birthdateForAge(15) };
+    assert.equal(planner.analyzeParticipant(person).recommendedCourses[0].courseTitle, heku, gender);
+    assert.equal(planner.proposeCourse(person, { courseId: 'glk1' }).nomination.courseTitle, glk1, gender);
+  }
+  // Unbekannte Werte fallen auf die neutrale Form zurück, die Kursdaten bleiben unverändert
+  assert.equal(withGenderTitles(COURSE_NODES, 'constructor').glk1.title, 'Gruppenleiter/-innen-Kurs 1 (GLK 1)');
+  assert.equal(COURSE_NODES.glk1.title, 'Gruppenleiter/-innen-Kurs 1 (GLK 1)');
+  // Kurse ohne Personenbezeichnung haben nur die neutrale Form
+  assert.equal(withGenderTitles(COURSE_NODES, 'w').js_coach.title, 'J+S-Coachkurs');
 });

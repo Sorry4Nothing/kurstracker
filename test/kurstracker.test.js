@@ -53,7 +53,7 @@ test('findPathToTarget: Vorstufen von GLK 3 sind Empfehlung in Kettenreihenfolge
   assert.deepEqual(result.missingRecommended.map(s => s.id), ['glk1', 'glk2']);
   assert.equal(result.summary,
     'Mindestalter (17 Jahre) noch nicht erreicht (aktuell: 14 Jahre). | ' +
-    'Empfohlen vorher (keine Pflicht): Gruppenleiterkurs 1 (GLK 1) -> Gruppenleiterkurs 2 (GLK 2).');
+    'Empfohlen vorher (keine Pflicht): Gruppenleiter/-innen-Kurs 1 (GLK 1) -> Gruppenleiter/-innen-Kurs 2 (GLK 2).');
 });
 
 test('findPathToTarget: herausgewachsene Vorstufen werden nicht mehr empfohlen', () => {
@@ -73,7 +73,7 @@ test('findPathToTarget: Pflichtkurs GLK 3 vor der Kaderstufe', () => {
   assert.deepEqual(result.missingCourses.map(s => s.id), ['glk3']);
   assert.deepEqual(result.missingRecommended, []);
   assert.equal(result.isDirectlyEligible, false);
-  assert.equal(result.summary, 'Noch 1 Kurs(e) notwendig: Gruppenleiterkurs 3 (GLK 3 / J+S Leiterkurs)');
+  assert.equal(result.summary, 'Noch 1 Kurs(e) notwendig: Gruppenleiter/-innen-Kurs 3 (GLK 3)');
 });
 
 test('summaryStats zählt Heku- und GLK-Kandidaten', () => {

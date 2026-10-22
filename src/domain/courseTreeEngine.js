@@ -1,4 +1,4 @@
-import { COURSE_NODES } from './courseTreeData.js';
+import { COURSE_NODES, withGenderTitles } from './courseTreeData.js';
 
 // Kurzbezeichnungen aus Altdaten und Tests auf die Baum-IDs abbilden
 const COURSE_ALIASES = { glk: 'glk3', hlk: 'heku', mf: 'mf_lst' };
@@ -14,6 +14,15 @@ const RECOMMENDED_AGE_TOLERANCE_YEARS = 1;
 export class CourseTreeEngine {
   constructor(nodes = COURSE_NODES) {
     this.nodes = nodes;
+  }
+
+  /**
+   * Engine mit Kurstiteln in der Form fur `gender` aus der Cevi-DB
+   * @param {string} [gender] - 'm' oder 'w', sonst neutrale Form
+   * @returns {CourseTreeEngine}
+   */
+  forGender(gender) {
+    return new CourseTreeEngine(withGenderTitles(this.nodes, gender));
   }
 
   /**

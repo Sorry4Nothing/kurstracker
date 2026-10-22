@@ -6,11 +6,13 @@
  *
  * Enthaelt:
  * - Level 0: Jungschar Grundstufe (Voku ab 12, Heku ab 13, GLK 1 ab 14, GLK 2 ab 15)
- * - Level 1: Leiterstufe (GLK 3 / J+S Leiterkurs ab 17)
+ * - Level 1: Leiterstufe (GLK 3 ab 17)
  * - Level 2: Weiterbildung, Stufenleitung & Sicherheit (SLK, MF, SLRG, Pioniertechnik, Sicherheit Berg/Wasser/Winter)
  * - Level 3: Kaderstufe (Lagerleiter LLM, Abteilungsleiter AL, J+S Coach)
  * - Level 4: Expertenstufe (J+S Experte Lagersport/Trekking)
  *
+ * title: neutrale Form wie auf ceviregionzuerich.ch/kurse; titles.m / titles.w: Form fur
+ * `gender` aus der Cevi-DB ('m' oder 'w'), siehe withGenderTitles.
  * prerequisites: Pflicht-Vorgaenger, sperren den Kurs bis sie absolviert sind.
  * recommendedPrerequisites: direkte empfohlene Vorstufe, sperrt nicht. Voku, Heku,
  * GLK 1 und GLK 2 sind Vorbereitungen; die erste richtige Anerkennung ist GLK 3.
@@ -43,7 +45,8 @@ export const COURSE_NODES = {
     id: 'heku',
     code: 'Heku',
     org: 'Cevi',
-    title: 'Helferkurs (Heku) / Romerlager',
+    title: 'Helfer/-innen-Kurs (Heku)',
+    titles: { m: 'Helferkurs (Heku)', w: 'Helferinnenkurs (Heku)' },
     shortTitle: 'Helferkurs (Heku)',
     level: 0,
     category: 'Jungschar',
@@ -61,7 +64,8 @@ export const COURSE_NODES = {
     id: 'glk1',
     code: 'GLK 1',
     org: 'Cevi',
-    title: 'Gruppenleiterkurs 1 (GLK 1)',
+    title: 'Gruppenleiter/-innen-Kurs 1 (GLK 1)',
+    titles: { m: 'Gruppenleiterkurs 1 (GLK 1)', w: 'Gruppenleiterinnenkurs 1 (GLK 1)' },
     shortTitle: 'GLK 1',
     level: 0,
     category: 'Jungschar',
@@ -79,7 +83,8 @@ export const COURSE_NODES = {
     id: 'glk2',
     code: 'GLK 2',
     org: 'Cevi',
-    title: 'Gruppenleiterkurs 2 (GLK 2)',
+    title: 'Gruppenleiter/-innen-Kurs 2 (GLK 2)',
+    titles: { m: 'Gruppenleiterkurs 2 (GLK 2)', w: 'Gruppenleiterinnenkurs 2 (GLK 2)' },
     shortTitle: 'GLK 2',
     level: 0,
     category: 'Jungschar',
@@ -100,7 +105,8 @@ export const COURSE_NODES = {
     id: 'glk3',
     code: 'GLK 3',
     org: 'J+S',
-    title: 'Gruppenleiterkurs 3 (GLK 3 / J+S Leiterkurs)',
+    title: 'Gruppenleiter/-innen-Kurs 3 (GLK 3)',
+    titles: { m: 'Gruppenleiterkurs 3 (GLK 3)', w: 'Gruppenleiterinnenkurs 3 (GLK 3)' },
     shortTitle: 'GLK 3 (J+S Leiter)',
     level: 1,
     category: 'Jugend+Sport',
@@ -121,7 +127,8 @@ export const COURSE_NODES = {
     id: 'slk',
     code: 'SLK',
     org: 'Cevi',
-    title: 'Stufenleitenden-Kurs (SLK)',
+    title: 'Stufenleiter/-innen-Kurs (SLK)',
+    titles: { m: 'Stufenleiterkurs (SLK)', w: 'Stufenleiterinnenkurs (SLK)' },
     shortTitle: 'Stufenleiter (SLK)',
     level: 2,
     category: 'Jungschar',
@@ -138,7 +145,7 @@ export const COURSE_NODES = {
     id: 'mf_lst',
     code: 'MF',
     org: 'J+S',
-    title: 'Modul Fortbildung Lagersport/Trekking (MF)',
+    title: 'J+S-Modul Fortbildung (MF)',
     shortTitle: 'Modul Fortbildung (MF)',
     level: 2,
     category: 'Jugend+Sport',
@@ -170,9 +177,9 @@ export const COURSE_NODES = {
 
   pionier: {
     id: 'pionier',
-    code: 'Pionier',
+    code: 'PiTech',
     org: 'Cevi',
-    title: 'Pioniertechnik Kurs',
+    title: 'Pioniertechnik-Modul',
     shortTitle: 'Pioniertechnik',
     level: 2,
     category: 'Jungschar',
@@ -189,7 +196,7 @@ export const COURSE_NODES = {
     id: 'sec_berg',
     code: 'Berg',
     org: 'J+S',
-    title: 'J+S Sicherheitsmodul Berg',
+    title: 'J+S-Modul Sicherheitsbereich Berg',
     shortTitle: 'Sicherheit Berg (T3/T4)',
     level: 2,
     category: 'Sicherheit',
@@ -206,7 +213,7 @@ export const COURSE_NODES = {
     id: 'sec_wasser',
     code: 'Wasser',
     org: 'J+S',
-    title: 'J+S Sicherheitsmodul Wasser',
+    title: 'J+S-Modul Sicherheitsbereich Wasser',
     shortTitle: 'Sicherheit Wasser',
     level: 2,
     category: 'Sicherheit',
@@ -223,7 +230,7 @@ export const COURSE_NODES = {
     id: 'sec_winter',
     code: 'Winter',
     org: 'J+S',
-    title: 'J+S Sicherheitsmodul Winter',
+    title: 'J+S-Modul Sicherheitsbereich Winter',
     shortTitle: 'Sicherheit Winter',
     level: 2,
     category: 'Sicherheit',
@@ -243,7 +250,8 @@ export const COURSE_NODES = {
     id: 'llm',
     code: 'LLM',
     org: 'J+S',
-    title: 'Lagerleiter-Modul (LLM)',
+    title: 'Lagerleiter/-innen-Modul (LLM)',
+    titles: { m: 'Lagerleitermodul (LLM)', w: 'Lagerleiterinnenmodul (LLM)' },
     shortTitle: 'Lagerleiter (LLM)',
     level: 3,
     category: 'Jugend+Sport',
@@ -259,9 +267,10 @@ export const COURSE_NODES = {
 
   al_seminar: {
     id: 'al_seminar',
-    code: 'AL',
+    code: 'AL-Semi',
     org: 'Cevi',
-    title: 'Abteilungsleiter-Seminar (AL-Seminar)',
+    title: 'Abteilungsleiter/-innen-Seminar (AL-Semi)',
+    titles: { m: 'Abteilungsleiterseminar (AL-Semi)', w: 'Abteilungsleiterinnenseminar (AL-Semi)' },
     shortTitle: 'Abteilungsleiter (AL)',
     level: 3,
     category: 'Kaderbildung',
@@ -278,7 +287,7 @@ export const COURSE_NODES = {
     id: 'js_coach',
     code: 'Coach',
     org: 'J+S',
-    title: 'J+S Coach Kurs',
+    title: 'J+S-Coachkurs',
     shortTitle: 'J+S Coach',
     level: 3,
     category: 'Jugend+Sport',
@@ -298,7 +307,8 @@ export const COURSE_NODES = {
     id: 'experte',
     code: 'Experte',
     org: 'J+S',
-    title: 'J+S Expertenkurs Lagersport/Trekking',
+    title: 'J+S-Expertenkurs',
+    titles: { m: 'J+S-Expertenkurs', w: 'J+S-Expertinnenkurs' },
     shortTitle: 'J+S Experte',
     level: 4,
     category: 'Expertenbildung',
@@ -316,3 +326,17 @@ export const COURSE_NODES = {
 COURSE_NODES.glk = COURSE_NODES.glk3;
 COURSE_NODES.hlk = COURSE_NODES.heku;
 COURSE_NODES.mf = COURSE_NODES.mf_lst;
+
+/**
+ * Kursknoten mit dem Titel in der Form fur `gender` aus der Cevi-DB ('m' oder 'w').
+ * Ohne Angabe bleibt die neutrale Form der Website.
+ * @param {object} nodes
+ * @param {string} [gender]
+ * @returns {object}
+ */
+export function withGenderTitles(nodes, gender) {
+  return Object.fromEntries(Object.entries(nodes).map(([key, node]) => {
+    const title = (gender === 'm' || gender === 'w') && node.titles?.[gender];
+    return [key, title ? { ...node, title } : node];
+  }));
+}

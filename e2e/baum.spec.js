@@ -259,7 +259,7 @@ test.describe('Ausbildungsbaum', () => {
     const inspector = page.locator('#treeInspector');
     const title = page.locator('#inspectorTitle');
     // Bei 1280 x 720 sind Wasser und Experte länger als der Inspektor
-    await page.getByRole('button', { name: /Sicherheitsmodul Wasser/ }).press('Enter');
+    await page.getByRole('button', { name: /Sicherheitsbereich Wasser/ }).press('Enter');
     await expect(title).toContainText('Wasser');
 
     const box = await inspector.boundingBox();
@@ -344,7 +344,7 @@ for (const [width, height] of [[1440, 900], [1280, 720], [1920, 1080]]) {
     test('Baumfläche und Inspektor schliessen bündig ab, mit gleichen Abständen untereinander und zur Fusszeile', async ({ page }) => {
       await openApp(page);
       // Ein Kurs mit langer Checkliste: bei 720 px Höhe scrollt sie im Inspektor, der Inspektor wächst nicht
-      await page.getByRole('button', { name: /Sicherheitsmodul Wasser/ }).press('Enter');
+      await page.getByRole('button', { name: /Sicherheitsbereich Wasser/ }).press('Enter');
       await expect(page.locator('#inspectorTitle')).toContainText('Wasser');
 
       const [canvas, inspector, footer] = await Promise.all(
