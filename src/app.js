@@ -457,7 +457,7 @@ const defaultDemoGroup = [
     ceviname: 'Amsel',
     birthdate: '2009-09-12', // 17 Jahre
     currentRole: 'Hilfsleiterin',
-    completedCourses: ['hlk'],
+    completedCourses: ['heku'],
     qualifications: ['cevi_hilfsleiter']
   },
   {
@@ -466,7 +466,7 @@ const defaultDemoGroup = [
     ceviname: 'Milan',
     birthdate: '2007-01-20', // 19 Jahre
     currentRole: 'Gruppenleiter',
-    completedCourses: ['hlk', 'glk'],
+    completedCourses: ['heku', 'glk3'],
     qualifications: ['js_leiter_lst', 'cevi_gruppenleiter'],
     jsExpirationDate: '2026-11-30' // bald ablaufend
   },
@@ -476,7 +476,7 @@ const defaultDemoGroup = [
     ceviname: 'Kolibri',
     birthdate: '2010-06-05', // 16 Jahre
     currentRole: 'Hilfsleiterin',
-    completedCourses: ['hlk'],
+    completedCourses: ['heku'],
     qualifications: ['cevi_hilfsleiter']
   },
   {
@@ -485,7 +485,7 @@ const defaultDemoGroup = [
     ceviname: 'Biber',
     birthdate: '2005-03-18', // 21 Jahre
     currentRole: 'Scharleiter',
-    completedCourses: ['hlk', 'glk', 'slk'],
+    completedCourses: ['heku', 'glk3', 'slk'],
     qualifications: ['js_leiter_lst', 'cevi_scharleiter']
   }
 ];

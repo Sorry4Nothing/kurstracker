@@ -22,6 +22,11 @@ test.describe('Stufenleiter-Planer', () => {
     await expect(page.locator('#statPlannerUrgent')).toHaveText(String(analysis.summaryStats.urgentRenewalCount));
     const urgent = analysis.analyzedParticipants.filter(p => p.recommendedCourses?.[0]?.priority === 'DRINGEND');
     await expect(rows.locator('.recommendation-pill.prio-urgent')).toHaveCount(urgent.length);
+    // Abgeschlossene Kurse mit Kürzel aus den Kursdaten, nie der Alias «HLK»
+    for (const { participant, completedCourseCodes } of analysis.analyzedParticipants) {
+      await expect(rows.filter({ hasText: participant.ceviname }).locator('.badge')).toHaveText(completedCourseCodes);
+    }
+    await expect(page.locator('#plannerTableBody')).not.toContainText('HLK');
   });
 
   test('«Vorschlagen» öffnet den Dialog mit Person und Empfehlung, Abbrechen, X und Escape schliessen ihn', async ({ page, request }) => {

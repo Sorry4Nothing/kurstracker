@@ -328,6 +328,15 @@ test('Planer: Heku von 14 bis 16 (ab 15 hohe Priorität), GLK 3 nach GLK 2 ab 17
   assert.deepEqual(recs(18, ['glk3']), []);
 });
 
+test('Planer: abgeschlossene Kurse erscheinen mit dem Kürzel aus den Kursdaten, Aliase ohne Doppel', () => {
+  const engine = new StufenleiterPlanningEngine();
+  const codes = completedCourses => engine.analyzeParticipant({ id: 'tn', completedCourses }).completedCourseCodes;
+  assert.deepEqual(codes(['heku', 'glk3', 'slk']), ['Heku', 'GLK 3', 'SLK']);
+  assert.deepEqual(codes(['hlk', 'heku', 'glk', 'mf']), ['Heku', 'GLK 3', 'MF']);
+  assert.deepEqual(codes(['unbekannt']), ['unbekannt']);
+  assert.deepEqual(codes(undefined), []);
+});
+
 test('Planer: SLK nur für Leitende ab 18 mit GLK 3', () => {
   const engine = new StufenleiterPlanningEngine();
   const recs = (age, currentRole, completedCourses) => engine

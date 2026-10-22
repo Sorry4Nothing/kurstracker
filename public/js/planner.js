@@ -47,8 +47,8 @@ export async function loadPlannerData() {
         `;
       }
 
-      const completedBadges = (tn.completedCourses || []).length > 0
-        ? tn.completedCourses.map(c => `<span class="badge badge-success" style="font-size: 0.68rem; margin-right: 0.2rem;">${esc(c.toUpperCase())}</span>`).join('')
+      const completedBadges = (item.completedCourseCodes || []).length > 0
+        ? item.completedCourseCodes.map(c => `<span class="badge badge-success" style="font-size: 0.68rem; margin-right: 0.2rem;">${esc(c)}</span>`).join('')
         : '<span class="text-dim">Keine</span>';
 
       return `
