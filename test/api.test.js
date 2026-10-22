@@ -515,7 +515,7 @@ test('Kaputtes JSON und zu grosse Bodies geben einen JSON-Fehler ohne Interna', 
 });
 
 test('logSafe entfernt Zeilenumbrüche und Steuerzeichen und begrenzt die Länge', () => {
-  assert.equal(logSafe('a\r\nFAKE-LOGZEILE\x1b[31m\x00b'), 'a FAKE-LOGZEILE [31m b');
+  assert.equal(logSafe('a\r\nFAKE-LOGZEILE\x1b[31m\x00b'), 'aFAKE-LOGZEILE[31mb');
   assert.equal(logSafe('x'.repeat(500)).length, 300);
   assert.equal(logSafe(null), '');
 });
