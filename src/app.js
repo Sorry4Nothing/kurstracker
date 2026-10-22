@@ -51,7 +51,8 @@ if (envConfig.app.isProduction && envConfig.server.trustProxy && envConfig.serve
 
 // Eine Zeile, ein Eintrag: Zeilenumbrüche und Steuerzeichen aus Nutzereingaben dürfen keine Log-Zeilen fälschen
 export function logSafe(value) {
-  return String(value ?? '').replace(/[\r\n\u0000-\u001f\u007f]+/g, ' ').slice(0, 300);
+  // Entfernen statt durch Leerzeichen ersetzen, ohne `+`: nur so erkennt CodeQL (js/log-injection) die Bereinigung
+  return String(value ?? '').replace(/[\r\n\u0000-\u001f\u007f]/g, '').slice(0, 300);
 }
 
 // Fehler mit gesetztem err.status (eigene Service-Fehler wie 401/502) geben ihre kuratierte Meldung weiter;
