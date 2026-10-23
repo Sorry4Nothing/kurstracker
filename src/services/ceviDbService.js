@@ -8,6 +8,8 @@ const PAGE_SIZE = 100;
 const MAX_PAGES = 50;
 // Testkurse sind erfunden: der Anmeldelink führt auf das echte Kursangebot
 const DEMO_REGISTRATION_URL = 'https://ceviregionzuerich.ch/kurse';
+// Kürzel der Kurse klein und ohne Leerzeichen («glk1», «al-semi»), so wie sie in den Anlassnamen stehen
+const COURSE_CODES = new Map(Object.values(COURSE_NODES).map(node => [node.code.toLowerCase().replace(/\s+/g, ''), node.id]));
 
 /**
  * Cevi-DB (Hitobito) API & OAuth2 Service
@@ -55,7 +57,7 @@ export class CeviDbService {
 
   /**
    * Holt eine Liste von der Cevi-DB (JSON:API), Seite für Seite, und flacht `attributes` ab.
-   * Mitgeladene Beziehungen (`include=`) hängen aufgelöst unter ihrem Namen am Eintrag.
+   * Mitgeladene Beziehungen (`include=`, auch verschachtelt wie `a.b`) hängen aufgelöst unter ihrem Namen am Eintrag.
    * Wirft bei Fehlern, damit nie Testdaten als echte Daten erscheinen.
    * @param {string} apiPath
    * @param {string} [accessToken] - ohne Token gilt der Service-Token (X-Token)
@@ -80,18 +82,17 @@ export class CeviDbService {
       const items = Array.isArray(data.data || data) ? (data.data || data) : [];
       const included = new Map((data.included || []).map(i => [`${i.type}:${i.id}`, { id: i.id, ...i.attributes }]));
       const resolve = ref => included.get(`${ref.type}:${ref.id}`);
-
-      for (const item of items) {
-        if (!item.attributes) {
-          list.push(item);
-          continue;
-        }
-        const entry = { id: item.id, ...item.attributes };
+      const link = (entry, item) => {
         for (const [name, relation] of Object.entries(item.relationships || {})) {
           if (Array.isArray(relation?.data)) entry[name] = relation.data.map(resolve).filter(Boolean);
           else if (relation?.data) entry[name] = resolve(relation.data);
         }
-        list.push(entry);
+        return entry;
+      };
+      for (const item of data.included || []) link(included.get(`${item.type}:${item.id}`), item);
+
+      for (const item of items) {
+        list.push(item.attributes ? link({ id: item.id, ...item.attributes }, item) : item);
       }
 
       if (items.length < PAGE_SIZE) break;
@@ -211,7 +212,7 @@ export class CeviDbService {
 
   /**
    * Bildet einen Kursanlass der Cevi-DB auf die Felder der Testkurse ab.
-   * Das Kürzel der Kursart (z. B. GLK1, VOKU) bestimmt den Kurs im Baum.
+   * Den Kurs im Baum bestimmt courseNodeIdFor.
    * @param {object} event - Eintrag aus fetchList mit `dates` und `kind`
    * @param {string} today - YYYY-MM-DD
    * @returns {object}
@@ -219,8 +220,8 @@ export class CeviDbService {
   toCourse(event, today) {
     const dates = [...(event.dates || [])].sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
     const last = dates.at(-1);
-    const nodeId = courseTreeEngine.resolveCourseId(event.kind?.short_name);
-    const node = Object.hasOwn(COURSE_NODES, nodeId) ? COURSE_NODES[nodeId] : null;
+    const nodeId = this.courseNodeIdFor(event);
+    const node = nodeId ? COURSE_NODES[nodeId] : null;
     const deadline = event.application_closing_at || '';
 
     return {
@@ -241,6 +242,69 @@ export class CeviDbService {
       // Anlassseite der Cevi-DB: angemeldete Mitglieder melden sich dort an
       registration_url: `${this.baseUrl}/groups/${event.group_ids?.[0]}/events/${event.id}`
     };
+  }
+
+  /**
+   * Kurs im Baum zu einem Anlass: das Kürzel der Kursart, sonst ein Kürzel im Anlassnamen.
+   * Live ist das Kürzel der Kursart fast immer leer; GLK1, HEKU, SLK usw. stehen nur im Namen («GLK3 Fb+Mb 2027»).
+   * @param {object} event - Anlass aus fetchList, mit `kind`, falls mitgeladen
+   * @returns {string|null} ID im Baum
+   */
+  courseNodeIdFor(event) {
+    const words = String(event.name || '').toLowerCase().split(/[\s(),/]+/).filter(Boolean);
+    // Wortpaare zuerst: «GLK 1» ist GLK 1, nicht das Alias «glk» (GLK 3)
+    const candidates = [event.kind?.short_name, ...words.flatMap((word, i) => [word + (words[i + 1] || ''), word])];
+    for (const candidate of candidates) {
+      const code = String(candidate || '').toLowerCase().replace(/\s+/g, '');
+      const id = COURSE_CODES.get(code) || courseTreeEngine.resolveCourseId(code);
+      if (Object.hasOwn(COURSE_NODES, id)) return id;
+    }
+    return null;
+  }
+
+  /**
+   * Mitglieder der Gruppe des Service-Tokens für den Stufenleiter-Planer (#26), in der Form der Demo-Gruppe.
+   * Fragt nur ab, was der Planer zeigt: Name, Ceviname, Geschlecht, Geburtstag, Rollen, Kurse und Qualifikationen.
+   * Adresse, E-Mail und Telefon bleiben in der Cevi-DB. Mitglied ist, wer eine laufende Rolle hat.
+   * @returns {Promise<Array>}
+   */
+  async getGroupMembers() {
+    const today = new Date().toISOString().slice(0, 10);
+    // shortcut: kein Cache, jeder Planer-Aufruf lädt die ganze Gruppe neu; zwischenspeichern mit #27
+    // fields[...] nennt auch die Beziehungen, sonst fehlt die Verknüpfung zu den mitgeladenen Einträgen
+    const people = await this.fetchList('/api/people?include=roles,qualifications.qualification_kind,event_participations.event.dates'
+      + '&fields[people]=first_name,last_name,nickname,gender,birthday,roles,qualifications,event_participations'
+      + '&fields[roles]=name,start_on,end_on&fields[qualifications]=finish_at,qualification_kind'
+      + '&fields[event_participations]=active,event');
+
+    return people.map(person => {
+      const roles = (person.roles || []).filter(r => (!r.start_on || r.start_on <= today) && (!r.end_on || r.end_on >= today));
+      // Bestätigte Teilnahmen an Kursen: vorbei heisst besucht, sonst angemeldet
+      const courses = { completed: new Set(), upcoming: new Set() };
+      for (const { active, event } of person.event_participations || []) {
+        const nodeId = active && event?.type === 'Event::Course' && this.courseNodeIdFor(event);
+        if (!nodeId) continue;
+        const lastDay = (event.dates || []).map(d => String(d.finish_at || d.start_at).slice(0, 10)).sort().at(-1);
+        courses[lastDay < today ? 'completed' : 'upcoming'].add(nodeId);
+      }
+      // Neueste Anerkennung zuerst: der Planer prüft die erste J+S-Leiteranerkennung auf ihren Verfall
+      const qualifications = (person.qualifications || [])
+        .map(q => ({ label: q.qualification_kind?.label || '', validUntil: q.finish_at || null }))
+        .sort((a, b) => (b.validUntil || '9999').localeCompare(a.validUntil || '9999'))
+        .map(q => ({ id: /j\+s/i.test(q.label) && /leiter/i.test(q.label) ? 'js_leiter_lst' : q.label, ...q }));
+
+      return {
+        id: person.id,
+        name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
+        ceviname: person.nickname || person.first_name || '',
+        gender: person.gender,
+        birthdate: person.birthday,
+        currentRole: [...new Set(roles.map(r => r.name))].join(', '),
+        completedCourses: [...courses.completed],
+        inProgressCourses: [...courses.upcoming],
+        qualifications
+      };
+    }).filter(member => member.currentRole);
   }
 
   /**

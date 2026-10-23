@@ -497,12 +497,21 @@ const defaultDemoGroup = [
   }
 ];
 
+// Echte Mitglieder lädt der Service-Token ohne Login (#26). Darum nur, wenn die App bloss auf diesem Rechner erreichbar ist:
+// sonst sähe jede Besucherin Namen und Geburtsdaten der ganzen Gruppe.
+// shortcut: ohne Login nur lokal, nach dem OAuth-Login (#4) auch Leitenden dieser Gruppe zeigen
+function plannerGroup() {
+  const localOnly = envConfig.app.isLocal && ['localhost', '127.0.0.1', '::1'].includes(envConfig.server.host);
+  return ceviDbService.serviceToken && localOnly ? ceviDbService.getGroupMembers() : defaultDemoGroup;
+}
+
 // Gesamtübersicht und Analyse für Stufenleiter
-app.get('/api/planner/overview', requirePlanner, (req, res) => {
+app.get('/api/planner/overview', requirePlanner, async (req, res) => {
   try {
-    const analysis = stufenleiterPlanningEngine.analyzeGroup(defaultDemoGroup);
+    const group = await plannerGroup();
+    const analysis = stufenleiterPlanningEngine.analyzeGroup(group);
     res.json({
-      group: defaultDemoGroup,
+      group,
       analysis,
       nominations: stufenleiterPlanningEngine.getAllNominations()
     });
@@ -512,11 +521,11 @@ app.get('/api/planner/overview', requirePlanner, (req, res) => {
 });
 
 // Kursvorschlag für eine Person erfassen
-app.post('/api/planner/propose', requirePlanner, (req, res) => {
+app.post('/api/planner/propose', requirePlanner, async (req, res) => {
   try {
     // Express 5 leaves req.body undefined when no JSON body was sent
     const { personId, targetCourseId, proposedSeason, notes, proposedBy } = req.body ?? {};
-    const person = defaultDemoGroup.find(p => p.id === personId);
+    const person = (await plannerGroup()).find(p => p.id === personId);
     if (!person) {
       return res.status(404).json({ error: 'Person nicht gefunden' });
     }

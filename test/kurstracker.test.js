@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 // Vor dem Import setzen: env.js liest die Variablen beim Laden, dotenv überschreibt sie nicht
 process.env.CEVI_DB_PREPARATION_MODE = 'true';
+// Ein Service-Token aus .env.local lädt Kurse und Gruppe live; diese Tests laufen mit Testdaten
+process.env.CEVI_DB_SERVICE_TOKEN = '';
 const { courseTreeEngine } = await import('../src/domain/courseTreeEngine.js');
 const { StufenleiterPlanningEngine } = await import('../src/domain/stufenleiterPlanningEngine.js');
 const { app } = await import('../src/app.js');
