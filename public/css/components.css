@@ -519,8 +519,8 @@
 }
 
 /* ------------------------------------------------------------------------------
-   7. Loading and inline error state: a single line of text, no icon, no box.
-      Inside a card grid it spans every column.
+   7. Loading and inline error state: a single line of text, no box. Loading
+      text gets a spinning ring in front. Inside a card grid it spans every column.
    ------------------------------------------------------------------------------ */
 .loading-placeholder {
   grid-column: 1 / -1;
@@ -530,17 +530,26 @@
   text-align: center;
 }
 
-/* Loading animation (#91): the text pulses from muted to full ink, so a slow
-   Cevi-DB does not look frozen. Contrast never drops below the resting state;
-   errors stay still. .is-loading gives inline text the same pulse. Reduced
-   motion stops it through the global rule in variables.css. */
-.loading-placeholder:not(.text-danger),
-.is-loading {
-  animation: loading-pulse 0.9s ease-in-out infinite alternate;
+/* Loading animation (#91): a ring in the primary colour spins in front of the
+   text, so a slow Cevi-DB does not look frozen. Errors (.text-danger) get no
+   ring. .is-loading gives inline text the same ring. Reduced motion stops it
+   through the global rule in variables.css. */
+.loading-placeholder:not(.text-danger)::before,
+.is-loading::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-inline-end: 0.5em;
+  border: 2px solid var(--primary-text);
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -0.125em;
+  animation: loading-spin 0.8s linear infinite;
 }
 
-@keyframes loading-pulse {
-  to { color: var(--text-main); }
+@keyframes loading-spin {
+  to { transform: rotate(1turn); }
 }
 
 /* Empty result in a card grid (search without hits, courses.js): the
