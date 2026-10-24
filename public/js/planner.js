@@ -72,7 +72,7 @@ export async function loadPlannerData() {
             ${item.age ?? '–'} J.
             ${tn.birthdate ? `<div style="font-size: 0.7rem; color: var(--text-dim);">${esc(formatEuropeanDate(tn.birthdate))}</div>` : ''}
           </td>
-          <td><span class="role-badge">${esc(tn.currentRole)}</span></td>
+          <td><div class="role-badges">${(tn.currentRole || '').split(', ').filter(Boolean).map(role => `<span class="role-badge">${esc(role)}</span>`).join('')}</div></td>
           <td>${completedBadges}</td>
           <td>${recBadge}</td>
           <td>
