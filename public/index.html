@@ -62,6 +62,12 @@
           <i class="fa-solid fa-users-gear nav-icon" aria-hidden="true"></i>
           <span class="nav-text">Stufenleiter-Planer</span>
         </button>
+
+        <!-- Nur zur Entwicklung: system.js blendet die Seite ausserhalb der Produktion ein -->
+        <button class="sidebar-nav-item" id="tabApiOutput" onclick="switchTab('api')" hidden>
+          <i class="fa-solid fa-code nav-icon" aria-hidden="true"></i>
+          <span class="nav-text">API-Output</span>
+        </button>
       </nav>
 
       <!-- Sidebar Footer mit Theme Dropup & Kokonut UI Pro Profile Card -->
@@ -235,6 +241,12 @@
                 <div class="inspector-checks" id="inspectorChecks">
                   <div class="check-item"><span class="check-icon">--</span><span>Kein Kurs gewählt</span></div>
                 </div>
+              </div>
+
+              <!-- Nächste Durchführungen aus der Cevi-DB -->
+              <div class="inspector-section">
+                <h4 class="inspector-section-title">Nächste Termine</h4>
+                <div class="inspector-meta-text" id="inspectorDates">Kein Kurs gewählt</div>
               </div>
 
               <!-- Nächste Schritte / Aktionen -->
@@ -517,6 +529,18 @@
           </div>
         </section>
 
+        <!-- ===================================================================
+             4. API-OUTPUT (nur zur Entwicklung): rohe API-Antworten ans Frontend
+             =================================================================== -->
+        <section class="tab-panel" id="panel-api" role="tabpanel">
+          <div class="panel-header">
+            <button class="btn btn-secondary" onclick="loadApiOutput()">
+              <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Aktualisieren
+            </button>
+          </div>
+          <div id="apiOutputList" class="api-list"></div>
+        </section>
+
       </div>
 
       <!-- Globaler Footer (Umgebung & Cevi-DB Status) -->
@@ -583,7 +607,9 @@
         </div>
         <div class="form-group">
           <label for="modalSeason">Geplante Saison / Jahr:</label>
-          <input type="text" id="modalSeason" class="form-input" value="Herbst 2026">
+          <!-- Vorschläge aus den echten Durchführungen des Zielkurses, eigene Eingabe bleibt möglich -->
+          <input type="text" id="modalSeason" class="form-input" list="modalSeasonOptions" placeholder="z. B. Herbst 2027">
+          <datalist id="modalSeasonOptions"></datalist>
         </div>
         <div class="form-group">
           <label for="modalNotes">Bemerkungen / Motivation:</label>

@@ -5,6 +5,7 @@
 
 import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines } from './tree-map.js';
 import { esc } from './utils.js';
+import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
 let treeStructure = null;
 let currentTreeEvaluation = null;
@@ -91,7 +92,7 @@ export function renderTree() {
           </div>
           <span class="node-status-pill status-${statusLower}">${statusLabel}</span>
         </div>
-        <div class="node-title">${node.title}</div>
+        <div class="node-title">${esc(node.title)}</div>
         <div class="node-meta">
           <span>${node.category}</span>
           <span>${node.js_type ? node.js_type : ''}</span>
@@ -130,6 +131,7 @@ export async function selectTargetCourse(courseId) {
     const targetNode = treeStructure.nodes[courseId];
     if (targetNode) {
       updateTreeInspector(targetNode, pathResult);
+      showUpcomingDates(courseId);
     }
 
     // Vorgelagerte Kursknoten hervorheben (Pflicht und empfohlene Vorstufen) und die
@@ -149,6 +151,18 @@ export async function selectTargetCourse(courseId) {
   }
 }
 
+// Nächste Durchführungen des Kurses aus der Cevi-DB mit Anmeldelink (#11)
+async function showUpcomingDates(courseId) {
+  const container = document.getElementById('inspectorDates');
+  try {
+    const dates = upcomingDates(await fetchCourses(), courseId).slice(0, 3);
+    if (courseId !== selectedTargetCourseId) return; // inzwischen ist ein anderer Kurs gewählt
+    container.innerHTML = dates.map(courseMetaHtml).join('') || 'Keine kommenden Termine in der Cevi-DB.';
+  } catch (err) {
+    container.textContent = `Termine nicht abrufbar: ${err.message}`;
+  }
+}
+
 export function updateTreeInspector(targetNode, pathResult) {
   const { isDirectlyEligible, missingCourses, ageCheck, summary } = pathResult;
   const qualificationChecks = pathResult.targetQualCheck || pathResult.qualificationChecks || [];
@@ -162,7 +176,7 @@ export function updateTreeInspector(targetNode, pathResult) {
   const org = targetNode.org;
   const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
 
-  titleEl.innerHTML = `<span class="node-org-pill org-${orgClass}" style="vertical-align: middle; margin-right: 0.4rem;">${org}</span> <span>${targetNode.title}</span>${targetNode.code ? ` <span style="font-size: 0.85em; opacity: 0.7; font-weight: normal;">(${targetNode.code})</span>` : ''}`;
+  titleEl.innerHTML = `<span class="node-org-pill org-${orgClass}" style="vertical-align: middle; margin-right: 0.4rem;">${org}</span> <span>${esc(targetNode.title)}</span>${targetNode.code ? ` <span style="font-size: 0.85em; opacity: 0.7; font-weight: normal;">(${targetNode.code})</span>` : ''}`;
   catEl.textContent = `Kategorie: ${targetNode.category}${targetNode.js_type ? ` • ${targetNode.js_type}` : ''}`;
 
   summaryBox.textContent = summary;
@@ -256,8 +270,8 @@ export function updateTreeInspector(targetNode, pathResult) {
       <div class="check-item ${item.isFulfilled ? 'check-fulfilled' : 'check-unfulfilled'}${item.isOptional ? ' check-optional' : ''}">
         <div class="check-step-badge">${badge}</div>
         <div class="check-text-content">
-          <div class="check-title">${item.title}</div>
-          <div class="check-desc">${item.desc}</div>
+          <div class="check-title">${esc(item.title)}</div>
+          <div class="check-desc">${esc(item.desc)}</div>
         </div>
       </div>
     `;

@@ -166,7 +166,6 @@ export class StufenleiterPlanningEngine {
       participant,
       age,
       completedCourseCodes,
-      currentLevel: treeState.currentMaxLevel,
       availableNextCourses: treeState.availableNextCourses,
       recommendedCourses,
       hasExpiringJsLeiter,

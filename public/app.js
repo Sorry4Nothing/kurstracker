@@ -13,6 +13,7 @@ import { loadUserProfile } from './js/profile.js';
 import { loadAllCourses, filterCourses } from './js/courses.js';
 import { loadPlannerData, openNominationModal, closeNominationModal, submitNomination } from './js/planner.js';
 import { loadSystemFooterStatus } from './js/system.js';
+import { loadApiOutput, setApiView } from './js/api-output.js';
 
 // Globale Bereitstellung fuer Inline-HTML-Events (onclick, onsubmit etc.)
 window.switchTab = switchTab;
@@ -25,6 +26,8 @@ window.loadPlannerData = loadPlannerData;
 window.openNominationModal = openNominationModal;
 window.closeNominationModal = closeNominationModal;
 window.submitNomination = submitNomination;
+window.loadApiOutput = loadApiOutput;
+window.setApiView = setApiView;
 
 // Initialisierung bei DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {

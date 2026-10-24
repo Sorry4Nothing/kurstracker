@@ -1,4 +1,15 @@
 import { envConfig } from '../config/env.js';
+import { COURSE_NODES } from '../domain/courseTreeData.js';
+import { courseTreeEngine } from '../domain/courseTreeEngine.js';
+
+// Hitobito (Graphiti) liefert Listen seitenweise; eine kürzere Seite ist die letzte.
+// Die Obergrenze schützt die Cevi-DB, falls sie page[number] einmal ignoriert.
+const PAGE_SIZE = 100;
+const MAX_PAGES = 50;
+// Testkurse sind erfunden: der Anmeldelink führt auf das echte Kursangebot
+const DEMO_REGISTRATION_URL = 'https://ceviregionzuerich.ch/kurse';
+// Kürzel der Kurse klein und ohne Leerzeichen («glk1», «al-semi»), so wie sie in den Anlassnamen stehen
+const COURSE_CODES = new Map(Object.values(COURSE_NODES).map(node => [node.code.toLowerCase().replace(/\s+/g, ''), node.id]));
 
 /**
  * Cevi-DB (Hitobito) API & OAuth2 Service
@@ -45,26 +56,57 @@ export class CeviDbService {
   }
 
   /**
-   * Holt eine Liste von der Cevi-DB (JSON:API) und flacht `attributes` ab.
+   * Kurse kommen mit Service-Token immer live, sonst wie die Personendaten (usesMockData)
+   * @param {string} [accessToken]
+   * @returns {boolean}
+   */
+  usesMockCourses(accessToken) {
+    return !this.serviceToken && this.usesMockData(accessToken);
+  }
+
+  /**
+   * Holt eine Liste von der Cevi-DB (JSON:API), Seite für Seite, und flacht `attributes` ab.
+   * Mitgeladene Beziehungen (`include=`, auch verschachtelt wie `a.b`) hängen aufgelöst unter ihrem Namen am Eintrag.
    * Wirft bei Fehlern, damit nie Testdaten als echte Daten erscheinen.
    * @param {string} apiPath
-   * @param {string} accessToken
+   * @param {string} [accessToken] - ohne Token gilt der Service-Token (X-Token)
    * @returns {Promise<Array>}
    */
   async fetchList(apiPath, accessToken) {
-    const response = await fetch(`${this.baseUrl}${apiPath}`, {
-      headers: this.getHeaders(accessToken)
-    });
+    const list = [];
+    const separator = apiPath.includes('?') ? '&' : '?';
 
-    if (!response.ok) {
-      const error = new Error(`Cevi-DB Abruf fehlgeschlagen (${response.status}): ${apiPath}`);
-      error.status = response.status === 401 ? 401 : 502;
-      throw error;
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const response = await fetch(`${this.baseUrl}${apiPath}${separator}page[size]=${PAGE_SIZE}&page[number]=${page}`, {
+        headers: this.getHeaders(accessToken)
+      });
+
+      if (!response.ok) {
+        const error = new Error(`Cevi-DB Abruf fehlgeschlagen (${response.status}): ${apiPath}`);
+        error.status = response.status === 401 ? 401 : 502;
+        throw error;
+      }
+
+      const data = await response.json();
+      const items = Array.isArray(data.data || data) ? (data.data || data) : [];
+      const included = new Map((data.included || []).map(i => [`${i.type}:${i.id}`, { id: i.id, ...i.attributes }]));
+      const resolve = ref => included.get(`${ref.type}:${ref.id}`);
+      const link = (entry, item) => {
+        for (const [name, relation] of Object.entries(item.relationships || {})) {
+          if (Array.isArray(relation?.data)) entry[name] = relation.data.map(resolve).filter(Boolean);
+          else if (relation?.data) entry[name] = resolve(relation.data);
+        }
+        return entry;
+      };
+      for (const item of data.included || []) link(included.get(`${item.type}:${item.id}`), item);
+
+      for (const item of items) {
+        list.push(item.attributes ? link({ id: item.id, ...item.attributes }, item) : item);
+      }
+
+      if (items.length < PAGE_SIZE) break;
     }
-
-    const data = await response.json();
-    const items = data.data || data;
-    return (Array.isArray(items) ? items : []).map(item => (item.attributes ? { id: item.id, ...item.attributes } : item));
+    return list;
   }
 
   /**
@@ -158,15 +200,132 @@ export class CeviDbService {
   }
 
   /**
-   * Ruft Kurs- und Weiterbildungsangebote ab (Events mit Event-Typ Kurs)
+   * Ruft die laufenden und kommenden Kursanlässe ab (Event::Course) und ordnet sie den Kursen im Baum zu.
+   * Kursdaten sind keine Personendaten: mit Service-Token (X-Token) kommen sie live,
+   * auch im Vorbereitungsmodus und ohne OAuth-Login (#11).
    * @param {string} [accessToken]
    * @returns {Promise<Array>}
    */
   async getCourses(accessToken) {
-    if (this.usesMockData(accessToken)) {
+    if (this.usesMockCourses(accessToken)) {
       return this.getMockCourses();
     }
-    return this.fetchList('/api/events?filter[type]=Course', accessToken);
+    const today = new Date().toISOString().slice(0, 10);
+    // shortcut: kein Cache, jeder Seitenaufruf fragt die Cevi-DB ab; bei vielen Nutzenden die Kursliste serverseitig zwischenspeichern
+    const events = await this.fetchList(
+      `/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind`,
+      this.serviceToken ? undefined : accessToken
+    );
+    return events.map(event => this.toCourse(event, today));
+  }
+
+  /**
+   * Bildet einen Kursanlass der Cevi-DB auf die Felder der Testkurse ab.
+   * Den Kurs im Baum bestimmt courseNodeIdFor.
+   * @param {object} event - Eintrag aus fetchList mit `dates` und `kind`
+   * @param {string} today - YYYY-MM-DD
+   * @returns {object}
+   */
+  toCourse(event, today) {
+    const dates = [...(event.dates || [])].sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
+    const last = dates.at(-1);
+    const nodeId = this.courseNodeIdFor(event);
+    const node = nodeId ? COURSE_NODES[nodeId] : null;
+    const deadline = event.application_closing_at || '';
+
+    return {
+      id: String(event.id),
+      course_node_id: node ? nodeId : null,
+      title: event.name || '',
+      code: event.number || event.kind?.short_name || '',
+      category: node?.category || event.kind?.label || '',
+      // Die Cevi-DB nennt nur Gruppen-IDs, keinen Namen; das Kursangebot blendet die leere Zeile aus
+      organizer: '',
+      location: event.location || dates[0]?.location || '',
+      start_date: String(dates[0]?.start_at || '').slice(0, 10),
+      end_date: String(last?.finish_at || last?.start_at || '').slice(0, 10),
+      registration_deadline: deadline,
+      status: deadline && deadline < today ? 'Anmeldeschluss vorbei' : 'Offen für Anmeldung',
+      description: event.description || '',
+      free_places: event.maximum_participants ? Math.max(0, event.maximum_participants - (event.participant_count || 0)) : null,
+      // Anlassseite der Cevi-DB: angemeldete Mitglieder melden sich dort an
+      registration_url: `${this.baseUrl}/groups/${event.group_ids?.[0]}/events/${event.id}`
+    };
+  }
+
+  /**
+   * Kurs im Baum zu einem Anlass: das Kürzel der Kursart, sonst ein Kürzel im Anlassnamen.
+   * Live ist das Kürzel der Kursart fast immer leer; GLK1, HEKU, SLK usw. stehen nur im Namen («GLK3 Fb+Mb 2027»).
+   * @param {object} event - Anlass aus fetchList, mit `kind`, falls mitgeladen
+   * @returns {string|null} ID im Baum
+   */
+  courseNodeIdFor(event) {
+    const words = String(event.name || '').toLowerCase().split(/[\s(),/]+/).filter(Boolean);
+    // Wortpaare zuerst: «GLK 1» ist GLK 1, nicht das Alias «glk» (GLK 3)
+    const candidates = [event.kind?.short_name, ...words.flatMap((word, i) => [word + (words[i + 1] || ''), word])];
+    for (const candidate of candidates) {
+      const code = String(candidate || '').toLowerCase().replace(/\s+/g, '');
+      const id = COURSE_CODES.get(code) || courseTreeEngine.resolveCourseId(code);
+      if (Object.hasOwn(COURSE_NODES, id)) return id;
+    }
+    return null;
+  }
+
+  /**
+   * Titel der Kursarten nach ID, für die J+S- und SLRG-Kurse im Baum (applyKindLabels).
+   * Der Server lädt sie beim Start, vor jedem Login: nur mit Service-Token, sonst bleibt die Liste leer.
+   * @returns {Promise<Map<number, string>>}
+   */
+  async getKindLabels() {
+    if (!this.serviceToken) return new Map();
+    const kinds = await this.fetchList('/api/event_kinds?fields[event_kinds]=label');
+    // Einzelne Titel enden in der Cevi-DB auf ein Leerzeichen
+    return new Map(kinds.map(kind => [Number(kind.id), String(kind.label || '').trim()]));
+  }
+
+  /**
+   * Mitglieder der Gruppe des Service-Tokens für den Stufenleiter-Planer (#26), in der Form der Demo-Gruppe.
+   * Fragt nur ab, was der Planer zeigt: Name, Ceviname, Geschlecht, Geburtstag, Rollen, Kurse und Qualifikationen.
+   * Adresse, E-Mail und Telefon bleiben in der Cevi-DB. Mitglied ist, wer eine laufende Rolle hat.
+   * @returns {Promise<Array>}
+   */
+  async getGroupMembers() {
+    const today = new Date().toISOString().slice(0, 10);
+    // shortcut: kein Cache, jeder Planer-Aufruf lädt die ganze Gruppe neu; zwischenspeichern mit #27
+    // fields[...] nennt auch die Beziehungen, sonst fehlt die Verknüpfung zu den mitgeladenen Einträgen
+    const people = await this.fetchList('/api/people?include=roles,qualifications.qualification_kind,event_participations.event.dates'
+      + '&fields[people]=first_name,last_name,nickname,gender,birthday,roles,qualifications,event_participations'
+      + '&fields[roles]=name,start_on,end_on&fields[qualifications]=finish_at,qualification_kind'
+      + '&fields[event_participations]=active,event');
+
+    return people.map(person => {
+      const roles = (person.roles || []).filter(r => (!r.start_on || r.start_on <= today) && (!r.end_on || r.end_on >= today));
+      // Bestätigte Teilnahmen an Kursen: vorbei heisst besucht, sonst angemeldet
+      const courses = { completed: new Set(), upcoming: new Set() };
+      for (const { active, event } of person.event_participations || []) {
+        const nodeId = active && event?.type === 'Event::Course' && this.courseNodeIdFor(event);
+        if (!nodeId) continue;
+        const lastDay = (event.dates || []).map(d => String(d.finish_at || d.start_at).slice(0, 10)).sort().at(-1);
+        courses[lastDay < today ? 'completed' : 'upcoming'].add(nodeId);
+      }
+      // Neueste Anerkennung zuerst: der Planer prüft die erste J+S-Leiteranerkennung auf ihren Verfall
+      const qualifications = (person.qualifications || [])
+        .map(q => ({ label: q.qualification_kind?.label || '', validUntil: q.finish_at || null }))
+        .sort((a, b) => (b.validUntil || '9999').localeCompare(a.validUntil || '9999'))
+        .map(q => ({ id: /j\+s/i.test(q.label) && /leiter/i.test(q.label) ? 'js_leiter_lst' : q.label, ...q }));
+
+      return {
+        id: person.id,
+        name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
+        ceviname: person.nickname || person.first_name || '',
+        gender: person.gender,
+        birthdate: person.birthday,
+        currentRole: [...new Set(roles.map(r => r.name))].join(', '),
+        completedCourses: [...courses.completed],
+        inProgressCourses: [...courses.upcoming],
+        qualifications
+      };
+    }).filter(member => member.currentRole);
   }
 
   /**
@@ -298,6 +457,7 @@ export class CeviDbService {
         start_date: '2026-10-10',
         end_date: '2026-10-17',
         registration_deadline: '2026-08-31',
+        free_places: 6,
         status: 'Offen für Anmeldung',
         target_group: 'Leiterinnen und Leiter ab 17 Jahren',
         description: 'Offizieller J+S-Leiterkurs Lagersport/Trekking Jugendsport. Befähigt zur selbstständigen Lagerleitung und Sportprogrammgestaltung.'
@@ -430,7 +590,7 @@ export class CeviDbService {
         target_group: 'Erfahrene Kursleiterinnen und Kursleiter ab 21 Jahren',
         description: 'Ausbildung zum Experten zur Leitung von offiziellen J+S-Leiterkursen in den Verbänden.'
       }
-    ];
+    ].map(course => ({ free_places: null, registration_url: DEMO_REGISTRATION_URL, ...course }));
   }
 
   getMockParticipations() {

@@ -15,6 +15,10 @@ export async function loadSystemFooterStatus() {
       envEl.textContent = `Umgebung: ${data.appEnv.toUpperCase()}`;
     }
 
+    // API-Output ist ein Entwicklungswerkzeug: appEnv schickt der Server nur ausserhalb der Produktion
+    const tabApi = document.getElementById('tabApiOutput');
+    if (tabApi) tabApi.hidden = !data.appEnv;
+
     // Version nur anzeigen, wenn es ein Git-Release (Tag) gibt
     const versionEl = document.getElementById('footerVersion');
     const versionTagEl = document.getElementById('footerVersionTag');

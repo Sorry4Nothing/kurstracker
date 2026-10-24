@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const projectRoot = fileURLToPath(new URL('..', import.meta.url));
 
 // Die Konfiguration wird beim Laden gelesen: jede Variante startet die App in einem eigenen Node-Prozess
-// und meldet Status, Location, Set-Cookie und HSTS einer einzigen Anfrage als JSON-Zeile.
+// und meldet Status, Location, Set-Cookie, HSTS und Body einer einzigen Anfrage als JSON-Zeile.
 const PROBE = `
 const { app } = await import('./src/app.js');
 const server = app.listen(0, '127.0.0.1');
@@ -19,7 +19,8 @@ console.log(JSON.stringify({
   status: res.status,
   location: res.headers.get('location'),
   cookies: res.headers.getSetCookie(),
-  hsts: res.headers.get('strict-transport-security')
+  hsts: res.headers.get('strict-transport-security'),
+  body: await res.text()
 }));
 server.close();
 `;
@@ -81,4 +82,14 @@ test('Produktion hinter Proxy: HTTP wird auf die HTTPS-Adresse aus APP_URL umgel
 test('Ohne TRUST_PROXY leitet Produktion nicht um (sonst Endlosschleife hinter einem TLS-Proxy)', () => {
   const res = probe({ ...PRODUCTION, TRUST_PROXY: '' }, '/api/system/status', { 'X-Forwarded-Proto': 'http' });
   assert.equal(res.status, 200);
+});
+
+test('API-Output nur lokal und in development: nur dort meldet der Systemstatus appEnv', () => {
+  // Das Frontend blendet den Tab API-Output erst ein, wenn der Status appEnv enthält (public/js/system.js)
+  const appEnv = env => JSON.parse(probe(env, '/api/system/status', { 'X-Forwarded-Proto': 'https' }).body).appEnv;
+  assert.equal(appEnv({ APP_ENV: 'local' }), 'local');
+  assert.equal(appEnv({ APP_ENV: 'development' }), 'development');
+  assert.equal(appEnv(PRODUCTION), undefined);
+  // Ohne APP_ENV zählt NODE_ENV=production als Produktion
+  assert.equal(appEnv({ ...PRODUCTION, APP_ENV: '', NODE_ENV: 'production' }), undefined);
 });

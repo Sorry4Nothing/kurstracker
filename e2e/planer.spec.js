@@ -1,6 +1,8 @@
 import { test, expect, openApp } from './fixtures.js';
+import { formatEuropeanDateRange } from '../public/js/utils.js';
 
 const fetchOverview = async request => (await request.get('/api/planner/overview')).json();
+const range = course => formatEuropeanDateRange(course.start_date, course.end_date);
 
 test.describe('Stufenleiter-Planer', () => {
   test.beforeEach(async ({ page }) => {
@@ -56,6 +58,50 @@ test.describe('Stufenleiter-Planer', () => {
       await expect(layout).toHaveJSProperty('inert', false);
       await expect(opener).toBeFocused();
     }
+  });
+
+  test('Zielkurse im Dialog tragen die Titel aus dem Baum, Kurse mit m/w-Formen den neutralen', async ({ page }) => {
+    // Wie mit Service-Token: applyKindLabels setzt bei GLK 3 den Titel der Cevi-DB und entfernt die m/w-Formen
+    await page.route('**/api/tree/structure', async route => {
+      const response = await route.fetch();
+      const { nodes } = await response.json();
+      const { titles, ...glk3 } = nodes.glk3;
+      await route.fulfill({ response, json: { nodes: { ...nodes, glk3: { ...glk3, title: 'J+S-Leiter*innenkurs LS/T' } } } });
+    });
+    await openApp(page);
+    await page.getByRole('button', { name: 'Stufenleiter-Planer' }).click();
+    await page.getByRole('button', { name: 'Vorschlagen' }).first().click();
+
+    const option = id => page.locator(`#modalCourseSelect option[value="${id}"]`);
+    await expect(option('glk3')).toHaveText('J+S-Leiter*innenkurs LS/T - ab 17 J.');
+    // Die Testperson ist männlich: der Baum liefert für SLK «Stufenleiterkurs», der Dialog bleibt neutral
+    await expect(option('slk')).toHaveText('Stufenleiter/-innen-Kurs (SLK) - ab 17 J.');
+  });
+
+  test('Empfehlung zeigt den nächsten Termin mit Anmeldelink, die Saison kommt aus einer echten Durchführung', async ({ page, request }) => {
+    // Testkurse haben feste Daten: die Uhr des Browsers vor ihre Termine stellen
+    await page.clock.setFixedTime(new Date('2026-09-01T10:00:00'));
+    await openApp(page);
+    await page.getByRole('button', { name: 'Stufenleiter-Planer' }).click();
+    const courses = await (await request.get('/api/courses')).json();
+    const upcoming = id => courses.find(c => c.course_node_id === id && c.start_date >= '2026-09-01');
+    const { analysis } = await fetchOverview(request);
+    const item = analysis.analyzedParticipants.find(i => upcoming(i.recommendedCourses?.[0]?.courseId));
+    const next = upcoming(item.recommendedCourses[0].courseId);
+    const row = page.getByRole('row', { name: item.participant.ceviname });
+
+    await expect(row).toContainText(`Nächster Termin: ${range(next)}`);
+    await expect(row.getByRole('link', { name: /Anmelden/ })).toHaveAttribute('href', next.registration_url);
+
+    // Der Dialog wählt die Saison aus dem nächsten Termin des Zielkurses; ohne kommenden Termin bleibt sie frei
+    await row.getByRole('button', { name: 'Vorschlagen' }).click();
+    const season = page.getByLabel('Geplante Saison');
+    const options = page.locator('#modalSeasonOptions option');
+    await expect(season).toHaveValue(range(next));
+    await expect(options).toHaveCount(1);
+    await page.getByRole('combobox', { name: 'Zielkurs' }).selectOption('glk2');
+    await expect(season).toHaveValue('');
+    await expect(options).toHaveCount(0);
   });
 
   test('gespeicherter Vorschlag erscheint in der Liste der Kursvorschläge', async ({ page }) => {

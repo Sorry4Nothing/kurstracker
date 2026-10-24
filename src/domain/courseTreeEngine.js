@@ -26,12 +26,12 @@ export class CourseTreeEngine {
   }
 
   /**
-   * Bildet eine Kurs-ID (auch Aliase wie 'glk') auf die Baum-ID ab
+   * Bildet eine Kurs-ID (auch Aliase wie 'glk' und Kürzel der Cevi-DB wie 'GLK 1') auf die Baum-ID ab
    * @param {string} courseId
    * @returns {string}
    */
   resolveCourseId(courseId) {
-    const id = String(courseId || '').toLowerCase().trim();
+    const id = String(courseId || '').toLowerCase().replace(/\s+/g, '');
     return COURSE_ALIASES[id] || id;
   }
 
@@ -162,7 +162,6 @@ export class CourseTreeEngine {
             id: node.id,
             title: node.title,
             category: node.category,
-            level: node.level,
             recommendedAge: node.recommendedAge
           });
         }
@@ -188,15 +187,8 @@ export class CourseTreeEngine {
       }
     }
 
-    // Aktuelle Ebene im Baum ermitteln (hochste abgeschlossene Ebene)
-    const completedLevels = Object.values(evaluatedNodes)
-      .filter(n => n.isCompleted)
-      .map(n => n.level);
-    const currentMaxLevel = completedLevels.length > 0 ? Math.max(...completedLevels) : -1;
-
     return {
       personAge,
-      currentMaxLevel,
       availableNextCourses,
       nodes: evaluatedNodes,
       completedCourseIds: Array.from(completed),
@@ -257,7 +249,6 @@ export class CourseTreeEngine {
       return {
         id,
         title: node.title,
-        level: node.level,
         category: node.category,
         isCompleted: done,
         status: done ? 'ERFULLT' : openStatus
@@ -297,9 +288,7 @@ export class CourseTreeEngine {
         id: targetNode.id,
         title: targetNode.title,
         category: targetNode.category,
-        level: targetNode.level,
-        minAge: targetNode.minAge,
-        description: targetNode.description
+        minAge: targetNode.minAge
       },
       isDirectlyEligible,
       stepsRemainingCount: missingCourses.length,

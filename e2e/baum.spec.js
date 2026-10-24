@@ -144,6 +144,24 @@ test.describe('Ausbildungsbaum', () => {
     await expect.poll(() => edges(activeLines)).toEqual(['glk1->pionier', 'heku->glk1', 'voku->heku']);
   });
 
+  test('Kursdetail zeigt die nächsten Termine aus der Cevi-DB mit freien Plätzen und Anmeldelink', async ({ page, request }) => {
+    // Testkurse haben feste Daten: die Uhr des Browsers vor ihre Termine stellen
+    await page.clock.setFixedTime(new Date('2026-09-01T10:00:00'));
+    await openApp(page);
+    const glk3 = (await (await request.get('/api/courses')).json()).find(c => c.course_node_id === 'glk3');
+    const dates = page.locator('#inspectorDates');
+    await zoomOutFully(page);
+
+    await page.getByRole('button', { name: /Gruppenleiterkurs 3/ }).click();
+    await expect(dates).toContainText('10.10.2026 bis 17.10.2026');
+    await expect(dates.locator('.meta-item', { hasText: 'Freie Plätze' })).toContainText(String(glk3.free_places));
+    await expect(dates.getByRole('link', { name: /Zur Anmeldung in der Cevi-DB/ })).toHaveAttribute('href', glk3.registration_url);
+
+    // Das Pioniertechnik-Modul der Testdaten liegt vor dem 1.9.2026
+    await page.getByRole('button', { name: /Pioniertechnik/ }).click();
+    await expect(dates).toHaveText('Keine kommenden Termine in der Cevi-DB.');
+  });
+
   test('Enter auf einem fokussierten Kurs wählt ihn aus', async ({ page }) => {
     const node = page.getByRole('button', { name: /Vorkurs/ });
 

@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 // Vor dem Import setzen: env.js liest die Variablen beim Laden, dotenv überschreibt sie nicht
 process.env.CEVI_DB_PREPARATION_MODE = 'true';
+// Ein Service-Token aus .env.local lädt Kurse live; die Tests setzen ihn nur gezielt
+process.env.CEVI_DB_SERVICE_TOKEN = '';
 // Alle Tests laufen von derselben IP: das Anmelde-Limit hier anheben, der 429-Test am Dateiende zählt bis dahin weiter
 process.env.RATE_LIMIT_AUTH_MAX = '200';
 const { app, logSafe } = await import('../src/app.js');
@@ -210,6 +212,125 @@ test('API: Planer-Übersicht analysiert die ganze Demo-Gruppe und meldet den J+S
   assert.equal(expiring.recommendedCourses[0].courseId, 'mf_lst');
   assert.equal(expiring.recommendedCourses[0].priority, 'DRINGEND');
   assert.deepEqual(analysis.urgentRenewals.map(u => u.participant.id), ['tn_3']);
+});
+
+// Setzt Werte für einen Test und stellt danach die alten wieder her
+function setFor(t, target, values) {
+  const saved = Object.fromEntries(Object.keys(values).map(key => [key, target[key]]));
+  Object.assign(target, values);
+  t.after(() => Object.assign(target, saved));
+}
+
+test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötigen Feldern (#26)', async (t) => {
+  setFor(t, ceviDbService, { serviceToken: 'svc_test' });
+  setFor(t, envConfig.app, { isLocal: true });
+  setFor(t, envConfig.server, { host: 'localhost' });
+  const one = (type, id) => ({ data: { type, id } });
+  const many = (type, ...ids) => ({ data: ids.map(id => ({ type, id })) });
+  const person = (id, attributes, relationships) => ({ type: 'people', id, attributes, relationships });
+  const participation = (id, active, event) => ({ type: 'event_participations', id, attributes: { active }, relationships: { event: one(...event) } });
+  const course = (id, name, day) => [
+    { type: 'courses', id, attributes: { type: 'Event::Course', name }, relationships: { dates: many('dates', `d${id}`) } },
+    { type: 'dates', id: `d${id}`, attributes: { start_at: `${day}T08:00:00+02:00`, finish_at: `${day}T16:00:00+02:00` } }
+  ];
+  const page = {
+    data: [
+      person('1', { first_name: 'Anna', last_name: 'Muster', nickname: 'Amsel', gender: 'w', birthday: '2009-05-01' }, {
+        roles: many('roles', 'r1', 'r2'),
+        qualifications: many('qualifications', 'q1', 'q2'),
+        event_participations: many('event_participations', 'p1', 'p2', 'p3', 'p4')
+      }),
+      person('2', { first_name: 'Ben', last_name: 'Beispiel', nickname: null, gender: 'm', birthday: '2012-02-02' }, {
+        roles: many('roles', 'r3'),
+        event_participations: many('event_participations', 'p5')
+      }),
+      // Rolle beendet: nicht mehr Mitglied
+      person('3', { first_name: 'Carla', last_name: 'Ehemalig', gender: 'w', birthday: '2000-01-01' }, { roles: many('roles', 'r4') })
+    ],
+    included: [
+      { type: 'roles', id: 'r1', attributes: { name: 'Leiter*in', start_on: '2020-01-01', end_on: null } },
+      { type: 'roles', id: 'r2', attributes: { name: 'Teilnehmer*in', start_on: '2015-01-01', end_on: '2019-12-31' } },
+      { type: 'roles', id: 'r3', attributes: { name: 'Teilnehmer*in', start_on: '2020-01-01', end_on: null } },
+      { type: 'roles', id: 'r4', attributes: { name: 'Leiter*in', start_on: '2015-01-01', end_on: '2020-12-31' } },
+      { type: 'qualifications', id: 'q1', attributes: { finish_at: '2022-12-31' }, relationships: { qualification_kind: one('qualification_kinds', 'k1') } },
+      { type: 'qualifications', id: 'q2', attributes: { finish_at: '2099-12-31' }, relationships: { qualification_kind: one('qualification_kinds', 'k1') } },
+      { type: 'qualification_kinds', id: 'k1', attributes: { label: 'J+S-Leiter*in LS/T' } },
+      participation('p1', true, ['courses', 'e1']),
+      participation('p2', true, ['courses', 'e2']),
+      // Nicht zugeteilt, und ein Lager ist kein Kurs, auch wenn «Berg» im Namen steht
+      participation('p3', false, ['courses', 'e3']),
+      participation('p4', true, ['events', 'e4']),
+      participation('p5', true, ['courses', 'e5']),
+      ...course('e1', 'GLK3 Fa 2025', '2025-04-12'),
+      ...course('e2', 'HEKU F 2023', '2023-04-12'),
+      ...course('e3', 'SLK 2026', '2026-01-10'),
+      { type: 'events', id: 'e4', attributes: { type: 'Event', name: 'Pfingstlager Berg' } },
+      ...course('e5', 'HEKU M 2099', '2099-04-12')
+    ]
+  };
+  const remote = t.mock.method(globalThis, 'fetch', async () => Response.json(page));
+
+  const res = await request('/api/planner/overview');
+  assert.equal(res.status, 200);
+  const { group, analysis } = await res.json();
+
+  const [url, init] = remote.mock.calls[0].arguments;
+  assert.equal(init.headers['X-Token'], 'svc_test');
+  assert.match(url, /fields\[people\]=first_name,last_name,nickname,gender,birthday,roles,qualifications,event_participations&/);
+  assert.doesNotMatch(url, /email|address|phone|additional_information/);
+  assert.deepEqual(group, [
+    {
+      id: '1',
+      name: 'Anna Muster',
+      ceviname: 'Amsel',
+      gender: 'w',
+      birthdate: '2009-05-01',
+      currentRole: 'Leiter*in',
+      completedCourses: ['glk3', 'heku'],
+      inProgressCourses: [],
+      // Neueste Anerkennung zuerst
+      qualifications: [
+        { id: 'js_leiter_lst', label: 'J+S-Leiter*in LS/T', validUntil: '2099-12-31' },
+        { id: 'js_leiter_lst', label: 'J+S-Leiter*in LS/T', validUntil: '2022-12-31' }
+      ]
+    },
+    { id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in', completedCourses: [], inProgressCourses: ['heku'], qualifications: [] }
+  ]);
+  assert.deepEqual(analysis.analyzedParticipants[0].completedCourseCodes, ['GLK 3', 'Heku']);
+  // Die abgelaufene alte Anerkennung meldet keinen Verfall
+  assert.deepEqual(analysis.urgentRenewals, []);
+
+  // Vorschläge gehen an die echten Mitglieder, nicht mehr an die Demo-Gruppe
+  const proposal = await request('/api/planner/propose', { method: 'POST', body: { personId: 'tn_1', targetCourseId: 'heku' } });
+  assert.equal(proposal.status, 404);
+});
+
+test('Planer: wenn die App nicht nur lokal erreichbar ist, bleibt es trotz Service-Token bei der Demo-Gruppe (#26)', async (t) => {
+  setFor(t, ceviDbService, { serviceToken: 'svc_test' });
+  setFor(t, envConfig.app, { isLocal: true });
+  setFor(t, envConfig.server, { host: '0.0.0.0' });
+  const remote = t.mock.method(globalThis, 'fetch');
+  const demoGroup = async () => (await (await request('/api/planner/overview')).json()).group.map(p => p.id);
+
+  assert.ok((await demoGroup()).includes('tn_1'), 'lauscht auf allen Interfaces');
+  Object.assign(envConfig.server, { host: 'localhost' });
+  Object.assign(envConfig.app, { isLocal: false });
+  assert.ok((await demoGroup()).includes('tn_1'), 'APP_ENV ist nicht local');
+  assert.equal(remote.mock.calls.length, 0);
+});
+
+test('Cevi-DB: Kurs im Baum aus dem Kürzel der Kursart oder aus dem Anlassnamen', () => {
+  for (const [event, expected] of [
+    [{ name: 'Anlass 1', kind: { short_name: 'GLK 1' } }, 'glk1'],
+    [{ name: 'GLK3 Fb+Mb 2027', kind: { short_name: '' } }, 'glk3'],
+    [{ name: 'HEKU M 2028' }, 'heku'],
+    [{ name: 'GLK 1 2027' }, 'glk1'],
+    [{ name: 'SLK 2026' }, 'slk'],
+    [{ name: 'AL-Semi 2027' }, 'al_seminar'],
+    [{ name: 'Sommerlager 2026' }, null]
+  ]) {
+    assert.equal(ceviDbService.courseNodeIdFor(event), expected, event.name);
+  }
 });
 
 test('API: Vorschlag kürzt lange Freitexte, meldet die Eignung und erscheint in der Übersicht', async () => {
@@ -442,24 +563,129 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
   const anon = await request('/api/courses');
   assert.equal(anon.status, 401);
   assert.deepEqual(await anon.json(), { error: 'Nicht angemeldet' });
+  assert.equal(anon.headers.get('x-datenquelle'), null);
   assert.equal(remote.mock.callCount(), 0);
 
   const courses = await request('/api/courses', { cookie });
   assert.equal(courses.status, 200);
-  assert.deepEqual(await courses.json(), [{ id: '7', name: 'GLK 3 Herbst' }]);
+  assert.equal(courses.headers.get('x-datenquelle'), 'cevi-db');
+  assert.deepEqual((await courses.json()).map(c => c.title), ['GLK 3 Herbst']);
   const [url, init] = remote.mock.calls[0].arguments;
-  assert.equal(url, `${ceviDbService.baseUrl}/api/events?filter[type]=Course`);
+  const today = new Date().toISOString().slice(0, 10);
+  assert.equal(url, `${ceviDbService.baseUrl}/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind&page[size]=100&page[number]=1`);
   assert.equal(init.headers.Authorization, 'Bearer live_abc');
 
   // Teilnahmen nur der eingeloggten Person abfragen
-  await request('/api/user/history', { cookie });
-  assert.equal(remote.mock.calls[1].arguments[0], `${ceviDbService.baseUrl}/api/event_participations?filter[person_id]=p_6`);
+  const history = await request('/api/user/history', { cookie });
+  assert.equal(remote.mock.calls[1].arguments[0], `${ceviDbService.baseUrl}/api/event_participations?filter[person_id]=p_6&page[size]=100&page[number]=1`);
+  // Personendaten einer Live-Session kommen aus der Cevi-DB
+  assert.equal(history.headers.get('x-datenquelle'), 'cevi-db');
+  assert.equal((await request('/api/auth/me', { cookie })).headers.get('x-datenquelle'), 'cevi-db');
 
   for (const [upstream, expected] of [[401, 401], [500, 502]]) {
     reply = () => new Response('Fehler', { status: upstream });
     const res = await request('/api/courses', { cookie });
     assert.equal(res.status, expected, `Cevi-DB ${upstream}`);
     assert.match((await res.json()).error, /Cevi-DB Abruf fehlgeschlagen/);
+  }
+});
+
+test('Service-Token: Kurse kommen live per X-Token, auch im Vorbereitungsmodus, Seite für Seite und dem Baum zugeordnet (#11)', async (t) => {
+  ceviDbService.serviceToken = 'svc_test';
+  t.after(() => { ceviDbService.serviceToken = ''; });
+  const event = (id, kind, dates = []) => ({
+    id: String(id),
+    type: 'courses',
+    attributes: { name: `Anlass ${id}`, location: 'Flaach', application_closing_at: '2000-01-31', maximum_participants: 20, participant_count: 15, group_ids: [3] },
+    relationships: { kind: { data: { type: 'event_kinds', id: kind } }, dates: { data: dates.map(id => ({ type: 'event_dates', id })) } }
+  });
+  // Seite 1 ist voll (100 Anlässe GLK 1), Seite 2 bringt einen Anlass mit unbekannter Kursart und ohne Termine
+  const pages = [
+    {
+      data: [event(1, '1', ['b', 'a']), ...Array.from({ length: 99 }, (_, i) => event(i + 2, '1'))],
+      included: [
+        { type: 'event_kinds', id: '1', attributes: { label: 'Gruppenleiter/-innen-Kurs 1', short_name: 'GLK 1' } },
+        // Termine verkehrt herum: der früheste zählt als Kursbeginn, der späteste als Kursende
+        { type: 'event_dates', id: 'b', attributes: { start_at: '2099-10-14T08:00:00+02:00', finish_at: '2099-10-17T16:00:00+02:00' } },
+        { type: 'event_dates', id: 'a', attributes: { start_at: '2099-10-12T08:00:00+02:00', finish_at: '2099-10-12T18:00:00+02:00' } }
+      ]
+    },
+    { data: [event(101, '9')], included: [{ type: 'event_kinds', id: '9', attributes: { label: 'Kochkurs', short_name: 'KOCH' } }] }
+  ];
+  const pageOf = url => Number(/page\[number\]=(\d+)/.exec(url)[1]);
+  const remote = t.mock.method(globalThis, 'fetch', async url => Response.json(pages[pageOf(url) - 1]));
+
+  const res = await request('/api/courses');
+  assert.equal(res.status, 200);
+  const courses = await res.json();
+
+  assert.deepEqual(remote.mock.calls.map(call => pageOf(call.arguments[0])), [1, 2]);
+  for (const { arguments: [url, init] } of remote.mock.calls) {
+    assert.match(url, /\/api\/events\?filter\[type\]=Event::Course&/);
+    assert.equal(init.headers['X-Token'], 'svc_test');
+    assert.equal(init.headers.Authorization, undefined);
+  }
+  assert.equal(courses.length, 101);
+  assert.deepEqual(courses[0], {
+    id: '1',
+    course_node_id: 'glk1',
+    title: 'Anlass 1',
+    code: 'GLK 1',
+    category: COURSE_NODES.glk1.category,
+    organizer: '',
+    location: 'Flaach',
+    start_date: '2099-10-12',
+    end_date: '2099-10-17',
+    registration_deadline: '2000-01-31',
+    status: 'Anmeldeschluss vorbei',
+    description: '',
+    free_places: 5,
+    registration_url: `${ceviDbService.baseUrl}/groups/3/events/1`
+  });
+  // Unbekannte Kursart: im Kursangebot, aber keinem Kurs im Baum zugeordnet
+  assert.equal(courses[100].course_node_id, null);
+  assert.equal(courses[100].category, 'Kochkurs');
+});
+
+test('Kursart-Titel: nur mit Service-Token von /api/event_kinds, ohne Leerzeichen am Ende', async (t) => {
+  const remote = t.mock.method(globalThis, 'fetch', async () => Response.json({
+    data: [{ type: 'event_kinds', id: '80', attributes: { label: 'J+S-Leiter*innenkurs LS/T ' } }]
+  }));
+  assert.equal((await ceviDbService.getKindLabels()).size, 0);
+  assert.equal(remote.mock.callCount(), 0);
+
+  setFor(t, ceviDbService, { serviceToken: 'svc_test' });
+  assert.deepEqual(await ceviDbService.getKindLabels(), new Map([[80, 'J+S-Leiter*innenkurs LS/T']]));
+  const [url, init] = remote.mock.calls[0].arguments;
+  assert.match(url, /\/api\/event_kinds\?fields\[event_kinds\]=label&/);
+  assert.equal(init.headers['X-Token'], 'svc_test');
+});
+
+test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-Output-Seite', async (t) => {
+  const sourceOf = async path => (await request(path)).headers.get('x-datenquelle');
+  for (const [path, source] of Object.entries({
+    '/api/auth/me': 'testdaten',
+    '/api/system/status': 'kurstracker',
+    '/api/courses': 'testdaten',
+    '/api/user/history': 'testdaten',
+    '/api/user/qualifications': 'testdaten',
+    '/api/tree/structure': 'kurstracker',
+    '/api/tree/evaluation': 'testdaten',
+    '/api/tree/path/glk1': 'testdaten',
+    '/api/planner/overview': 'testdaten'
+  })) {
+    assert.equal(await sourceOf(path), source, path);
+  }
+
+  // Mit Service-Token kommen Kurse und lokal die Mitglieder live; fällt die Cevi-DB aus, nennt auch der 502 sie
+  setFor(t, ceviDbService, { serviceToken: 'svc_test' });
+  setFor(t, envConfig.app, { isLocal: true });
+  setFor(t, envConfig.server, { host: 'localhost' });
+  t.mock.method(globalThis, 'fetch', async () => new Response('Fehler', { status: 500 }));
+  for (const path of ['/api/courses', '/api/planner/overview']) {
+    const res = await request(path);
+    assert.equal(res.status, 502, path);
+    assert.equal(res.headers.get('x-datenquelle'), 'cevi-db', path);
   }
 });
 

@@ -3,10 +3,15 @@
  * Ausbildungsreife-Uebersicht, Empfehlungen und Kursvorschlaege
  */
 
-import { formatEuropeanDate, esc } from './utils.js';
+import { formatEuropeanDate, formatEuropeanDateRange, esc } from './utils.js';
+import { fetchCourses, upcomingDates } from './courses.js';
+import { getTreeStructure } from './tree.js';
 
 // Wert als JS-String-Argument fuer ein onclick-Attribut
 const jsArg = value => esc(JSON.stringify(String(value ?? '')));
+const dateRange = course => formatEuropeanDateRange(course.start_date, course.end_date);
+// Ohne Kursdaten bleibt der Planer nutzbar, nur ohne Termine
+const loadCourses = () => fetchCourses().catch(() => []);
 
 export async function loadPlannerData() {
   const tableBody = document.getElementById('plannerTableBody');
@@ -14,7 +19,7 @@ export async function loadPlannerData() {
   if (!tableBody) return;
 
   try {
-    const res = await fetch('/api/planner/overview');
+    const [res, courses] = await Promise.all([fetch('/api/planner/overview'), loadCourses()]);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { analysis, nominations } = await res.json();
     const readiness = analysis.analyzedParticipants;
@@ -39,11 +44,17 @@ export async function loadPlannerData() {
       let recBadge = '<span class="text-dim">Keine Empfehlung</span>';
       if (primaryRec) {
         const prioClass = primaryRec.priority === 'DRINGEND' ? 'prio-urgent' : 'prio-high';
+        const nextDate = upcomingDates(courses, primaryRec.courseId)[0];
         recBadge = `
           <span class="recommendation-pill ${prioClass}">
             ${primaryRec.priority === 'DRINGEND' ? '<i class="fa-solid fa-triangle-exclamation"></i> ' : ''}${esc(primaryRec.courseTitle || primaryRec.title || 'Empfohlener Kurs')}
           </span>
           <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.2rem;">${esc(primaryRec.reason)}</div>
+          ${nextDate ? `
+            <div style="font-size: 0.72rem; margin-top: 0.2rem;">
+              Nächster Termin: ${esc(dateRange(nextDate))} ·
+              <a href="${esc(nextDate.registration_url)}" target="_blank" rel="noopener noreferrer" aria-label="Anmelden (öffnet in neuem Tab)">Anmelden</a>
+            </div>` : ''}
         `;
       }
 
@@ -103,6 +114,17 @@ export async function loadPlannerData() {
 // Element, das den Dialog geoeffnet hat: bekommt den Fokus beim Schliessen zurueck
 let modalOpener = null;
 
+// Saison aus einer echten Durchfuehrung des Zielkurses: die naechste vorausgewaehlt, die weiteren als Vorschlag (#11)
+async function suggestSeasons(courseId) {
+  const dates = upcomingDates(await loadCourses(), courseId);
+  document.getElementById('modalSeasonOptions').innerHTML = dates
+    .map(c => `<option value="${esc(dateRange(c))}" label="${esc(c.location)}"></option>`)
+    .join('');
+  document.getElementById('modalSeason').value = dates[0] ? dateRange(dates[0]) : '';
+}
+
+document.getElementById('modalCourseSelect')?.addEventListener('change', e => suggestSeasons(e.target.value));
+
 export function openNominationModal(personId, personName, defaultCourseId) {
   const modal = document.getElementById('nominationModal');
   const personInput = document.getElementById('modalPersonId');
@@ -111,9 +133,16 @@ export function openNominationModal(personId, personName, defaultCourseId) {
 
   if (personInput) personInput.value = personId;
   if (personNameInput) personNameInput.value = personName;
+  // Titel wie im Baum, bei J+S und SLRG also aus der Cevi-DB. Kurse mit m/w-Formen behalten den neutralen Titel aus dem HTML
+  const nodes = getTreeStructure()?.nodes;
+  for (const option of courseSelect?.options || []) {
+    const node = nodes?.[option.value];
+    if (node && !node.titles) option.textContent = `${node.title} - ab ${node.minAge} J.`;
+  }
   if (courseSelect && defaultCourseId) {
     courseSelect.value = defaultCourseId;
   }
+  if (courseSelect) suggestSeasons(courseSelect.value);
 
   if (modal) {
     modalOpener = document.activeElement;
