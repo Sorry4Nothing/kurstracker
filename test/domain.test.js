@@ -31,22 +31,21 @@ function inMonths(months) {
 test('Kursbaum: jeder Kurs hat die Felder, die Karte und Inspektor anzeigen', () => {
   for (const id of CANONICAL_IDS) {
     const node = COURSE_NODES[id];
-    for (const key of ['org', 'code', 'title', 'category', 'description']) {
+    for (const key of ['org', 'code', 'title', 'category']) {
       assert.equal(typeof node[key], 'string', `${id}.${key}`);
     }
-    assert.ok(Number.isInteger(node.level) && Number.isInteger(node.minAge), `${id}: level/minAge`);
+    assert.ok(Number.isInteger(node.minAge), `${id}: minAge`);
     assert.ok(Array.isArray(node.prerequisites) && Array.isArray(node.requiredQualifications), `${id}: Listen`);
   }
 });
 
-test('Kursbaum: Vorgänger existieren und verlangen weder höhere Stufe noch höheres Mindestalter', () => {
+test('Kursbaum: Vorgänger existieren und verlangen kein höheres Mindestalter', () => {
   for (const id of CANONICAL_IDS) {
     const node = COURSE_NODES[id];
     for (const req of [...node.prerequisites, ...(node.recommendedPrerequisites || [])]) {
       assert.ok(CANONICAL_IDS.includes(req), `${id}: Vorgänger '${req}' existiert nicht`);
     }
     for (const req of node.prerequisites) {
-      assert.ok(COURSE_NODES[req].level <= node.level, `${id}: Vorgänger ${req} liegt auf höherer Stufe`);
       assert.ok(COURSE_NODES[req].minAge <= node.minAge, `${id}: Vorgänger ${req} verlangt höheres Mindestalter`);
     }
   }
@@ -74,7 +73,7 @@ test('Kursbaum: jede verlangte Qualifikation wird von einem Kurs im Baum vergebe
 
 test('Kursbaum: J+S-Module und die Kaderstufe verlangen GLK 3 und die J+S-Leiteranerkennung', () => {
   const ancestors = id => COURSE_NODES[id].prerequisites.flatMap(req => [req, ...ancestors(req)]);
-  const courses = CANONICAL_IDS.filter(id => id !== 'glk3' && (COURSE_NODES[id].org === 'J+S' || COURSE_NODES[id].level >= 3));
+  const courses = CANONICAL_IDS.filter(id => id !== 'glk3' && (COURSE_NODES[id].org === 'J+S' || COURSE_NODES[id].category === 'Kaderbildung'));
   assert.ok(courses.length > 0);
   for (const id of courses) {
     assert.ok(ancestors(id).includes('glk3'), `${id} verlangt GLK 3 nicht`);
@@ -191,13 +190,10 @@ test('Status: Aliase und Schreibweise werden aufgelöst, nächste Kurse ohne Ali
   });
   assert.equal(result.nodes.glk3.status, 'COMPLETED');
   assert.equal(result.nodes.glk.status, 'COMPLETED');
-  assert.equal(result.currentMaxLevel, 1);
 
   const nextIds = result.availableNextCourses.map(c => c.id);
   assert.ok(nextIds.includes('mf_lst'));
   assert.deepEqual([...nextIds].sort(), CANONICAL_IDS.filter(id => result.nodes[id].status === 'AVAILABLE').sort());
-
-  assert.equal(courseTreeEngine.evaluatePersonInTree({}).currentMaxLevel, -1);
 });
 
 // -----------------------------------------------------------------------------
