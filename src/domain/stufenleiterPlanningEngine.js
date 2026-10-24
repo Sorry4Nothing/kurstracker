@@ -80,8 +80,13 @@ export class StufenleiterPlanningEngine {
     const recommendedCourses = [];
 
     const completed = tree.normalizeCourseSet(participant.completedCourses || []);
+    const registered = tree.normalizeCourseSet(participant.inProgressCourses || []);
+    const jsQual = (participant.qualifications || []).find(q =>
+      typeof q === 'object' ? q.id === 'js_leiter_lst' : q === 'js_leiter_lst'
+    );
     const hasHlk = completed.has('heku');
-    const hasGlk = completed.has('glk3');
+    // Die J+S-Leiteranerkennung kommt aus dem GLK 3, auch wenn der Kurs selbst nicht in der Cevi-DB steht (#96)
+    const hasGlk = completed.has('glk3') || Boolean(jsQual);
     const hasSlk = completed.has('slk');
 
     // 1. Empfehlung: Helferkurs (Heku)
@@ -131,10 +136,6 @@ export class StufenleiterPlanningEngine {
     // 4. Prüfung: J+S Weiterbildung (Modul Fortbildung)
     let hasExpiringJsLeiter = false;
     if (hasGlk) {
-      const jsQual = (participant.qualifications || []).find(q =>
-        typeof q === 'object' ? q.id === 'js_leiter_lst' : q === 'js_leiter_lst'
-      );
-
       // Falls Gültigkeitsdatum hinterlegt ist
       const expirationDate = (typeof jsQual === 'object' && jsQual?.validUntil) ? jsQual.validUntil : participant.jsExpirationDate;
       if (expirationDate) {
@@ -167,7 +168,8 @@ export class StufenleiterPlanningEngine {
       age,
       completedCourseCodes,
       availableNextCourses: treeState.availableNextCourses,
-      recommendedCourses,
+      // Für einen Kurs, für den die Person schon angemeldet ist, kein Vorschlag
+      recommendedCourses: recommendedCourses.filter(rec => !registered.has(rec.courseId)),
       hasExpiringJsLeiter,
       activeNomination
     };

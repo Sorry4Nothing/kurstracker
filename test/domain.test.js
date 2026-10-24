@@ -368,6 +368,18 @@ test('Planer: J+S-Verfall innert 12 Monaten stellt das Fortbildungsmodul zuobers
   assert.equal(noGlk.hasExpiringJsLeiter, false);
 });
 
+test('Planer: J+S-Leiteranerkennung zählt wie ein GLK 3, angemeldete Kurse werden nicht vorgeschlagen (#96)', () => {
+  const engine = new StufenleiterPlanningEngine();
+  const recs = extra => engine
+    .analyzeParticipant({ id: 'tn', birthdate: birthdateForAge(18), completedCourses: [], ...extra })
+    .recommendedCourses.map(r => `${r.courseId}:${r.priority}`);
+  assert.deepEqual(recs({}), ['glk3:SEHR HOCH']);
+  assert.deepEqual(recs({ qualifications: [{ id: 'js_leiter_lst', validUntil: inMonths(24) }] }), []);
+  // Abgelaufene Anerkennung: Fortbildungsmodul statt GLK 3
+  assert.deepEqual(recs({ qualifications: [{ id: 'js_leiter_lst', validUntil: inMonths(-24) }] }), ['mf_lst:DRINGEND']);
+  assert.deepEqual(recs({ inProgressCourses: ['glk3'] }), []);
+});
+
 test('Planer: abgelaufene J+S-Anerkennung wird nicht als «verfällt in -N Monaten» gemeldet', {
   todo: 'Bug #5: nach dem Ablaufdatum lautet der Grund "J+S Leiterstatus verfällt am ... (in ca. -10 Monaten)" (src/domain/stufenleiterPlanningEngine.js:149); die Demo-Person tn_3 (Ablauf 30.11.2026) zeigt das ab Dezember 2026'
 }, () => {
