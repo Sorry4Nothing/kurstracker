@@ -44,6 +44,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   ]);
 });
 
+// Login-Intro (#90): theme-init.js setzt intro-pending direkt nach dem Login; nur dann lädt der Intro-Code
+if (document.documentElement.classList.contains('intro-pending')) {
+  import('./js/intro.js')
+    .then(({ playLoginIntro }) => playLoginIntro())
+    .catch(() => document.documentElement.classList.remove('intro-pending'));
+}
+
 // Tastatur-Navigation (Escape zum Schliessen von Modals & Menues)
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
