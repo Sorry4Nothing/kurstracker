@@ -78,7 +78,8 @@ export async function playLoginIntro() {
     canvas.width = Math.round(innerWidth * ratio);
     canvas.height = Math.round(innerHeight * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    unit = Math.min(innerWidth, innerHeight) / 2;
+    // Ab 764 px wächst nichts mehr mit, sonst verteilt sich die feste Partikelzahl auf eine immer grössere Kugel
+    unit = Math.min(innerWidth, innerHeight, 764) / 2;
     size = Math.min(unit * 1.1, 420);
     cell = (size / COLUMNS) * 1.01;
     centerX = innerWidth / 2;
