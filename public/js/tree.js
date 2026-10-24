@@ -5,6 +5,7 @@
 
 import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines } from './tree-map.js';
 import { esc } from './utils.js';
+import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
 let treeStructure = null;
 let currentTreeEvaluation = null;
@@ -130,6 +131,7 @@ export async function selectTargetCourse(courseId) {
     const targetNode = treeStructure.nodes[courseId];
     if (targetNode) {
       updateTreeInspector(targetNode, pathResult);
+      showUpcomingDates(courseId);
     }
 
     // Vorgelagerte Kursknoten hervorheben (Pflicht und empfohlene Vorstufen) und die
@@ -146,6 +148,18 @@ export async function selectTargetCourse(courseId) {
     }
   } catch (err) {
     console.error('Fehler bei Pfadberechnung:', err);
+  }
+}
+
+// Nächste Durchführungen des Kurses aus der Cevi-DB mit Anmeldelink (#11)
+async function showUpcomingDates(courseId) {
+  const container = document.getElementById('inspectorDates');
+  try {
+    const dates = upcomingDates(await fetchCourses(), courseId).slice(0, 3);
+    if (courseId !== selectedTargetCourseId) return; // inzwischen ist ein anderer Kurs gewählt
+    container.innerHTML = dates.map(courseMetaHtml).join('') || 'Keine kommenden Termine in der Cevi-DB.';
+  } catch (err) {
+    container.textContent = `Termine nicht abrufbar: ${err.message}`;
   }
 }
 

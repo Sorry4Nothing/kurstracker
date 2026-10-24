@@ -6,16 +6,59 @@
 import { esc, formatEuropeanDate, formatEuropeanDateRange } from './utils.js';
 
 let allCourses = [];
+let coursesRequest = null;
+
+// Kursanlässe einmal pro Seitenaufruf laden: Kursangebot, Baum und Planer teilen sie
+export function fetchCourses() {
+  coursesRequest ??= fetch('/api/courses')
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .then(data => (Array.isArray(data) ? data : (data.courses || [])))
+    .catch(err => {
+      coursesRequest = null; // der nächste Aufruf versucht es neu
+      throw err;
+    });
+  return coursesRequest;
+}
+
+// Kommende Durchführungen eines Kurses im Baum, die früheste zuerst
+export function upcomingDates(courses, courseNodeId) {
+  const today = new Date().toISOString().slice(0, 10);
+  return courses
+    .filter(c => c.course_node_id === courseNodeId && c.start_date >= today)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+}
+
+// Angaben einer Durchführung mit Anmeldelink; leere Angaben (z. B. Veranstalter aus der Cevi-DB) fallen weg
+export function courseMetaHtml(c) {
+  const row = (label, value, style = '') => (value === '' || value == null ? '' : `
+    <div class="meta-item">
+      <span>${label}:</span>
+      <strong${style}>${esc(value)}</strong>
+    </div>`);
+  return `
+    <div class="meta-list">
+      ${row('Veranstalter', c.organizer)}
+      ${row('Kursort', c.location)}
+      ${row('Kursdatum', formatEuropeanDateRange(c.start_date, c.end_date))}
+      ${row('Anmeldeschluss', formatEuropeanDate(c.registration_deadline), ' style="color: var(--cevi-gold);"')}
+      ${row('Freie Plätze', c.free_places)}
+      ${c.registration_url ? `
+        <a class="btn btn-secondary btn-sm" href="${esc(c.registration_url)}" target="_blank" rel="noopener noreferrer" aria-label="Zur Anmeldung in der Cevi-DB (öffnet in neuem Tab)">
+          <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          <span>Zur Anmeldung in der Cevi-DB</span>
+        </a>` : ''}
+    </div>`;
+}
 
 export async function loadAllCourses() {
   const container = document.getElementById('coursesContainer');
   if (!container) return;
 
   try {
-    const res = await fetch('/api/courses');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    allCourses = Array.isArray(data) ? data : (data.courses || []);
+    allCourses = await fetchCourses();
     renderCourses(allCourses);
   } catch (err) {
     console.error('Fehler beim Laden des Kursangebots:', err);
@@ -36,24 +79,7 @@ export function renderCourses(courses) {
       </div>
       <h3 class="card-title">${esc(c.title)}</h3>
       <p class="card-subtitle">${esc(c.description)}</p>
-      <div class="meta-list">
-        <div class="meta-item">
-          <span>Veranstalter:</span>
-          <strong>${esc(c.organizer)}</strong>
-        </div>
-        <div class="meta-item">
-          <span>Kursort:</span>
-          <strong>${esc(c.location)}</strong>
-        </div>
-        <div class="meta-item">
-          <span>Kursdatum:</span>
-          <strong>${esc(formatEuropeanDateRange(c.start_date, c.end_date))}</strong>
-        </div>
-        <div class="meta-item">
-          <span>Anmeldeschluss:</span>
-          <strong style="color: var(--cevi-gold);">${esc(formatEuropeanDate(c.registration_deadline))}</strong>
-        </div>
-      </div>
+      ${courseMetaHtml(c)}
     </div>
   `).join('');
 
