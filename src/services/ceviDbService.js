@@ -56,6 +56,15 @@ export class CeviDbService {
   }
 
   /**
+   * Kurse kommen mit Service-Token immer live, sonst wie die Personendaten (usesMockData)
+   * @param {string} [accessToken]
+   * @returns {boolean}
+   */
+  usesMockCourses(accessToken) {
+    return !this.serviceToken && this.usesMockData(accessToken);
+  }
+
+  /**
    * Holt eine Liste von der Cevi-DB (JSON:API), Seite für Seite, und flacht `attributes` ab.
    * Mitgeladene Beziehungen (`include=`, auch verschachtelt wie `a.b`) hängen aufgelöst unter ihrem Namen am Eintrag.
    * Wirft bei Fehlern, damit nie Testdaten als echte Daten erscheinen.
@@ -198,7 +207,7 @@ export class CeviDbService {
    * @returns {Promise<Array>}
    */
   async getCourses(accessToken) {
-    if (!this.serviceToken && this.usesMockData(accessToken)) {
+    if (this.usesMockCourses(accessToken)) {
       return this.getMockCourses();
     }
     const today = new Date().toISOString().slice(0, 10);

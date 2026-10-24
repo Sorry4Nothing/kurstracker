@@ -12,6 +12,14 @@ const VIEWS = [
   ['Profil', '#panel-profile', async page => {
     await burger(page).click();
     await page.locator('#userNavActions').click();
+  }],
+  ['API-Output', '#panel-api', async page => {
+    await burger(page).click();
+    await page.getByRole('button', { name: 'API-Output' }).click();
+    // Mit offener breiter Tabelle: sie scrollt in ihrer Karte, nicht die Seite
+    const courses = page.locator('#apiOutputList > details').filter({ hasText: 'GET /api/courses' });
+    await courses.locator(':scope > summary').click();
+    await expect(courses.getByRole('columnheader', { name: 'course_node_id' })).toBeVisible();
   }]
 ];
 

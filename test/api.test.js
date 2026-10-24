@@ -563,10 +563,12 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
   const anon = await request('/api/courses');
   assert.equal(anon.status, 401);
   assert.deepEqual(await anon.json(), { error: 'Nicht angemeldet' });
+  assert.equal(anon.headers.get('x-datenquelle'), null);
   assert.equal(remote.mock.callCount(), 0);
 
   const courses = await request('/api/courses', { cookie });
   assert.equal(courses.status, 200);
+  assert.equal(courses.headers.get('x-datenquelle'), 'cevi-db');
   assert.deepEqual((await courses.json()).map(c => c.title), ['GLK 3 Herbst']);
   const [url, init] = remote.mock.calls[0].arguments;
   const today = new Date().toISOString().slice(0, 10);
@@ -574,8 +576,11 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
   assert.equal(init.headers.Authorization, 'Bearer live_abc');
 
   // Teilnahmen nur der eingeloggten Person abfragen
-  await request('/api/user/history', { cookie });
+  const history = await request('/api/user/history', { cookie });
   assert.equal(remote.mock.calls[1].arguments[0], `${ceviDbService.baseUrl}/api/event_participations?filter[person_id]=p_6&page[size]=100&page[number]=1`);
+  // Personendaten einer Live-Session kommen aus der Cevi-DB
+  assert.equal(history.headers.get('x-datenquelle'), 'cevi-db');
+  assert.equal((await request('/api/auth/me', { cookie })).headers.get('x-datenquelle'), 'cevi-db');
 
   for (const [upstream, expected] of [[401, 401], [500, 502]]) {
     reply = () => new Response('Fehler', { status: upstream });
@@ -640,6 +645,34 @@ test('Service-Token: Kurse kommen live per X-Token, auch im Vorbereitungsmodus, 
   // Unbekannte Kursart: im Kursangebot, aber keinem Kurs im Baum zugeordnet
   assert.equal(courses[100].course_node_id, null);
   assert.equal(courses[100].category, 'Kochkurs');
+});
+
+test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-Output-Seite', async (t) => {
+  const sourceOf = async path => (await request(path)).headers.get('x-datenquelle');
+  for (const [path, source] of Object.entries({
+    '/api/auth/me': 'testdaten',
+    '/api/system/status': 'kurstracker',
+    '/api/courses': 'testdaten',
+    '/api/user/history': 'testdaten',
+    '/api/user/qualifications': 'testdaten',
+    '/api/tree/structure': 'kurstracker',
+    '/api/tree/evaluation': 'testdaten',
+    '/api/tree/path/glk1': 'testdaten',
+    '/api/planner/overview': 'testdaten'
+  })) {
+    assert.equal(await sourceOf(path), source, path);
+  }
+
+  // Mit Service-Token kommen Kurse und lokal die Mitglieder live; fällt die Cevi-DB aus, nennt auch der 502 sie
+  setFor(t, ceviDbService, { serviceToken: 'svc_test' });
+  setFor(t, envConfig.app, { isLocal: true });
+  setFor(t, envConfig.server, { host: 'localhost' });
+  t.mock.method(globalThis, 'fetch', async () => new Response('Fehler', { status: 500 }));
+  for (const path of ['/api/courses', '/api/planner/overview']) {
+    const res = await request(path);
+    assert.equal(res.status, 502, path);
+    assert.equal(res.headers.get('x-datenquelle'), 'cevi-db', path);
+  }
 });
 
 // -----------------------------------------------------------------------------
