@@ -236,8 +236,8 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
   const page = {
     data: [
       person('1', { first_name: 'Anna', last_name: 'Muster', nickname: 'Amsel', gender: 'w', birthday: '2009-05-01' }, {
-        roles: many('roles', 'r1', 'r2'),
-        qualifications: many('qualifications', 'q1', 'q2'),
+        roles: many('roles', 'r1', 'r2', 'r6'),
+        qualifications: many('qualifications', 'q1', 'q2', 'q3'),
         event_participations: many('event_participations', 'p1', 'p2', 'p3', 'p4')
       }),
       person('2', { first_name: 'Ben', last_name: 'Beispiel', nickname: null, gender: 'm', birthday: '2012-02-02' }, {
@@ -245,16 +245,23 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
         event_participations: many('event_participations', 'p5')
       }),
       // Rolle beendet: nicht mehr Mitglied
-      person('3', { first_name: 'Carla', last_name: 'Ehemalig', gender: 'w', birthday: '2000-01-01' }, { roles: many('roles', 'r4') })
+      person('3', { first_name: 'Carla', last_name: 'Ehemalig', gender: 'w', birthday: '2000-01-01' }, { roles: many('roles', 'r4') }),
+      // Nur eine Rolle in einer Externe-Gruppe: kein Mitglied (#96)
+      person('4', { first_name: 'Dora', last_name: 'Extern', gender: 'w', birthday: '1990-01-01' }, { roles: many('roles', 'r5') })
     ],
     included: [
       { type: 'roles', id: 'r1', attributes: { name: 'Leiter*in', start_on: '2020-01-01', end_on: null } },
       { type: 'roles', id: 'r2', attributes: { name: 'Teilnehmer*in', start_on: '2015-01-01', end_on: '2019-12-31' } },
       { type: 'roles', id: 'r3', attributes: { name: 'Teilnehmer*in', start_on: '2020-01-01', end_on: null } },
       { type: 'roles', id: 'r4', attributes: { name: 'Leiter*in', start_on: '2015-01-01', end_on: '2020-12-31' } },
+      { type: 'roles', id: 'r5', attributes: { name: 'Externe-/r', type: 'Group::VereinExterne::Externer', start_on: '2020-01-01', end_on: null } },
+      { type: 'roles', id: 'r6', attributes: { name: 'Externe/-r', type: 'Group::JungscharExterne::Externer', start_on: '2020-01-01', end_on: null } },
       { type: 'qualifications', id: 'q1', attributes: { finish_at: '2022-12-31' }, relationships: { qualification_kind: one('qualification_kinds', 'k1') } },
       { type: 'qualifications', id: 'q2', attributes: { finish_at: '2099-12-31' }, relationships: { qualification_kind: one('qualification_kinds', 'k1') } },
+      { type: 'qualifications', id: 'q3', attributes: { finish_at: '2030-12-31' }, relationships: { qualification_kind: one('qualification_kinds', 'k2') } },
       { type: 'qualification_kinds', id: 'k1', attributes: { label: 'J+S-Leiter*in LS/T' } },
+      // Kindersport kommt nicht aus dem GLK 3
+      { type: 'qualification_kinds', id: 'k2', attributes: { label: 'J+S-Leiter*in Kindersport' } },
       participation('p1', true, ['courses', 'e1']),
       participation('p2', true, ['courses', 'e2']),
       // Nicht zugeteilt, und ein Lager ist kein Kurs, auch wenn «Berg» im Namen steht
@@ -277,6 +284,7 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
   const [url, init] = remote.mock.calls[0].arguments;
   assert.equal(init.headers['X-Token'], 'svc_test');
   assert.match(url, /fields\[people\]=first_name,last_name,nickname,gender,birthday,roles,qualifications,event_participations&/);
+  assert.match(url, /fields\[roles\]=name,type,/);
   assert.doesNotMatch(url, /email|address|phone|additional_information/);
   assert.deepEqual(group, [
     {
@@ -291,12 +299,15 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
       // Neueste Anerkennung zuerst
       qualifications: [
         { id: 'js_leiter_lst', label: 'J+S-Leiter*in LS/T', validUntil: '2099-12-31' },
+        { id: 'J+S-Leiter*in Kindersport', label: 'J+S-Leiter*in Kindersport', validUntil: '2030-12-31' },
         { id: 'js_leiter_lst', label: 'J+S-Leiter*in LS/T', validUntil: '2022-12-31' }
       ]
     },
     { id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in', completedCourses: [], inProgressCourses: ['heku'], qualifications: [] }
   ]);
   assert.deepEqual(analysis.analyzedParticipants[0].completedCourseCodes, ['GLK 3', 'Heku']);
+  // Ben ist für den Heku angemeldet: kein Heku-Vorschlag
+  assert.ok(!analysis.analyzedParticipants[1].recommendedCourses.some(rec => rec.courseId === 'heku'));
   // Die abgelaufene alte Anerkennung meldet keinen Verfall
   assert.deepEqual(analysis.urgentRenewals, []);
 

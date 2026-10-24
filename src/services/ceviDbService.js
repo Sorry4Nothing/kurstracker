@@ -286,7 +286,7 @@ export class CeviDbService {
   /**
    * Mitglieder der Gruppe des Service-Tokens für den Stufenleiter-Planer (#26), in der Form der Demo-Gruppe.
    * Fragt nur ab, was der Planer zeigt: Name, Ceviname, Geschlecht, Geburtstag, Rollen, Kurse und Qualifikationen.
-   * Adresse, E-Mail und Telefon bleiben in der Cevi-DB. Mitglied ist, wer eine laufende Rolle hat.
+   * Adresse, E-Mail und Telefon bleiben in der Cevi-DB. Mitglied ist, wer eine laufende Rolle ausserhalb einer Externe-Gruppe hat.
    * @returns {Promise<Array>}
    */
   async getGroupMembers() {
@@ -295,11 +295,13 @@ export class CeviDbService {
     // fields[...] nennt auch die Beziehungen, sonst fehlt die Verknüpfung zu den mitgeladenen Einträgen
     const people = await this.fetchList('/api/people?include=roles,qualifications.qualification_kind,event_participations.event.dates'
       + '&fields[people]=first_name,last_name,nickname,gender,birthday,roles,qualifications,event_participations'
-      + '&fields[roles]=name,start_on,end_on&fields[qualifications]=finish_at,qualification_kind'
+      + '&fields[roles]=name,type,start_on,end_on&fields[qualifications]=finish_at,qualification_kind'
       + '&fields[event_participations]=active,event');
 
     return people.map(person => {
-      const roles = (person.roles || []).filter(r => (!r.start_on || r.start_on <= today) && (!r.end_on || r.end_on >= today));
+      // Rollen in Externe-Gruppen (Group::JungscharExterne::Externer, ::Goetti usw.) sind keine Mitgliedschaft (#96)
+      const roles = (person.roles || []).filter(r => (!r.start_on || r.start_on <= today) && (!r.end_on || r.end_on >= today)
+        && !String(r.type).includes('Externe::'));
       // Bestätigte Teilnahmen an Kursen: vorbei heisst besucht, sonst angemeldet
       const courses = { completed: new Set(), upcoming: new Set() };
       for (const { active, event } of person.event_participations || []) {
@@ -309,10 +311,11 @@ export class CeviDbService {
         courses[lastDay < today ? 'completed' : 'upcoming'].add(nodeId);
       }
       // Neueste Anerkennung zuerst: der Planer prüft die erste J+S-Leiteranerkennung auf ihren Verfall
+      // Nur LS/T (Lagersport/Trekking) kommt aus dem GLK 3, z. B. «J+S-Leiter/-in Jugend LS/T», nicht J+S-Kindersport
       const qualifications = (person.qualifications || [])
         .map(q => ({ label: q.qualification_kind?.label || '', validUntil: q.finish_at || null }))
         .sort((a, b) => (b.validUntil || '9999').localeCompare(a.validUntil || '9999'))
-        .map(q => ({ id: /j\+s/i.test(q.label) && /leiter/i.test(q.label) ? 'js_leiter_lst' : q.label, ...q }));
+        .map(q => ({ id: /j\+s/i.test(q.label) && /leiter/i.test(q.label) && /ls\/t/i.test(q.label) ? 'js_leiter_lst' : q.label, ...q }));
 
       return {
         id: person.id,
