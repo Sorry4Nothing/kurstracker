@@ -92,7 +92,7 @@ export function renderTree() {
           </div>
           <span class="node-status-pill status-${statusLower}">${statusLabel}</span>
         </div>
-        <div class="node-title">${node.title}</div>
+        <div class="node-title">${esc(node.title)}</div>
         <div class="node-meta">
           <span>${node.category}</span>
           <span>${node.js_type ? node.js_type : ''}</span>
@@ -176,7 +176,7 @@ export function updateTreeInspector(targetNode, pathResult) {
   const org = targetNode.org;
   const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
 
-  titleEl.innerHTML = `<span class="node-org-pill org-${orgClass}" style="vertical-align: middle; margin-right: 0.4rem;">${org}</span> <span>${targetNode.title}</span>${targetNode.code ? ` <span style="font-size: 0.85em; opacity: 0.7; font-weight: normal;">(${targetNode.code})</span>` : ''}`;
+  titleEl.innerHTML = `<span class="node-org-pill org-${orgClass}" style="vertical-align: middle; margin-right: 0.4rem;">${org}</span> <span>${esc(targetNode.title)}</span>${targetNode.code ? ` <span style="font-size: 0.85em; opacity: 0.7; font-weight: normal;">(${targetNode.code})</span>` : ''}`;
   catEl.textContent = `Kategorie: ${targetNode.category}${targetNode.js_type ? ` • ${targetNode.js_type}` : ''}`;
 
   summaryBox.textContent = summary;
@@ -270,8 +270,8 @@ export function updateTreeInspector(targetNode, pathResult) {
       <div class="check-item ${item.isFulfilled ? 'check-fulfilled' : 'check-unfulfilled'}${item.isOptional ? ' check-optional' : ''}">
         <div class="check-step-badge">${badge}</div>
         <div class="check-text-content">
-          <div class="check-title">${item.title}</div>
-          <div class="check-desc">${item.desc}</div>
+          <div class="check-title">${esc(item.title)}</div>
+          <div class="check-desc">${esc(item.desc)}</div>
         </div>
       </div>
     `;

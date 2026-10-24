@@ -5,6 +5,7 @@
 
 import { formatEuropeanDate, formatEuropeanDateRange, esc } from './utils.js';
 import { fetchCourses, upcomingDates } from './courses.js';
+import { getTreeStructure } from './tree.js';
 
 // Wert als JS-String-Argument fuer ein onclick-Attribut
 const jsArg = value => esc(JSON.stringify(String(value ?? '')));
@@ -132,6 +133,12 @@ export function openNominationModal(personId, personName, defaultCourseId) {
 
   if (personInput) personInput.value = personId;
   if (personNameInput) personNameInput.value = personName;
+  // Titel wie im Baum, bei J+S und SLRG also aus der Cevi-DB. Kurse mit m/w-Formen behalten den neutralen Titel aus dem HTML
+  const nodes = getTreeStructure()?.nodes;
+  for (const option of courseSelect?.options || []) {
+    const node = nodes?.[option.value];
+    if (node && !node.titles) option.textContent = `${node.title} - ab ${node.minAge} J.`;
+  }
   if (courseSelect && defaultCourseId) {
     courseSelect.value = defaultCourseId;
   }

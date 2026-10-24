@@ -272,6 +272,18 @@ export class CeviDbService {
   }
 
   /**
+   * Titel der Kursarten nach ID, für die J+S- und SLRG-Kurse im Baum (applyKindLabels).
+   * Der Server lädt sie beim Start, vor jedem Login: nur mit Service-Token, sonst bleibt die Liste leer.
+   * @returns {Promise<Map<number, string>>}
+   */
+  async getKindLabels() {
+    if (!this.serviceToken) return new Map();
+    const kinds = await this.fetchList('/api/event_kinds?fields[event_kinds]=label');
+    // Einzelne Titel enden in der Cevi-DB auf ein Leerzeichen
+    return new Map(kinds.map(kind => [Number(kind.id), String(kind.label || '').trim()]));
+  }
+
+  /**
    * Mitglieder der Gruppe des Service-Tokens für den Stufenleiter-Planer (#26), in der Form der Demo-Gruppe.
    * Fragt nur ab, was der Planer zeigt: Name, Ceviname, Geschlecht, Geburtstag, Rollen, Kurse und Qualifikationen.
    * Adresse, E-Mail und Telefon bleiben in der Cevi-DB. Mitglied ist, wer eine laufende Rolle hat.

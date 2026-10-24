@@ -13,6 +13,8 @@
  *
  * title: neutrale Form wie auf ceviregionzuerich.ch/kurse; titles.m / titles.w: Form fur
  * `gender` aus der Cevi-DB ('m' oder 'w'), siehe withGenderTitles.
+ * kindId: Kursart der J+S- und SLRG-Kurse in der Cevi-DB (/api/event_kinds). Deren Titel ersetzt
+ * beim Serverstart title und titles, siehe applyKindLabels; ohne Service-Token gilt title.
  * prerequisites: Pflicht-Vorgaenger, sperren den Kurs bis sie absolviert sind.
  * recommendedPrerequisites: direkte empfohlene Vorstufe, sperrt nicht. Voku, Heku,
  * GLK 1 und GLK 2 sind Vorbereitungen; die erste richtige Anerkennung ist GLK 3.
@@ -89,6 +91,7 @@ export const COURSE_NODES = {
     id: 'glk3',
     code: 'GLK 3',
     org: 'J+S',
+    kindId: 80,
     title: 'Gruppenleiter/-innen-Kurs 3 (GLK 3)',
     titles: { m: 'Gruppenleiterkurs 3 (GLK 3)', w: 'Gruppenleiterinnenkurs 3 (GLK 3)' },
     category: 'Jugend+Sport',
@@ -121,6 +124,7 @@ export const COURSE_NODES = {
     id: 'mf_lst',
     code: 'MF',
     org: 'J+S',
+    kindId: 90,
     title: 'J+S-Modul Fortbildung (MF)',
     category: 'Jugend+Sport',
     minAge: 18,
@@ -134,6 +138,7 @@ export const COURSE_NODES = {
     id: 'slrg_pool',
     code: 'Pool',
     org: 'SLRG',
+    kindId: 45,
     title: 'SLRG Brevet Basis Pool + BLS-AED',
     category: 'Sicherheit',
     minAge: 14,
@@ -160,6 +165,7 @@ export const COURSE_NODES = {
     id: 'sec_berg',
     code: 'Berg',
     org: 'J+S',
+    kindId: 83,
     title: 'J+S-Modul Sicherheitsbereich Berg',
     category: 'Sicherheit',
     minAge: 18,
@@ -173,6 +179,7 @@ export const COURSE_NODES = {
     id: 'sec_wasser',
     code: 'Wasser',
     org: 'J+S',
+    kindId: 79,
     title: 'J+S-Modul Sicherheitsbereich Wasser',
     category: 'Sicherheit',
     minAge: 18,
@@ -186,6 +193,7 @@ export const COURSE_NODES = {
     id: 'sec_winter',
     code: 'Winter',
     org: 'J+S',
+    kindId: 82,
     title: 'J+S-Modul Sicherheitsbereich Winter',
     category: 'Sicherheit',
     minAge: 18,
@@ -202,6 +210,7 @@ export const COURSE_NODES = {
     id: 'llm',
     code: 'LLM',
     org: 'J+S',
+    kindId: 81,
     title: 'Lagerleiter/-innen-Modul (LLM)',
     titles: { m: 'Lagerleitermodul (LLM)', w: 'Lagerleiterinnenmodul (LLM)' },
     category: 'Jugend+Sport',
@@ -230,6 +239,7 @@ export const COURSE_NODES = {
     id: 'js_coach',
     code: 'Coach',
     org: 'J+S',
+    kindId: 33,
     title: 'J+S-Coachkurs',
     category: 'Jugend+Sport',
     minAge: 20,
@@ -246,6 +256,7 @@ export const COURSE_NODES = {
     id: 'experte',
     code: 'Experte',
     org: 'J+S',
+    kindId: 32,
     title: 'J+S-Expertenkurs',
     titles: { m: 'J+S-Expertenkurs', w: 'J+S-Expertinnenkurs' },
     category: 'Expertenbildung',
@@ -274,4 +285,24 @@ export function withGenderTitles(nodes, gender) {
     const title = (gender === 'm' || gender === 'w') && node.titles?.[gender];
     return [key, title ? { ...node, title } : node];
   }));
+}
+
+/**
+ * Setzt bei den Kursen mit `kindId` den Titel der Kursart aus der Cevi-DB, im Wortlaut der Cevi-DB:
+ * die m/w-Formen der Datei entfallen dort. Ändert die Knoten selbst, damit auch die Aliase ihn haben.
+ * @param {Map<number, string>} labels - Titel nach Kursart-ID, siehe ceviDbService.getKindLabels
+ * @param {object} [nodes]
+ * @returns {number} Anzahl Kurse mit Titel aus der Cevi-DB
+ */
+export function applyKindLabels(labels, nodes = COURSE_NODES) {
+  let count = 0;
+  // Set: die Aliase (glk, hlk, mf) sind dieselben Knoten
+  for (const node of new Set(Object.values(nodes))) {
+    const label = labels.get(node.kindId);
+    if (!label) continue;
+    node.title = label;
+    delete node.titles;
+    count++;
+  }
+  return count;
 }

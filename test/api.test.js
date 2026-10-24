@@ -647,6 +647,20 @@ test('Service-Token: Kurse kommen live per X-Token, auch im Vorbereitungsmodus, 
   assert.equal(courses[100].category, 'Kochkurs');
 });
 
+test('Kursart-Titel: nur mit Service-Token von /api/event_kinds, ohne Leerzeichen am Ende', async (t) => {
+  const remote = t.mock.method(globalThis, 'fetch', async () => Response.json({
+    data: [{ type: 'event_kinds', id: '80', attributes: { label: 'J+S-Leiter*innenkurs LS/T ' } }]
+  }));
+  assert.equal((await ceviDbService.getKindLabels()).size, 0);
+  assert.equal(remote.mock.callCount(), 0);
+
+  setFor(t, ceviDbService, { serviceToken: 'svc_test' });
+  assert.deepEqual(await ceviDbService.getKindLabels(), new Map([[80, 'J+S-Leiter*innenkurs LS/T']]));
+  const [url, init] = remote.mock.calls[0].arguments;
+  assert.match(url, /\/api\/event_kinds\?fields\[event_kinds\]=label&/);
+  assert.equal(init.headers['X-Token'], 'svc_test');
+});
+
 test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-Output-Seite', async (t) => {
   const sourceOf = async path => (await request(path)).headers.get('x-datenquelle');
   for (const [path, source] of Object.entries({
