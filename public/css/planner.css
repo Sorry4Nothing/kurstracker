@@ -5,7 +5,7 @@
    Tokens only (variables.css). The card surface, buttons and the base .badge
    come from components.css; this file adds the planner's layout and local
    variants that follow the same recipes.
-   JS contract (planner.js): it renders the table rows, .role-badge,
+   JS contract (planner.js): it renders the table rows, .role-badges > .role-badge,
    .recommendation-pill.prio-urgent / .prio-high, .nomination-card*, .empty-text
    and the count in #nominationsCountBadge, and it shows #nominationModal with an
    inline display: flex / none, so .modal-backdrop stays a flex container.
@@ -345,6 +345,13 @@
   background-color: var(--teal-soft);
   border-color: transparent;
   color: var(--teal-ink);
+}
+
+/* One tag per role; several wrap with the 4px gap of the role chips in the profile */
+.data-table .role-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
 }
 
 /* Completed courses arrive as .badge.badge-success chips, one per course code.
