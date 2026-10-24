@@ -7,11 +7,22 @@ const BLOCKING = ['serious', 'critical'];
 
 const showView = view => page => page.evaluate(id => window.switchTab(id), view);
 
-// Die drei Ansichten, ausgehend von der frisch geladenen App (Baum)
+// Die Ansichten, ausgehend von der frisch geladenen App (Baum)
 const VIEWS = [
   ['Ausbildungsbaum', async () => {}],
   ['Stufenleiter-Planer', showView('planner')],
-  ['Profil', showView('profile')]
+  ['Profil', showView('profile')],
+  ['API-Output', async page => {
+    await showView('api')(page);
+    // Je eine Karte als Tabelle und als JSON-Baum offen, sonst prüft axe nur die zugeklappten Köpfe
+    const card = url => page.locator('#apiOutputList > details').filter({ hasText: `GET ${url}` });
+    await card('/api/auth/me').locator(':scope > summary').click();
+    await card('/api/auth/me').locator('td summary').first().click();
+    await card('/api/courses').locator(':scope > summary').click();
+    await card('/api/courses').getByRole('button', { name: 'JSON-Baum' }).click();
+    await card('/api/courses').locator('.api-json summary').first().click();
+    await expect(card('/api/courses').locator('.api-key').first()).toBeVisible();
+  }]
 ];
 
 // Eigene Seite ausserhalb der App, im gespeicherten Theme

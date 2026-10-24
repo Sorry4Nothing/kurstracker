@@ -240,6 +240,17 @@ function requirePlanner(req, res, next) {
   res.status(403).json({ error: 'Kein Zugriff auf den Stufenleiter-Planer' });
 }
 
+// Herkunft der Daten, als Tag auf der API-Output-Seite: cevi-db (live), testdaten oder kurstracker (Daten der App selbst).
+// Vor dem Abruf gesetzt, damit auch ein 502 die ausgefallene Quelle nennt
+function setSource(res, source) {
+  res.setHeader('X-Datenquelle', source);
+}
+
+// Profil, Kurshistorie und Qualifikationen der Session: live oder Testdaten, wie ceviDbService.usesMockData entscheidet
+function setPersonSource(req, res) {
+  setSource(res, ceviDbService.usesMockData(getSession(req).accessToken) ? 'testdaten' : 'cevi-db');
+}
+
 // -----------------------------------------------------------------------------
 // API ENDPOINTS
 // -----------------------------------------------------------------------------
@@ -308,8 +319,10 @@ app.get('/api/auth/callback', async (req, res) => {
 app.get('/api/auth/me', (req, res) => {
   const session = getSession(req);
   if (!session) {
+    setSource(res, 'kurstracker');
     return res.json({ authenticated: false });
   }
+  setPersonSource(req, res);
   res.json({
     authenticated: true,
     user: session.user,
@@ -332,6 +345,7 @@ app.post('/api/auth/logout', (req, res) => {
 app.get('/api/courses', requireAuth, async (req, res) => {
   try {
     const session = getSession(req);
+    setSource(res, ceviDbService.usesMockCourses(session.accessToken) ? 'testdaten' : 'cevi-db');
     const courses = await ceviDbService.getCourses(session.accessToken);
     res.json(courses);
   } catch (err) {
@@ -343,6 +357,7 @@ app.get('/api/courses', requireAuth, async (req, res) => {
 app.get('/api/user/history', requireAuth, async (req, res) => {
   try {
     const session = getSession(req);
+    setPersonSource(req, res);
     const participations = await ceviDbService.getUserParticipations(
       session.accessToken,
       session.user.id || session.user.sub
@@ -357,6 +372,7 @@ app.get('/api/user/history', requireAuth, async (req, res) => {
 app.get('/api/user/qualifications', requireAuth, async (req, res) => {
   try {
     const session = getSession(req);
+    setPersonSource(req, res);
     const qualifications = await ceviDbService.getUserQualifications(
       session.accessToken,
       session.user.id || session.user.sub
@@ -373,6 +389,7 @@ app.get('/api/user/qualifications', requireAuth, async (req, res) => {
 
 // Liefert die vollständige Baumstruktur
 app.get('/api/tree/structure', (req, res) => {
+  setSource(res, 'kurstracker');
   res.json({
     nodes: withGenderTitles(COURSE_NODES, getSession(req)?.user?.gender)
   });
@@ -412,6 +429,7 @@ async function resolveActivePerson(req) {
 // Liefert die Bewertung des Ausbildungsbaums für den aktuellen Benutzer
 app.get('/api/tree/evaluation', requireAuth, async (req, res) => {
   try {
+    setPersonSource(req, res);
     const person = await resolveActivePerson(req);
     const evaluation = courseTreeEngine.forGender(person.gender).evaluatePersonInTree(person);
     res.json({
@@ -432,6 +450,7 @@ app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
     if (!Object.hasOwn(COURSE_NODES, resolved)) {
       return res.status(404).json({ error: `Zielkurs '${String(courseId).slice(0, 40)}' existiert nicht im Ausbildungsbaum.` });
     }
+    setPersonSource(req, res);
     const person = await resolveActivePerson(req);
     const pathResult = courseTreeEngine.forGender(person.gender).findPathToTarget(person, courseId);
     res.json(pathResult);
@@ -497,12 +516,24 @@ const defaultDemoGroup = [
   }
 ];
 
+// Echte Mitglieder lädt der Service-Token ohne Login (#26). Darum nur, wenn die App bloss auf diesem Rechner erreichbar ist:
+// sonst sähe jede Besucherin Namen und Geburtsdaten der ganzen Gruppe.
+// shortcut: ohne Login nur lokal, nach dem OAuth-Login (#4) auch Leitenden dieser Gruppe zeigen
+function plannerGroup() {
+  const localOnly = envConfig.app.isLocal && ['localhost', '127.0.0.1', '::1'].includes(envConfig.server.host);
+  return ceviDbService.serviceToken && localOnly ? ceviDbService.getGroupMembers() : defaultDemoGroup;
+}
+
 // Gesamtübersicht und Analyse für Stufenleiter
-app.get('/api/planner/overview', requirePlanner, (req, res) => {
+app.get('/api/planner/overview', requirePlanner, async (req, res) => {
   try {
-    const analysis = stufenleiterPlanningEngine.analyzeGroup(defaultDemoGroup);
+    // plannerGroup gibt die Demo-Gruppe direkt zurück, die echten Mitglieder als Promise
+    const members = plannerGroup();
+    setSource(res, members === defaultDemoGroup ? 'testdaten' : 'cevi-db');
+    const group = await members;
+    const analysis = stufenleiterPlanningEngine.analyzeGroup(group);
     res.json({
-      group: defaultDemoGroup,
+      group,
       analysis,
       nominations: stufenleiterPlanningEngine.getAllNominations()
     });
@@ -512,11 +543,11 @@ app.get('/api/planner/overview', requirePlanner, (req, res) => {
 });
 
 // Kursvorschlag für eine Person erfassen
-app.post('/api/planner/propose', requirePlanner, (req, res) => {
+app.post('/api/planner/propose', requirePlanner, async (req, res) => {
   try {
     // Express 5 leaves req.body undefined when no JSON body was sent
     const { personId, targetCourseId, proposedSeason, notes, proposedBy } = req.body ?? {};
-    const person = defaultDemoGroup.find(p => p.id === personId);
+    const person = (await plannerGroup()).find(p => p.id === personId);
     if (!person) {
       return res.status(404).json({ error: 'Person nicht gefunden' });
     }
@@ -548,6 +579,7 @@ app.post('/api/planner/propose', requirePlanner, (req, res) => {
 // System Status & Diagnose
 app.get('/api/system/status', (req, res) => {
   const preparationMode = ceviDbService.isPreparationMode();
+  setSource(res, 'kurstracker');
   const status = {
     status: 'online',
     version: releaseVersion,

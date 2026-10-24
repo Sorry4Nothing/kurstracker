@@ -1,5 +1,7 @@
 import { envConfig, validateEnv } from './config/env.js';
-import { app } from './app.js';
+import { app, logSafe } from './app.js';
+import { applyKindLabels } from './domain/courseTreeData.js';
+import { ceviDbService } from './services/ceviDbService.js';
 
 // Server starten
 const validation = validateEnv();
@@ -20,3 +22,11 @@ app.listen(envConfig.server.port, envConfig.server.host, () => {
   console.log(`[MODE] Cevi-DB Modus        : ${envConfig.ceviDb.preparationMode ? 'Vorbereitung / Testdaten' : 'Live Cevi-DB'}`);
   console.log('======================================================\n');
 });
+
+// Titel der J+S- und SLRG-Kurse aus der Cevi-DB, einmal pro Start. Der Start wartet nicht darauf:
+// bis zur Antwort, ohne Service-Token und bei einem Ausfall gelten die Titel der Datei
+ceviDbService.getKindLabels()
+  .then(labels => {
+    if (labels.size) console.log(`[KURS] Titel aus der Cevi-DB   : ${applyKindLabels(labels)} J+S- und SLRG-Kurse`);
+  })
+  .catch(err => console.warn(`[KURS] Kursarten nicht geladen, es gelten die Titel der Datei: ${logSafe(err.message)}`));

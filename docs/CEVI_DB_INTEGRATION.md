@@ -86,7 +86,9 @@ Sobald die OAuth-Applikation bei `cevidb@cevi.ch` genehmigt wurde oder ein Servi
    CEVI_DB_CLIENT_ID=deine_offizielle_client_id
    CEVI_DB_CLIENT_SECRET=dein_offizielles_client_secret
 
-   # Optional: Kurse live laden, auch im Vorbereitungsmodus (Token braucht Leserecht auf Anlässe):
+   # Optional: Kurse live laden, auch im Vorbereitungsmodus (Token braucht Leserecht auf Anlässe).
+   # Lokal (APP_ENV=local, HOST=localhost) zeigt der Planer damit auch die echten Mitglieder (Leserecht auf Personen);
+   # ohne Login nie auf einem erreichbaren Server, sonst sähe jede Besucherin deren Namen und Geburtsdaten:
    CEVI_DB_SERVICE_TOKEN=dein_ortsruppen_service_token
    ```
 2. Server neu starten (`npm run dev` bzw. `npm start`).

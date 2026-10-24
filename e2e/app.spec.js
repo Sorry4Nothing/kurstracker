@@ -6,6 +6,9 @@ const patchJson = patch => async route => {
   await route.fulfill({ response, json: { ...(await response.json()), ...patch } });
 };
 
+// Karte eines Endpunkts auf der Seite API-Output
+const apiCard = (page, url) => page.locator('#apiOutputList > details').filter({ hasText: `GET ${url}` });
+
 for (const [theme, label] of THEMES) {
   test(`App lädt im Theme ${label} ohne Konsolenfehler und fehlgeschlagene Anfragen`, async ({ page, problems }) => {
     await page.addInitScript(value => localStorage.setItem('cevi_theme', value), theme);
@@ -112,6 +115,57 @@ test.describe('Navigation', () => {
     await expect(page.locator('#panel-profile')).toBeVisible();
     await expect(page.locator('#topbarPageTitle')).toHaveText('Mein Profil & Qualifikationen');
   });
+
+  test('API-Output zeigt jede Antwort als Tabelle, umschaltbar auf einen JSON-Baum', async ({ page }) => {
+    await page.getByRole('button', { name: 'API-Output' }).click();
+    await expect(page.locator('#panel-api')).toBeVisible();
+    await expect(page.locator('#topbarPageTitle')).toHaveText('API-Output');
+
+    const courses = apiCard(page, '/api/courses');
+    await expect(courses.locator(':scope > summary')).toContainText(/200 · \d+ Einträge · [\d.]+ KB · \d+ ms/);
+    // Herkunft als Tag aus dem Header X-Datenquelle; die Browser-Tests laufen ohne Service-Token
+    await expect(courses.locator('.api-source')).toHaveText('Testdaten (Mock)');
+    await expect(apiCard(page, '/api/tree/structure').locator('.api-source')).toHaveText('Kurstracker');
+    await courses.locator(':scope > summary').click();
+    // Eine Zeile pro Kurs, eine Spalte pro Feld; leere Felder grau (die Testkurse melden keine freien Plätze)
+    await expect(courses.getByRole('columnheader', { name: 'course_node_id' })).toBeVisible();
+    await expect(courses.locator('td .api-empty', { hasText: 'null' }).first()).toBeVisible();
+
+    await courses.getByRole('button', { name: 'JSON-Baum' }).click();
+    await expect(courses.getByRole('button', { name: 'JSON-Baum' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(courses.getByRole('columnheader')).toHaveCount(0);
+    await courses.locator('.api-json summary').first().click();
+    await expect(courses.locator('.api-key', { hasText: 'course_node_id' }).first()).toBeVisible();
+  });
+
+  for (const view of ['Tabelle', 'JSON-Baum']) {
+    test(`API-Output: Aufgeklapptes bleibt offen, wenn die Daten neu ankommen (${view})`, async ({ page }) => {
+      await page.getByRole('button', { name: 'API-Output' }).click();
+      const status = apiCard(page, '/api/system/status');
+      await expect(status.locator(':scope > summary')).toContainText('200');
+      await status.locator(':scope > summary').click();
+      await status.getByRole('button', { name: view }).click();
+      // Dazu eine verschachtelte Ebene: Tabellenzeile bzw. Baumknoten configValidation
+      const nested = status.locator(':is(tr, li)', { has: page.getByText('configValidation', { exact: true }) }).locator('details').first();
+      await nested.locator(':scope > summary').click();
+
+      // Der Status trägt die Serverzeit: jedes Neuladen liefert andere Daten und zeichnet neu
+      const stamp = (await status.textContent()).match(/\d{4}-\d\d-\d\dT[\d:.]+Z/)[0];
+      await page.locator('#panel-api').getByRole('button', { name: 'Aktualisieren' }).click();
+      await expect(status).not.toContainText(stamp);
+      await expect(status).toHaveJSProperty('open', true);
+      await expect(nested).toHaveJSProperty('open', true);
+    });
+  }
+});
+
+test('API-Output fehlt in der Produktion: dort schickt der Status kein appEnv', async ({ page }) => {
+  await page.route('**/api/system/status', patchJson({ appEnv: undefined }));
+  await page.goto('/');
+
+  // Statusantwort verarbeitet, erst dann ist «verborgen» aussagekräftig
+  await expect(page.locator('#footerDbStatus')).toContainText('Vorbereitungsmodus');
+  await expect(page.locator('#tabApiOutput')).toBeHidden();
 });
 
 test('Profilkarte zeigt den Benutzer aus /api/auth/me, Planer nur mit Planer-Rolle', async ({ page }) => {

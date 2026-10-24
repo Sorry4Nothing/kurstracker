@@ -60,6 +60,24 @@ test.describe('Stufenleiter-Planer', () => {
     }
   });
 
+  test('Zielkurse im Dialog tragen die Titel aus dem Baum, Kurse mit m/w-Formen den neutralen', async ({ page }) => {
+    // Wie mit Service-Token: applyKindLabels setzt bei GLK 3 den Titel der Cevi-DB und entfernt die m/w-Formen
+    await page.route('**/api/tree/structure', async route => {
+      const response = await route.fetch();
+      const { nodes } = await response.json();
+      const { titles, ...glk3 } = nodes.glk3;
+      await route.fulfill({ response, json: { nodes: { ...nodes, glk3: { ...glk3, title: 'J+S-Leiter*innenkurs LS/T' } } } });
+    });
+    await openApp(page);
+    await page.getByRole('button', { name: 'Stufenleiter-Planer' }).click();
+    await page.getByRole('button', { name: 'Vorschlagen' }).first().click();
+
+    const option = id => page.locator(`#modalCourseSelect option[value="${id}"]`);
+    await expect(option('glk3')).toHaveText('J+S-Leiter*innenkurs LS/T - ab 17 J.');
+    // Die Testperson ist männlich: der Baum liefert für SLK «Stufenleiterkurs», der Dialog bleibt neutral
+    await expect(option('slk')).toHaveText('Stufenleiter/-innen-Kurs (SLK) - ab 17 J.');
+  });
+
   test('Empfehlung zeigt den nächsten Termin mit Anmeldelink, die Saison kommt aus einer echten Durchführung', async ({ page, request }) => {
     // Testkurse haben feste Daten: die Uhr des Browsers vor ihre Termine stellen
     await page.clock.setFixedTime(new Date('2026-09-01T10:00:00'));

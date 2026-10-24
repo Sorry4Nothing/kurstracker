@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COURSE_NODES, withGenderTitles } from '../src/domain/courseTreeData.js';
+import { COURSE_NODES, withGenderTitles, applyKindLabels } from '../src/domain/courseTreeData.js';
 import { courseTreeEngine } from '../src/domain/courseTreeEngine.js';
 import { StufenleiterPlanningEngine } from '../src/domain/stufenleiterPlanningEngine.js';
 import { COURSE_MAP_COORDS } from '../public/js/tree-map.js';
@@ -31,22 +31,21 @@ function inMonths(months) {
 test('Kursbaum: jeder Kurs hat die Felder, die Karte und Inspektor anzeigen', () => {
   for (const id of CANONICAL_IDS) {
     const node = COURSE_NODES[id];
-    for (const key of ['org', 'code', 'title', 'category', 'description']) {
+    for (const key of ['org', 'code', 'title', 'category']) {
       assert.equal(typeof node[key], 'string', `${id}.${key}`);
     }
-    assert.ok(Number.isInteger(node.level) && Number.isInteger(node.minAge), `${id}: level/minAge`);
+    assert.ok(Number.isInteger(node.minAge), `${id}: minAge`);
     assert.ok(Array.isArray(node.prerequisites) && Array.isArray(node.requiredQualifications), `${id}: Listen`);
   }
 });
 
-test('Kursbaum: Vorgänger existieren und verlangen weder höhere Stufe noch höheres Mindestalter', () => {
+test('Kursbaum: Vorgänger existieren und verlangen kein höheres Mindestalter', () => {
   for (const id of CANONICAL_IDS) {
     const node = COURSE_NODES[id];
     for (const req of [...node.prerequisites, ...(node.recommendedPrerequisites || [])]) {
       assert.ok(CANONICAL_IDS.includes(req), `${id}: Vorgänger '${req}' existiert nicht`);
     }
     for (const req of node.prerequisites) {
-      assert.ok(COURSE_NODES[req].level <= node.level, `${id}: Vorgänger ${req} liegt auf höherer Stufe`);
       assert.ok(COURSE_NODES[req].minAge <= node.minAge, `${id}: Vorgänger ${req} verlangt höheres Mindestalter`);
     }
   }
@@ -74,7 +73,7 @@ test('Kursbaum: jede verlangte Qualifikation wird von einem Kurs im Baum vergebe
 
 test('Kursbaum: J+S-Module und die Kaderstufe verlangen GLK 3 und die J+S-Leiteranerkennung', () => {
   const ancestors = id => COURSE_NODES[id].prerequisites.flatMap(req => [req, ...ancestors(req)]);
-  const courses = CANONICAL_IDS.filter(id => id !== 'glk3' && (COURSE_NODES[id].org === 'J+S' || COURSE_NODES[id].level >= 3));
+  const courses = CANONICAL_IDS.filter(id => id !== 'glk3' && (COURSE_NODES[id].org === 'J+S' || COURSE_NODES[id].category === 'Kaderbildung'));
   assert.ok(courses.length > 0);
   for (const id of courses) {
     assert.ok(ancestors(id).includes('glk3'), `${id} verlangt GLK 3 nicht`);
@@ -191,13 +190,10 @@ test('Status: Aliase und Schreibweise werden aufgelöst, nächste Kurse ohne Ali
   });
   assert.equal(result.nodes.glk3.status, 'COMPLETED');
   assert.equal(result.nodes.glk.status, 'COMPLETED');
-  assert.equal(result.currentMaxLevel, 1);
 
   const nextIds = result.availableNextCourses.map(c => c.id);
   assert.ok(nextIds.includes('mf_lst'));
   assert.deepEqual([...nextIds].sort(), CANONICAL_IDS.filter(id => result.nodes[id].status === 'AVAILABLE').sort());
-
-  assert.equal(courseTreeEngine.evaluatePersonInTree({}).currentMaxLevel, -1);
 });
 
 // -----------------------------------------------------------------------------
@@ -427,4 +423,20 @@ test('Kurstitel folgen `gender` aus der Cevi-DB, ohne Angabe gilt die neutrale W
   assert.equal(COURSE_NODES.glk1.title, 'Gruppenleiter/-innen-Kurs 1 (GLK 1)');
   // Kurse ohne Personenbezeichnung haben nur die neutrale Form
   assert.equal(withGenderTitles(COURSE_NODES, 'w').js_coach.title, 'J+S-Coachkurs');
+});
+
+test('Kursart-Titel aus der Cevi-DB ersetzen bei J+S und SLRG die Titel der Datei, auch die m/w-Formen', () => {
+  const nodes = { glk3: { ...COURSE_NODES.glk3 }, mf_lst: { ...COURSE_NODES.mf_lst }, slk: { ...COURSE_NODES.slk } };
+  nodes.glk = nodes.glk3;
+  const labels = new Map([[80, 'J+S-Leiter*innenkurs LS/T'], [12, 'Alte Kursart'], [90, '']]);
+
+  // Das Alias glk zählt nicht doppelt
+  assert.equal(applyKindLabels(labels, nodes), 1);
+  for (const gender of ['m', 'w', undefined]) {
+    assert.equal(withGenderTitles(nodes, gender).glk.title, 'J+S-Leiter*innenkurs LS/T', gender);
+  }
+  // Leerer Titel (MF) oder Kurs ohne Kursart (SLK): die Datei gilt weiter
+  assert.equal(nodes.mf_lst.title, COURSE_NODES.mf_lst.title);
+  assert.deepEqual(nodes.slk, COURSE_NODES.slk);
+  assert.equal(COURSE_NODES.glk3.title, 'Gruppenleiter/-innen-Kurs 3 (GLK 3)');
 });
