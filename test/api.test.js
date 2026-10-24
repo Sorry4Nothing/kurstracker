@@ -242,6 +242,7 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
       }),
       person('2', { first_name: 'Ben', last_name: 'Beispiel', nickname: null, gender: 'm', birthday: '2012-02-02' }, {
         roles: many('roles', 'r3'),
+        qualifications: many('qualifications', 'q4', 'q5'),
         event_participations: many('event_participations', 'p5')
       }),
       // Rolle beendet: nicht mehr Mitglied
@@ -262,6 +263,12 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
       { type: 'qualification_kinds', id: 'k1', attributes: { label: 'J+S-Leiter*in LS/T' } },
       // Kindersport kommt nicht aus dem GLK 3
       { type: 'qualification_kinds', id: 'k2', attributes: { label: 'J+S-Leiter*in Kindersport' } },
+      // Die Kursteilnahme sieht der Service-Token nicht, die Anerkennung aus dem Kurs schon
+      { type: 'qualifications', id: 'q4', attributes: { finish_at: '2030-12-31' }, relationships: { qualification_kind: one('qualification_kinds', 'k3') } },
+      { type: 'qualification_kinds', id: 'k3', attributes: { label: 'J+S-Leiter*in SiBe Wasser' } },
+      // Ohne Kurs im Baum: keine besuchten Kurse
+      { type: 'qualifications', id: 'q5', attributes: { finish_at: '2030-12-31' }, relationships: { qualification_kind: one('qualification_kinds', 'k4') } },
+      { type: 'qualification_kinds', id: 'k4', attributes: { label: 'Seilbahnanwender*in' } },
       participation('p1', true, ['courses', 'e1']),
       participation('p2', true, ['courses', 'e2']),
       // Nicht zugeteilt, und ein Lager ist kein Kurs, auch wenn «Berg» im Namen steht
@@ -303,7 +310,15 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
         { id: 'js_leiter_lst', label: 'J+S-Leiter*in LS/T', validUntil: '2022-12-31' }
       ]
     },
-    { id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in', completedCourses: [], inProgressCourses: ['heku'], qualifications: [] }
+    {
+      id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in',
+      completedCourses: ['sec_wasser'],
+      inProgressCourses: ['heku'],
+      qualifications: [
+        { id: 'J+S-Leiter*in SiBe Wasser', label: 'J+S-Leiter*in SiBe Wasser', validUntil: '2030-12-31' },
+        { id: 'Seilbahnanwender*in', label: 'Seilbahnanwender*in', validUntil: '2030-12-31' }
+      ]
+    }
   ]);
   assert.deepEqual(analysis.analyzedParticipants[0].completedCourseCodes, ['GLK 3', 'Heku']);
   // Ben ist für den Heku angemeldet: kein Heku-Vorschlag
