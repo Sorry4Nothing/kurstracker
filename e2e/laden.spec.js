@@ -25,4 +25,14 @@ test.describe('Ladeanimation', () => {
     const placeholder = await openWhileLoading(page);
     await expect.poll(() => animations(placeholder)).toEqual([]);
   });
+
+  test('Zoom und «Zoom zurücksetzen» schieben die Ladezeile nicht aus dem Kartenrahmen', async ({ page }) => {
+    const placeholder = await openWhileLoading(page);
+    // Vor den Baumdaten richteten beide die Karte nach den Kursen aus, die Zeile rutschte links oben hinaus
+    await page.getByRole('button', { name: 'Zoom zurücksetzen' }).click();
+    await page.getByRole('button', { name: 'Baum vergrössern' }).click();
+    const [row, frame] = await Promise.all([placeholder.boundingBox(), page.locator('#treeMapViewport').boundingBox()]);
+    expect(row.x).toBeGreaterThanOrEqual(frame.x);
+    expect(row.y).toBeGreaterThanOrEqual(frame.y);
+  });
 });

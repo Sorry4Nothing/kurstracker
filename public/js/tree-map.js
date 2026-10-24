@@ -128,6 +128,9 @@ export function setupInteractiveMap(courseId = 'voku') {
 }
 
 export function applyMapTransform() {
+  // Vor den Baumdaten zielt die Ansicht auf Kurse, die noch fehlen, und schoebe die Ladezeile aus dem Bild.
+  // setupInteractiveMap() setzt die Ansicht, sobald der Baum steht.
+  if (!window._mapEventsInitialized) return;
   const canvas = document.getElementById('treeMapCanvas');
   const zoomLabel = document.getElementById('treeZoomLabel');
   if (canvas) {
