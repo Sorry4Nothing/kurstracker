@@ -1,4 +1,13 @@
 import { envConfig } from '../config/env.js';
+import { COURSE_NODES } from '../domain/courseTreeData.js';
+import { courseTreeEngine } from '../domain/courseTreeEngine.js';
+
+// Hitobito (Graphiti) liefert Listen seitenweise; eine kürzere Seite ist die letzte.
+// Die Obergrenze schützt die Cevi-DB, falls sie page[number] einmal ignoriert.
+const PAGE_SIZE = 100;
+const MAX_PAGES = 50;
+// Testkurse sind erfunden: der Anmeldelink führt auf das echte Kursangebot
+const DEMO_REGISTRATION_URL = 'https://ceviregionzuerich.ch/kurse';
 
 /**
  * Cevi-DB (Hitobito) API & OAuth2 Service
@@ -45,26 +54,49 @@ export class CeviDbService {
   }
 
   /**
-   * Holt eine Liste von der Cevi-DB (JSON:API) und flacht `attributes` ab.
+   * Holt eine Liste von der Cevi-DB (JSON:API), Seite für Seite, und flacht `attributes` ab.
+   * Mitgeladene Beziehungen (`include=`) hängen aufgelöst unter ihrem Namen am Eintrag.
    * Wirft bei Fehlern, damit nie Testdaten als echte Daten erscheinen.
    * @param {string} apiPath
-   * @param {string} accessToken
+   * @param {string} [accessToken] - ohne Token gilt der Service-Token (X-Token)
    * @returns {Promise<Array>}
    */
   async fetchList(apiPath, accessToken) {
-    const response = await fetch(`${this.baseUrl}${apiPath}`, {
-      headers: this.getHeaders(accessToken)
-    });
+    const list = [];
+    const separator = apiPath.includes('?') ? '&' : '?';
 
-    if (!response.ok) {
-      const error = new Error(`Cevi-DB Abruf fehlgeschlagen (${response.status}): ${apiPath}`);
-      error.status = response.status === 401 ? 401 : 502;
-      throw error;
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const response = await fetch(`${this.baseUrl}${apiPath}${separator}page[size]=${PAGE_SIZE}&page[number]=${page}`, {
+        headers: this.getHeaders(accessToken)
+      });
+
+      if (!response.ok) {
+        const error = new Error(`Cevi-DB Abruf fehlgeschlagen (${response.status}): ${apiPath}`);
+        error.status = response.status === 401 ? 401 : 502;
+        throw error;
+      }
+
+      const data = await response.json();
+      const items = Array.isArray(data.data || data) ? (data.data || data) : [];
+      const included = new Map((data.included || []).map(i => [`${i.type}:${i.id}`, { id: i.id, ...i.attributes }]));
+      const resolve = ref => included.get(`${ref.type}:${ref.id}`);
+
+      for (const item of items) {
+        if (!item.attributes) {
+          list.push(item);
+          continue;
+        }
+        const entry = { id: item.id, ...item.attributes };
+        for (const [name, relation] of Object.entries(item.relationships || {})) {
+          if (Array.isArray(relation?.data)) entry[name] = relation.data.map(resolve).filter(Boolean);
+          else if (relation?.data) entry[name] = resolve(relation.data);
+        }
+        list.push(entry);
+      }
+
+      if (items.length < PAGE_SIZE) break;
     }
-
-    const data = await response.json();
-    const items = data.data || data;
-    return (Array.isArray(items) ? items : []).map(item => (item.attributes ? { id: item.id, ...item.attributes } : item));
+    return list;
   }
 
   /**
@@ -158,15 +190,57 @@ export class CeviDbService {
   }
 
   /**
-   * Ruft Kurs- und Weiterbildungsangebote ab (Events mit Event-Typ Kurs)
+   * Ruft die laufenden und kommenden Kursanlässe ab (Event::Course) und ordnet sie den Kursen im Baum zu.
+   * Kursdaten sind keine Personendaten: mit Service-Token (X-Token) kommen sie live,
+   * auch im Vorbereitungsmodus und ohne OAuth-Login (#11).
    * @param {string} [accessToken]
    * @returns {Promise<Array>}
    */
   async getCourses(accessToken) {
-    if (this.usesMockData(accessToken)) {
+    if (!this.serviceToken && this.usesMockData(accessToken)) {
       return this.getMockCourses();
     }
-    return this.fetchList('/api/events?filter[type]=Course', accessToken);
+    const today = new Date().toISOString().slice(0, 10);
+    // shortcut: kein Cache, jeder Seitenaufruf fragt die Cevi-DB ab; bei vielen Nutzenden die Kursliste serverseitig zwischenspeichern
+    const events = await this.fetchList(
+      `/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind`,
+      this.serviceToken ? undefined : accessToken
+    );
+    return events.map(event => this.toCourse(event, today));
+  }
+
+  /**
+   * Bildet einen Kursanlass der Cevi-DB auf die Felder der Testkurse ab.
+   * Das Kürzel der Kursart (z. B. GLK1, VOKU) bestimmt den Kurs im Baum.
+   * @param {object} event - Eintrag aus fetchList mit `dates` und `kind`
+   * @param {string} today - YYYY-MM-DD
+   * @returns {object}
+   */
+  toCourse(event, today) {
+    const dates = [...(event.dates || [])].sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
+    const last = dates.at(-1);
+    const nodeId = courseTreeEngine.resolveCourseId(event.kind?.short_name);
+    const node = Object.hasOwn(COURSE_NODES, nodeId) ? COURSE_NODES[nodeId] : null;
+    const deadline = event.application_closing_at || '';
+
+    return {
+      id: String(event.id),
+      course_node_id: node ? nodeId : null,
+      title: event.name || '',
+      code: event.number || event.kind?.short_name || '',
+      category: node?.category || event.kind?.label || '',
+      // Die Cevi-DB nennt nur Gruppen-IDs, keinen Namen; das Kursangebot blendet die leere Zeile aus
+      organizer: '',
+      location: event.location || dates[0]?.location || '',
+      start_date: String(dates[0]?.start_at || '').slice(0, 10),
+      end_date: String(last?.finish_at || last?.start_at || '').slice(0, 10),
+      registration_deadline: deadline,
+      status: deadline && deadline < today ? 'Anmeldeschluss vorbei' : 'Offen für Anmeldung',
+      description: event.description || '',
+      free_places: event.maximum_participants ? Math.max(0, event.maximum_participants - (event.participant_count || 0)) : null,
+      // Anlassseite der Cevi-DB: angemeldete Mitglieder melden sich dort an
+      registration_url: `${this.baseUrl}/groups/${event.group_ids?.[0]}/events/${event.id}`
+    };
   }
 
   /**
@@ -298,6 +372,7 @@ export class CeviDbService {
         start_date: '2026-10-10',
         end_date: '2026-10-17',
         registration_deadline: '2026-08-31',
+        free_places: 6,
         status: 'Offen für Anmeldung',
         target_group: 'Leiterinnen und Leiter ab 17 Jahren',
         description: 'Offizieller J+S-Leiterkurs Lagersport/Trekking Jugendsport. Befähigt zur selbstständigen Lagerleitung und Sportprogrammgestaltung.'
@@ -430,7 +505,7 @@ export class CeviDbService {
         target_group: 'Erfahrene Kursleiterinnen und Kursleiter ab 21 Jahren',
         description: 'Ausbildung zum Experten zur Leitung von offiziellen J+S-Leiterkursen in den Verbänden.'
       }
-    ];
+    ].map(course => ({ free_places: null, registration_url: DEMO_REGISTRATION_URL, ...course }));
   }
 
   getMockParticipations() {

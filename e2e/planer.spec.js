@@ -1,6 +1,8 @@
 import { test, expect, openApp } from './fixtures.js';
+import { formatEuropeanDateRange } from '../public/js/utils.js';
 
 const fetchOverview = async request => (await request.get('/api/planner/overview')).json();
+const range = course => formatEuropeanDateRange(course.start_date, course.end_date);
 
 test.describe('Stufenleiter-Planer', () => {
   test.beforeEach(async ({ page }) => {
@@ -56,6 +58,32 @@ test.describe('Stufenleiter-Planer', () => {
       await expect(layout).toHaveJSProperty('inert', false);
       await expect(opener).toBeFocused();
     }
+  });
+
+  test('Empfehlung zeigt den nächsten Termin mit Anmeldelink, die Saison kommt aus einer echten Durchführung', async ({ page, request }) => {
+    // Testkurse haben feste Daten: die Uhr des Browsers vor ihre Termine stellen
+    await page.clock.setFixedTime(new Date('2026-09-01T10:00:00'));
+    await openApp(page);
+    await page.getByRole('button', { name: 'Stufenleiter-Planer' }).click();
+    const courses = await (await request.get('/api/courses')).json();
+    const upcoming = id => courses.find(c => c.course_node_id === id && c.start_date >= '2026-09-01');
+    const { analysis } = await fetchOverview(request);
+    const item = analysis.analyzedParticipants.find(i => upcoming(i.recommendedCourses?.[0]?.courseId));
+    const next = upcoming(item.recommendedCourses[0].courseId);
+    const row = page.getByRole('row', { name: item.participant.ceviname });
+
+    await expect(row).toContainText(`Nächster Termin: ${range(next)}`);
+    await expect(row.getByRole('link', { name: /Anmelden/ })).toHaveAttribute('href', next.registration_url);
+
+    // Der Dialog wählt die Saison aus dem nächsten Termin des Zielkurses; ohne kommenden Termin bleibt sie frei
+    await row.getByRole('button', { name: 'Vorschlagen' }).click();
+    const season = page.getByLabel('Geplante Saison');
+    const options = page.locator('#modalSeasonOptions option');
+    await expect(season).toHaveValue(range(next));
+    await expect(options).toHaveCount(1);
+    await page.getByRole('combobox', { name: 'Zielkurs' }).selectOption('glk2');
+    await expect(season).toHaveValue('');
+    await expect(options).toHaveCount(0);
   });
 
   test('gespeicherter Vorschlag erscheint in der Liste der Kursvorschläge', async ({ page }) => {
