@@ -32,12 +32,10 @@
   height: 100%;
 }
 
-/* Wie in der Sidebar liegt das Logo auf seiner Platte. intro.js setzt Breite und Deckkraft passend zum Partikel-Raster */
+/* Ohne Platte, direkt auf dem Hintergrund wie die Partikel. intro.js setzt Breite und Deckkraft passend zum Partikel-Raster */
 .login-intro-logo {
   position: relative;
   aspect-ratio: 1;
-  border-radius: var(--radius-md);
-  background-color: var(--logo-plate);
   opacity: 0;
 }
 

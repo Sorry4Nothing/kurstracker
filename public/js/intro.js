@@ -125,7 +125,10 @@ export async function playLoginIntro() {
         context.fillStyle = p.color;
         context.fillRect(centerX + x - cell / 2, centerY - y - cell / 2, cell, cell);
       }
-      logo.style.opacity = logoOpacity(globe);
+      const opacity = logoOpacity(globe);
+      logo.style.opacity = opacity;
+      // Ohne Platte ragen die Treppenkanten der Partikel unter dem scharfen Logo hervor, deshalb weg, sobald es deckt
+      canvas.hidden = opacity === 1;
       if (time >= END) finish();
       else frameId = requestAnimationFrame(draw);
     };
