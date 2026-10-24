@@ -530,6 +530,19 @@
   text-align: center;
 }
 
+/* Loading animation (#91): the text pulses from muted to full ink, so a slow
+   Cevi-DB does not look frozen. Contrast never drops below the resting state;
+   errors stay still. .is-loading gives inline text the same pulse. Reduced
+   motion stops it through the global rule in variables.css. */
+.loading-placeholder:not(.text-danger),
+.is-loading {
+  animation: loading-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes loading-pulse {
+  to { color: var(--text-main); }
+}
+
 /* Empty result in a card grid (search without hits, courses.js): the
    muted .empty-text line, laid out like the loading line above */
 .cards-grid > .empty-text {
