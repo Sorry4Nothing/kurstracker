@@ -528,6 +528,8 @@
   font-size: var(--fs-14);
   line-height: var(--lh-14);
   text-align: center;
+  /* Even lines: otherwise "Cevi-DB" splits at its hyphen on narrow phones */
+  text-wrap: balance;
 }
 
 /* Loading animation (#91): a ring in the primary colour spins in front of the
