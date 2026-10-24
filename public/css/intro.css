@@ -10,6 +10,11 @@
   visibility: hidden;
 }
 
+/* Die verdeckte App behält ihre Höhe. Ohne Sperre bliebe die Seite scrollbar, und die Scrollbar schmälerte das Intro */
+.intro-pending {
+  overflow: hidden;
+}
+
 .login-intro {
   position: fixed;
   inset: 0;
