@@ -10,6 +10,17 @@ const MAX_PAGES = 50;
 const DEMO_REGISTRATION_URL = 'https://ceviregionzuerich.ch/kurse';
 // Kürzel der Kurse klein und ohne Leerzeichen («glk1», «al-semi»), so wie sie in den Anlassnamen stehen
 const COURSE_CODES = new Map(Object.values(COURSE_NODES).map(node => [node.code.toLowerCase().replace(/\s+/g, ''), node.id]));
+// Kurs im Baum, den eine Anerkennung belegt. Die Teilnahmen an Kursen von Cevi ZH und CH sieht der Service-Token nicht, die Anerkennungen schon.
+// shortcut: J+S-Kursleiter*in, SLRG Modul See, Seilbahn, Spoiz und Mira haben keinen Kurs im Baum; ergänzen, sobald geklärt
+const QUALIFICATION_COURSES = [
+  [/j\+s-lagerleiter/i, 'llm'],
+  [/j\+s-coach/i, 'js_coach'],
+  [/j\+s-expert/i, 'experte'],
+  [/sibe berg/i, 'sec_berg'],
+  [/sibe wasser/i, 'sec_wasser'],
+  [/sibe winter/i, 'sec_winter'],
+  [/slrg brevet basis pool/i, 'slrg_pool']
+];
 
 /**
  * Cevi-DB (Hitobito) API & OAuth2 Service
@@ -316,6 +327,10 @@ export class CeviDbService {
         .map(q => ({ label: q.qualification_kind?.label || '', validUntil: q.finish_at || null }))
         .sort((a, b) => (b.validUntil || '9999').localeCompare(a.validUntil || '9999'))
         .map(q => ({ id: /j\+s/i.test(q.label) && /leiter/i.test(q.label) && /ls\/t/i.test(q.label) ? 'js_leiter_lst' : q.label, ...q }));
+      for (const { id, label } of qualifications) {
+        if (id === 'js_leiter_lst') courses.completed.add('glk3');
+        for (const [pattern, nodeId] of QUALIFICATION_COURSES) if (pattern.test(label)) courses.completed.add(nodeId);
+      }
 
       return {
         id: person.id,
