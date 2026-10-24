@@ -313,6 +313,12 @@
     max-width: 36ch;
   }
 
+  /* Loading and error rows span the whole wide table, so centred text would
+     sit outside the scroller: start at the left edge, as in the tree (tree.css). */
+  .planner-table-card .data-table td[colspan] {
+    text-align: start;
+  }
+
   .planner-table-card .data-table th:first-child,
   .planner-table-card .data-table td:first-child:not([colspan]) {
     position: sticky;
