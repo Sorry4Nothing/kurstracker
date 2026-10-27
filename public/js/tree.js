@@ -108,6 +108,7 @@ export function renderTree() {
     const isSelected = selectedTargetCourseId === node.id;
 
     // Kein aria-label: der Name kommt aus dem sichtbaren Text (Code, Status, Titel), WCAG 2.5.3
+    const fullText = node.code && node.code !== node.title ? `${node.code} – ${node.title}` : node.title;
     return `
       <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''}"
            id="nodeCard-${node.id}"
@@ -115,6 +116,7 @@ export function renderTree() {
            onclick="selectTargetCourse('${node.id}')"
            tabindex="0"
            role="button"
+           title="${esc(fullText)}"
            aria-current="${isSelected}">
         <div class="node-header">
           <div class="node-header-left">
@@ -207,7 +209,7 @@ export function updateTreeInspector(targetNode, pathResult) {
   const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
 
   titleEl.innerHTML = `<span class="node-org-pill org-${orgClass}" style="vertical-align: middle; margin-right: 0.4rem;">${org}</span> <span>${esc(targetNode.title)}</span>${targetNode.code ? ` <span style="font-size: 0.85em; opacity: 0.7; font-weight: normal;">(${targetNode.code})</span>` : ''}`;
-  catEl.textContent = `Kategorie: ${targetNode.category}${targetNode.js_type ? ` • ${targetNode.js_type}` : ''}`;
+  catEl.style.display = 'none';
 
   summaryBox.textContent = summary;
   summaryBox.className = `path-summary-box ${isDirectlyEligible ? 'eligible' : ''}`;
