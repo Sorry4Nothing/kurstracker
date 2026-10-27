@@ -555,7 +555,7 @@ app.get('/api/planner/overview', requirePlanner, async (req, res) => {
 app.post('/api/planner/propose', requirePlanner, async (req, res) => {
   try {
     // Express 5 leaves req.body undefined when no JSON body was sent
-    const { personId, targetCourseId, proposedSeason, notes, proposedBy } = req.body ?? {};
+    const { personId, targetCourseId, proposedSeason, notes } = req.body ?? {};
     const person = visibleTo(res.locals.plannerScope, await plannerGroup()).find(p => p.id === personId);
     if (!person) {
       return res.status(404).json({ error: 'Person nicht gefunden' });
@@ -565,13 +565,15 @@ app.post('/api/planner/propose', requirePlanner, async (req, res) => {
     }
 
     // Freitext begrenzen: Vorschläge liegen für alle sichtbar im Speicher
+    const { user } = getSession(req);
     const result = stufenleiterPlanningEngine.proposeCourse(
       person,
       {
         courseId: targetCourseId,
         season: String(proposedSeason || 'Herbst 2026').slice(0, 50),
         notes: String(notes || '').slice(0, 500),
-        plannedBy: String(proposedBy || 'Stufenleitung').slice(0, 100)
+        // Wer erfasst, kommt aus der Session, nie aus dem Body (SR-13)
+        plannedBy: [user.first_name, user.last_name].filter(Boolean).join(' ').slice(0, 100) || 'Stufenleitung'
       }
     );
 

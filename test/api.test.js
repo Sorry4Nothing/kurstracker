@@ -370,7 +370,10 @@ test('API: Vorschlag kürzt lange Freitexte, meldet die Eignung und erscheint in
   assert.equal(res.status, 200);
   const { success, proposal, pathCheck } = await res.json();
   assert.equal(success, true);
-  assert.deepEqual([proposal.season.length, proposal.notes.length, proposal.plannedBy.length], [50, 500, 100]);
+  assert.deepEqual([proposal.season.length, proposal.notes.length], [50, 500]);
+  // Wer erfasst, kommt aus der Session; proposedBy aus dem Body wird ignoriert (SR-13)
+  const { first_name, last_name } = ceviDbService.getMockUser();
+  assert.equal(proposal.plannedBy, `${first_name} ${last_name}`);
   // tn_5 ist über 19, hat GLK 3 und die J+S-Anerkennung: direkt fürs Lagerleiter-Modul geeignet
   assert.equal(proposal.isEligibleNow, true);
   assert.equal(pathCheck.isDirectlyEligible, true);
