@@ -300,15 +300,23 @@
           <div class="planner-workspace">
             <div class="card planner-table-card">
               <div class="card-header-flex">
-                <h3>Gruppe: Fröschli & Jungschar Flaach</h3>
-                <span class="badge badge-info">Stufe Jungschar</span>
+                <h3 id="plannerGroupTitle">Stufen</h3>
+                <div class="custom-dropdown" id="plannerStufeDropdown" hidden>
+                  <button type="button" class="custom-dropdown-trigger" id="plannerStufeTrigger" aria-haspopup="listbox" aria-expanded="false" title="Stufe wählen">
+                    <i class="fa-solid fa-filter trigger-icon" aria-hidden="true"></i>
+                    <span id="plannerStufeLabel">Alle Stufen</span>
+                    <i class="fa-solid fa-chevron-down trigger-chevron" aria-hidden="true"></i>
+                  </button>
+                  <div class="custom-dropdown-menu" id="plannerStufeMenu" role="listbox" aria-label="Stufe wählen"></div>
+                </div>
               </div>
               <div class="table-responsive">
                 <table class="data-table">
                   <thead>
                     <tr>
-                      <th>Name / Ceviname</th>
-                      <th>Alter</th>
+                      <th aria-sort="none"><button type="button" class="sort-button" data-sort="name">Name / Ceviname</button></th>
+                      <th aria-sort="none"><button type="button" class="sort-button" data-sort="age">Alter</button></th>
+                      <th id="plannerStufeHead" aria-sort="none" hidden><button type="button" class="sort-button" data-sort="stufe">Stufe</button></th>
                       <th>Aktuelle Rolle</th>
                       <th>Bisherige Kurse</th>
                       <th>Automatische Kursempfehlung</th>

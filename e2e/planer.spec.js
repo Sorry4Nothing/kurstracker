@@ -138,4 +138,48 @@ test.describe('Stufenleiter-Planer', () => {
     await expect(page.locator('#statPlannerGlk')).toHaveText('12');
     await expect(page.locator('#statPlannerUrgent')).toHaveText('14');
   });
+
+  test('Stufen-Dropdown filtert die Tabelle, «Alle Stufen» zeigt zusätzlich die Spalte Stufe (#107)', async ({ page, request }) => {
+    const { group, groups } = await fetchOverview(request);
+    const rows = page.locator('#plannerTableBody tr');
+    const trigger = page.locator('#plannerStufeTrigger');
+    const stufeHead = page.getByRole('columnheader', { name: 'Stufe', exact: true });
+    expect(groups.length).toBeGreaterThan(1);
+
+    // Ausgangslage: alle Stufen, Spalte «Stufe» sagt, wer wohin gehört
+    await expect(page.locator('#plannerGroupTitle')).toHaveText('Alle Stufen');
+    await expect(trigger).toContainText('Alle Stufen');
+    await expect(stufeHead).toBeVisible();
+    await expect(rows).toHaveCount(group.length);
+
+    for (const stufe of groups) {
+      await trigger.click();
+      await page.getByRole('option', { name: stufe.name, exact: true }).click();
+      const members = group.filter(p => p.groups.some(g => g.id === stufe.id));
+      await expect(page.locator('#plannerGroupTitle')).toHaveText(`Stufe: ${stufe.name}`);
+      await expect(trigger).toBeFocused();
+      await expect(rows).toHaveCount(members.length);
+      await expect(page.locator('#statPlannerTotal')).toHaveText(String(members.length));
+      await expect(stufeHead).toBeHidden();
+    }
+
+    await trigger.click();
+    await page.getByRole('option', { name: 'Alle Stufen' }).click();
+    await expect(rows).toHaveCount(group.length);
+    await expect(stufeHead).toBeVisible();
+  });
+
+  test('Klick auf einen Spaltenkopf sortiert, ein zweiter Klick kehrt um', async ({ page, request }) => {
+    const { analysis } = await fetchOverview(request);
+    const names = analysis.analyzedParticipants.map(a => a.participant.ceviname).sort((a, b) => a.localeCompare(b, 'de'));
+    const firstNames = () => page.locator('#plannerTableBody tr td:first-child strong').allTextContents();
+    const nameHead = page.getByRole('columnheader', { name: 'Name / Ceviname' });
+
+    await nameHead.getByRole('button').click();
+    await expect(nameHead).toHaveAttribute('aria-sort', 'ascending');
+    expect(await firstNames()).toEqual(names);
+    await nameHead.getByRole('button').click();
+    await expect(nameHead).toHaveAttribute('aria-sort', 'descending');
+    expect(await firstNames()).toEqual([...names].reverse());
+  });
 });
