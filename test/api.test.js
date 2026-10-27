@@ -554,6 +554,22 @@ test('Live-Login: Planer ist ohne Leitungsrolle gesperrt, Stufenleiterin hat Zug
   assert.equal((await request('/api/planner/overview', { cookie: leader })).status, 200);
 });
 
+test('Log: verweigerte Zugriffe und ungültiger state erscheinen mit Akteur, ohne Cookie oder Token (SR-52)', async (t) => {
+  const login = useLiveCeviDb(t);
+  const member = cookiePair(await login({ id: 'p_8', roles: ['Mitglied'] }));
+  const warn = t.mock.method(console, 'warn', () => {});
+  await request('/api/courses');
+  await request('/api/planner/overview', { cookie: member });
+  await request('/api/auth/callback?code=abc&state=falsch');
+  const lines = warn.mock.calls.map(call => call.arguments[0]);
+  assert.deepEqual(lines, [
+    '[Sicherheit] 401 nicht angemeldet GET /api/courses akteur=anonym',
+    '[Sicherheit] 403 kein Planer-Zugriff GET /api/planner/overview akteur=p_8',
+    '[Sicherheit] OAuth-Callback mit ungültigem state abgewiesen GET /api/auth/callback akteur=anonym'
+  ]);
+  assert.ok(!lines.join().includes(member.split('=')[1]), 'Session-Cookie nicht im Log');
+});
+
 test('Logout: nur per POST, beendet die Session serverseitig und löscht das Cookie', async (t) => {
   const login = useLiveCeviDb(t);
   const cookie = cookiePair(await login({ id: 'p_4', first_name: 'Ida', roles: [] }));
