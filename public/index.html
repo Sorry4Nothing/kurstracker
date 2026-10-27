@@ -22,7 +22,7 @@
   <!-- Font Awesome 6 Pro Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <link rel="stylesheet" href="style.css?v=29">
+  <link rel="stylesheet" href="style.css?v=31">
 </head>
 <body class="dark-theme">
 
@@ -61,6 +61,12 @@
         <button class="sidebar-nav-item" id="tabPlanner" onclick="switchTab('planner')" style="display: none;">
           <i class="fa-solid fa-users-gear nav-icon" aria-hidden="true"></i>
           <span class="nav-text">Stufenleiter-Planer</span>
+        </button>
+
+        <!-- Nur für Abteilungsleitungen: auth.js blendet die Seite ein, wenn der Server sie freigibt -->
+        <button class="sidebar-nav-item" id="tabSettings" onclick="switchTab('settings')" hidden>
+          <i class="fa-solid fa-gear nav-icon" aria-hidden="true"></i>
+          <span class="nav-text">Umgebungseinstellungen</span>
         </button>
 
         <!-- Nur zur Entwicklung: system.js blendet die Seite ausserhalb der Produktion ein -->
@@ -338,7 +344,6 @@
               <div class="nominations-list" id="nominationsList">
                 <p class="empty-text">Noch keine Kursvorschläge erfasst. Klicke bei einem Teilnehmer auf &laquo;Vorschlagen&raquo;.</p>
               </div>
-            </div>
           </div>
         </section>
 
@@ -553,6 +558,55 @@
           <div id="apiOutputList" class="api-list"></div>
         </section>
 
+        <!-- ===================================================================
+             5. UMGEBUNGSEINSTELLUNGEN (#129): Cevi-DB-API-Key der eigenen Abteilung
+             =================================================================== -->
+        <section class="tab-panel" id="panel-settings" role="tabpanel">
+          <div class="settings-layout">
+            <div id="settingsList" class="settings-layout">
+              <p class="empty-text">Lade Einstellungen...</p>
+            </div>
+            <div class="card settings-guide">
+              <div class="settings-guide-head">
+                <span class="settings-guide-kicker">Anleitung</span>
+                <h3>So erstellst du den API-Key in der Cevi-DB</h3>
+                <p>In fünf Schritten, du brauchst dafür die Abteilungsleiter-Rolle in der Cevi-DB.</p>
+              </div>
+              <ol class="settings-steps">
+                <li>
+                  <span class="settings-step-title">Gruppe öffnen</span>
+                  <span class="settings-step-text">In der <a href="https://db.cevi.ch" target="_blank" rel="noopener noreferrer">Cevi-DB</a> einloggen und die Gruppe der Abteilung öffnen.</span>
+                </li>
+                <li>
+                  <span class="settings-step-title">API-Keys aufrufen</span>
+                  <span class="settings-step-text">Im Menü <strong>Einstellungen</strong> den Punkt <strong>API-Keys</strong> wählen. Direkt erreichbar unter <code>db.cevi.ch/groups/GRUPPENID/service_tokens</code>, GRUPPENID ist die Nummer der Abteilung.</span>
+                </li>
+                <li>
+                  <span class="settings-step-title">Neuen Key anlegen</span>
+                  <span class="settings-step-text">Zum Beispiel mit dem Namen «Kurstracker».</span>
+                </li>
+                <li>
+                  <span class="settings-step-title">Rechte anhaken</span>
+                  <span class="settings-step-text settings-rights">
+                    <span class="badge badge-info">Personen lesen</span>
+                    <span class="badge badge-info">Gruppen lesen</span>
+                    <span class="badge badge-info">Anlässe lesen</span>
+                  </span>
+                </li>
+                <li>
+                  <span class="settings-step-title">Key kopieren und oben einfügen</span>
+                  <span class="settings-step-text">Der Kurstracker prüft ihn bei der Cevi-DB, bevor er ihn speichert.</span>
+                </li>
+              </ol>
+              <div class="settings-notes">
+                <p><i class="fa-solid fa-eye" aria-hidden="true"></i><span>Der Key kann nur lesen: Personen, Gruppen und Anlässe deiner Abteilung. Er kann in der Cevi-DB nichts ändern.</span></p>
+                <p><i class="fa-solid fa-lock" aria-hidden="true"></i><span>Der Kurstracker speichert den Key verschlüsselt und zeigt ihn nach dem Speichern nie wieder an, nur die letzten vier Zeichen.</span></p>
+                <p><i class="fa-solid fa-circle-question" aria-hidden="true"></i><span>Zu Ablauf, Widerruf und Erneuerung eines Keys hilft die Cevi-DB-Steuergruppe: <a href="mailto:cevidb@cevi.ch">cevidb@cevi.ch</a>. Mehr dazu im <a href="https://wiki.cevi.ch/index.php/Cevi.DB_API" target="_blank" rel="noopener noreferrer">CeviWiki</a>.</span></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </div>
 
       <!-- Globaler Footer (Umgebung & Cevi-DB Status) -->
@@ -635,6 +689,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=22"></script>
+  <script type="module" src="app.js?v=23"></script>
 </body>
 </html>

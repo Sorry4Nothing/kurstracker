@@ -295,6 +295,37 @@ export class CeviDbService {
   }
 
   /**
+   * Prüft einen API-Key (X-Token) mit je einem Abruf auf Personen, Gruppen und Anlässe (#129).
+   * Wirft einen Fehler mit status 422 und einer Meldung, die sagt, was dem Key fehlt; 502, wenn die Cevi-DB nicht antwortet.
+   * @param {string} token
+   */
+  async verifyServiceToken(token) {
+    const checks = { people: 'Personen lesen', groups: 'Gruppen lesen', events: 'Anlässe lesen' };
+    const results = await Promise.all(Object.entries(checks).map(async ([endpoint, right]) => {
+      let response;
+      try {
+        response = await fetch(`${this.baseUrl}/api/${endpoint}?page[size]=1`, {
+          headers: { Accept: 'application/vnd.api+json, application/json', 'X-Token': token },
+          signal: AbortSignal.timeout(10000)
+        });
+      } catch {
+        return { right, status: 0 };
+      }
+      return { right, status: response.status };
+    }));
+    if (results.some(r => r.status === 0 || r.status >= 500)) {
+      throw Object.assign(new Error('Die Cevi-DB antwortet nicht. Bitte später erneut versuchen.'), { status: 502 });
+    }
+    if (results.every(r => r.status === 401)) {
+      throw Object.assign(new Error('Die Cevi-DB kennt diesen Key nicht. Bitte prüfen, ob er vollständig kopiert wurde.'), { status: 422 });
+    }
+    const missing = results.filter(r => r.status !== 200).map(r => `«${r.right}»`);
+    if (missing.length) {
+      throw Object.assign(new Error(`Dem Key fehlen Rechte: ${missing.join(', ')}. In der Cevi-DB beim Key nachtragen.`), { status: 422 });
+    }
+  }
+
+  /**
    * Mitglieder der Gruppe des Service-Tokens für den Stufenleiter-Planer (#26), in der Form der Demo-Gruppe.
    * Fragt nur ab, was der Planer zeigt: Name, Ceviname, Geschlecht, Geburtstag, Rollen, Gruppen samt Abteilung (Layer-Gruppe), Kurse und Qualifikationen.
    * Adresse, E-Mail und Telefon bleiben in der Cevi-DB.

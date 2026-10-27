@@ -7,12 +7,14 @@ import { renderTreeSvgLines, resetMapTransform } from './tree-map.js';
 import { getTreeStructure, getSelectedTargetCourseId } from './tree.js';
 import { loadApiOutput } from './api-output.js';
 import { plannerSubtitle } from './planner.js';
+import { loadSettings } from './settings.js';
 
 export function switchTab(tabId) {
   // Navigation Buttons & Cards
   const navTree = document.getElementById('tabTree');
   const navPlanner = document.getElementById('tabPlanner');
   const navApi = document.getElementById('tabApiOutput');
+  const navSettings = document.getElementById('tabSettings');
   const navUserCard = document.getElementById('userNavActions');
 
   // Panels
@@ -20,15 +22,16 @@ export function switchTab(tabId) {
   const panelProfile = document.getElementById('panel-profile');
   const panelPlanner = document.getElementById('panel-planner');
   const panelApi = document.getElementById('panel-api');
+  const panelSettings = document.getElementById('panel-settings');
 
   // Topbar Titles
   const pageTitle = document.getElementById('topbarPageTitle');
   const pageSubtitle = document.getElementById('topbarPageSubtitle');
 
   // Alles zuruecksetzen
-  [navTree, navPlanner, navApi].forEach(btn => btn?.classList.remove('active'));
+  [navTree, navPlanner, navApi, navSettings].forEach(btn => btn?.classList.remove('active'));
   navUserCard?.classList.remove('active');
-  [panelTree, panelProfile, panelPlanner, panelApi].forEach(panel => panel?.classList.remove('active'));
+  [panelTree, panelProfile, panelPlanner, panelApi, panelSettings].forEach(panel => panel?.classList.remove('active'));
 
   if (tabId === 'tree') {
     navTree?.classList.add('active');
@@ -45,6 +48,13 @@ export function switchTab(tabId) {
     panelPlanner?.classList.add('active');
     if (pageTitle) pageTitle.textContent = 'Stufenleiter-Planer';
     if (pageSubtitle) pageSubtitle.textContent = plannerSubtitle();
+  } else if (tabId === 'settings') {
+    navSettings?.classList.add('active');
+    panelSettings?.classList.add('active');
+    if (pageTitle) pageTitle.textContent = 'Umgebungseinstellungen';
+    if (pageSubtitle) pageSubtitle.textContent = 'Cevi-DB-Zugang der Abteilung';
+    // Bei jedem Öffnen frisch laden, damit der Status stimmt
+    loadSettings();
   } else if (tabId === 'api') {
     navApi?.classList.add('active');
     panelApi?.classList.add('active');

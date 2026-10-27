@@ -2,15 +2,15 @@
 
 // Gruppentypen, die als Stufe zählen (Fröschli ist eine normale Stufe)
 export const STUFE_TYPES = ['Group::Stufe', 'Group::Froeschli'];
-const ABTEILUNGSLEITUNG = 'Group::Jungschar::Abteilungsleiter';
+export const ABTEILUNGSLEITUNG = 'Group::Jungschar::Abteilungsleiter';
 const STUFENLEITUNG = ['Group::Stufe::Stufenleiter'];
 
 // shortcut: Rollen als Text (Testdaten, Demo-Profil) öffnen den Planer wie bisher für alle Gruppen; echte Logins liefern Rollenobjekte
 const LEGACY_ROLES = ['abteilungsleiter', 'stufenleiter'];
-const legacyRoleAllowed = role =>
+const legacyRoleAllowed = (role, allowedRoles = LEGACY_ROLES) =>
   // Wortweise vergleichen statt Substring: "Stufenleiterin" zählt, "Ex-Abteilungsleiter-Kurs" als Teilwort nicht
   String(role).toLowerCase().replace(/[*:]/g, '').split(/[^a-zäöüéèà]+/).some(word =>
-    LEGACY_ROLES.some(allowed => word === allowed || word === `${allowed}in`)
+    allowedRoles.some(allowed => word === allowed || word === `${allowed}in`)
   );
 
 /**
@@ -55,4 +55,27 @@ export function groupsOf(members) {
     groups: list.filter(group => STUFE_TYPES.includes(group.type)),
     departments: [...new Set(list.map(group => group.departmentName).filter(Boolean))]
   };
+}
+
+/**
+ * Abteilungen, deren Cevi-DB-Zugang die Person verwalten darf (#129): nur die der eigenen Abteilungsleiter-Rolle.
+ * Rollen als Text (Demo-Profil) gelten für die Abteilungen, in denen die Gruppen des Profils Abteilungsleiter nennen.
+ * @param {{ roles?: Array<string|object> }} user Userinfo der Cevi-DB
+ * @returns {Array<{ id: string, name: string }>}
+ */
+export function leadDepartments(user) {
+  const roles = user?.roles || [];
+  const departments = new Map();
+  for (const role of roles) {
+    if (typeof role !== 'object' || role === null || role.group_id == null || role.role_class !== ABTEILUNGSLEITUNG) continue;
+    const id = String(role.group_id);
+    departments.set(id, { id, name: String(role.group_name || `Abteilung ${id}`) });
+  }
+  if (!departments.size && roles.some(role => typeof role === 'string' && legacyRoleAllowed(role, ['abteilungsleiter']))) {
+    // Demo-Profil: Abteilung aus den Gruppen des Profils, wie sie live aus den Rollen käme
+    for (const group of user.groups || []) {
+      if (String(group.role).toLowerCase() === 'abteilungsleiter') departments.set(String(group.id), { id: String(group.id), name: String(group.name) });
+    }
+  }
+  return [...departments.values()];
 }

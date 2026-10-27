@@ -92,7 +92,8 @@ test('API: ohne Session ist das Demo-Profil mit Planerzugriff aktiv', async () =
     authenticated: true,
     user: ceviDbService.getMockUser(),
     isMock: true,
-    canUsePlanner: true
+    canUsePlanner: true,
+    canManageSettings: true
   });
 });
 
@@ -538,7 +539,7 @@ test('Live-Login: Session-Cookie ist signiert, httpOnly, 7 Tage gültig und trä
   assert.equal(ceviDbService.getUserInfo.mock.calls[0].arguments[0], 'live_abc');
 
   const me = await (await request('/api/auth/me', { cookie: cookiePair(line) })).json();
-  assert.deepEqual(me, { authenticated: true, user, isMock: false, canUsePlanner: false });
+  assert.deepEqual(me, { authenticated: true, user, isMock: false, canUsePlanner: false, canManageSettings: false });
 });
 
 test('Live-Login: Planer ist ohne Leitungsrolle gesperrt, Stufenleiterin hat Zugriff', async (t) => {
@@ -597,7 +598,10 @@ const RIGHTS = {
   'GET /api/tree/evaluation': 'session',
   'GET /api/tree/path/:courseId': 'session',
   'GET /api/planner/overview': 'planner',
-  'POST /api/planner/propose': 'planner'
+  'POST /api/planner/propose': 'planner',
+  'GET /api/settings/cevi-db-key': 'lead',
+  'PUT /api/settings/cevi-db-key/:departmentId': 'lead',
+  'DELETE /api/settings/cevi-db-key/:departmentId': 'lead'
 };
 
 test('Rechtematrix (SR-12): jede API-Route hat eine Zeile, Session- und Planer-Routen verweigern ohne Recht', async (t) => {
@@ -612,10 +616,10 @@ test('Rechtematrix (SR-12): jede API-Route hat eine Zeile, Session- und Planer-R
   for (const [route, right] of Object.entries(RIGHTS)) {
     if (right === 'public') continue;
     const [method, pattern] = route.split(' ');
-    const path = pattern.replace(':courseId', 'heku');
+    const path = pattern.replace(':courseId', 'heku').replace(':departmentId', 'demo');
     const anonymous = await request(path, { method });
     assert.equal(anonymous.status, 401, `${route} ohne Session`);
-    if (right === 'planner') {
+    if (right !== 'session') {
       const noRole = await request(path, { method, cookie: member });
       assert.equal(noRole.status, 403, `${route} ohne Leitungsrolle`);
     }
