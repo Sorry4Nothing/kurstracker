@@ -289,16 +289,6 @@ async function showUpcomingDates(courseId) {
   }
 }
 
-// Qualifikations-Chip: klickbar und zum vergebenden Kurs verlinkt, wenn der im aktuell
-// gezeigten Baum steht (zeigt den Weg dahin) - sonst (andere Region, kein bekannter Kurs)
-// nur der Name, nichts erfunden
-function qualChipHtml(q) {
-  const label = esc(q.label || q.id);
-  const granterInTree = q.grantedByCourseId && treeStructure?.nodes[q.grantedByCourseId];
-  if (!granterInTree) return `<span class="path-chip path-chip-qual">${label}</span>`;
-  return `<button type="button" class="path-chip path-chip-qual is-linked" onclick="selectTargetCourse('${q.grantedByCourseId}')" title="Zeigt, wie man zu dieser Qualifikation kommt: ${label}">${label}</button>`;
-}
-
 export function updateTreeInspector(targetNode, pathResult) {
   const { isDirectlyEligible, missingCourses, ageCheck, summary } = pathResult;
   const qualificationChecks = pathResult.targetQualCheck || pathResult.qualificationChecks || [];
@@ -320,8 +310,8 @@ export function updateTreeInspector(targetNode, pathResult) {
     summaryBox.textContent = summary;
   } else {
     // Als Pfad statt als Aufzaehlung: Kurse in Reihenfolge mit Pfeil dazwischen (missingCourses
-    // steht schon vom Vorgaenger zum Nachfolger geordnet), Qualifikationen separat darunter
-    const missingQuals = qualificationChecks.filter(q => !q.isFulfilled);
+    // steht schon vom Vorgaenger zum Nachfolger geordnet). Qualifikationen stehen einzeln, mit
+    // Weg dahin, in der Checkliste darunter statt hier nochmal als Chips.
     const ageLine = !ageCheck.isFulfilled
       ? `<p class="path-summary-text">${esc(ageCheck.actual === null
           ? `Geburtsdatum fehlt, Mindestalter (${targetNode.minAge} Jahre) nicht pruefbar.`
@@ -335,15 +325,7 @@ export function updateTreeInspector(targetNode, pathResult) {
            </div>
          </div>`
       : '';
-    const qualList = missingQuals.length
-      ? `<div class="path-summary-group">
-           <span class="path-summary-group-label">Fehlende Qualifikationen</span>
-           <div class="path-chip-row">
-             ${missingQuals.map(q => qualChipHtml(q)).join('')}
-           </div>
-         </div>`
-      : '';
-    summaryBox.innerHTML = ageLine + coursePath + qualList;
+    summaryBox.innerHTML = ageLine + coursePath;
   }
 
   // Kokonut Pro Onboarding Checklist Logik
@@ -375,19 +357,22 @@ export function updateTreeInspector(targetNode, pathResult) {
     });
   }
 
-  // Schritt 3: Qualifikationen / Brevets - ein Sammel-Eintrag wie bei den Kursstufen oben,
-  // statt pro Qualifikation eine eigene durchnummerierte Zeile
-  if (qualificationChecks && qualificationChecks.length > 0) {
-    const isFulfilled = qualificationChecks.every(q => q.isFulfilled);
-    const missingLabels = qualificationChecks.filter(q => !q.isFulfilled).map(q => q.label || q.id).join(', ');
+  // Schritt 3: Qualifikationen / Brevets - eine Zeile pro Qualifikation (wie eine eigene
+  // Mini-Checkliste); fehlt eine und ist ihr vergebender Kurs im aktuellen Baum bekannt, ist die
+  // Zeile anklickbar und springt dorthin - zeigt so den Weg dahin, auch rekursiv weiter
+  qualificationChecks.forEach(q => {
+    const granterInTree = q.grantedByCourseId && treeStructure?.nodes[q.grantedByCourseId];
     checkItems.push({
-      title: 'Qualifikationen',
-      desc: isFulfilled
-        ? 'Alle noetigen Qualifikationen in der Cevi-DB bestaetigt.'
-        : `Anerkennung fehlt noch im Profil: ${missingLabels}.`,
-      isFulfilled: isFulfilled
+      title: q.label || q.id,
+      desc: q.isFulfilled
+        ? 'Qualifikation in der Cevi-DB bestaetigt.'
+        : granterInTree
+          ? 'Noch nicht erreicht - anklicken fuer den Weg dahin.'
+          : 'Anerkennung fehlt noch im Profil.',
+      isFulfilled: q.isFulfilled,
+      onClickCourseId: !q.isFulfilled && granterInTree ? q.grantedByCourseId : null
     });
-  }
+  });
 
   // Zuletzt: empfohlene Vorstufen (z.B. Heku, GLK 1, GLK 2 vor GLK 3), nur ein Hinweis
   // ohne Schrittnummer, zaehlt nicht zum Fortschritt
@@ -434,7 +419,8 @@ export function updateTreeInspector(targetNode, pathResult) {
       ? '<i class="fa-solid fa-check"></i>'
       : item.isOptional ? '<i class="fa-regular fa-lightbulb" aria-hidden="true"></i>' : stepNumber;
     checksHtml += `
-      <div class="check-item ${item.isFulfilled ? 'check-fulfilled' : 'check-unfulfilled'}${item.isOptional ? ' check-optional' : ''}">
+      <div class="check-item ${item.isFulfilled ? 'check-fulfilled' : 'check-unfulfilled'}${item.isOptional ? ' check-optional' : ''}${item.onClickCourseId ? ' check-clickable' : ''}"
+           ${item.onClickCourseId ? `onclick="selectTargetCourse('${item.onClickCourseId}')" role="button" tabindex="0"` : ''}>
         <div class="check-step-badge">${badge}</div>
         <div class="check-text-content">
           <div class="check-title">${esc(item.title)}</div>

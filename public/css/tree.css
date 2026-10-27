@@ -608,15 +608,8 @@
   content: '→';
 }
 
-/* Welche Kurse/Qualifikationen genau fehlen, als Chips statt als Fliesstext */
-.path-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-}
-
-/* Heller Oberflaechen-Hintergrund statt eines zweiten Pastelltons: der sitzt in der blassblauen
-   Box darueber sonst zu nah an deren eigenem Hintergrund und wirkt wie reiner Text ohne Pille */
+/* Heller Oberflaechen-Hintergrund statt eines Pastelltons: der sitzt in der blassblauen Box
+   darueber sonst zu nah an deren eigenem Hintergrund und wirkt wie reiner Text ohne Pille */
 .path-chip {
   display: inline-block;
   padding: 2px var(--sp-2);
@@ -633,24 +626,6 @@
 
 .path-chip-course {
   color: var(--teal-ink);
-}
-
-.path-chip-qual {
-  color: var(--warn-ink);
-}
-
-/* Qualifikations-Chip, zum vergebenden Kurs verlinkt: zeigt mit einem Klick den Weg dahin */
-button.path-chip-qual.is-linked {
-  cursor: pointer;
-}
-
-button.path-chip-qual.is-linked::after {
-  content: ' →';
-}
-
-button.path-chip-qual.is-linked:hover,
-button.path-chip-qual.is-linked:focus-visible {
-  background-color: var(--warn-bg);
 }
 
 /* Checklist: a progress line, then flat rows separated by rules */
@@ -717,6 +692,18 @@ button.path-chip-qual.is-linked:focus-visible {
 
 .check-item:last-child {
   padding-bottom: 0;
+}
+
+/* Fehlende Qualifikation mit bekanntem vergebenden Kurs: anklickbar, springt zu dessen
+   eigenen Voraussetzungen (siehe selectTargetCourse in tree.js) */
+.check-item.check-clickable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.check-item.check-clickable:hover,
+.check-item.check-clickable:focus-visible {
+  background-color: var(--blue-soft);
 }
 
 /* Connector from this circle to the next one, 4px clear of both. It fills
