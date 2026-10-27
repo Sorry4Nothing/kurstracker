@@ -308,7 +308,7 @@ export class CeviDbService {
     // fields[...] nennt auch die Beziehungen, sonst fehlt die Verknüpfung zu den mitgeladenen Einträgen
     const people = await this.fetchList('/api/people?include=roles.group.layer_group,qualifications.qualification_kind,event_participations.event.dates'
       + '&fields[people]=first_name,last_name,nickname,gender,birthday,roles,qualifications,event_participations'
-      + '&fields[roles]=name,type,start_on,end_on,group&fields[groups]=name,short_name,type,layer,layer_group_id,layer_group'
+      + '&fields[roles]=name,type,start_on,end_on,group&fields[groups]=name,display_name,short_name,type,layer,layer_group_id,layer_group'
       + '&fields[qualifications]=finish_at,qualification_kind'
       + '&fields[event_participations]=active,event');
 
@@ -338,7 +338,7 @@ export class CeviDbService {
       // Gruppen und ihre Abteilung stehen in der Cevi-DB, nie im Code: eine andere Abteilung bringt ihre eigenen mit
       const groups = [...new Map(roles.filter(r => r.group).map(({ group }) => [String(group.id), {
         id: String(group.id),
-        name: group.name,
+        name: group.display_name || group.name,
         shortName: group.short_name || '',
         type: group.type,
         departmentId: String(group.layer_group_id ?? group.id),

@@ -253,7 +253,8 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
     included: [
       { type: 'roles', id: 'r1', attributes: { name: 'Leiter*in', start_on: '2020-01-01', end_on: null } },
       { type: 'roles', id: 'r2', attributes: { name: 'Teilnehmer*in', start_on: '2015-01-01', end_on: '2019-12-31' } },
-      { type: 'roles', id: 'r3', attributes: { name: 'Teilnehmer*in', start_on: '2020-01-01', end_on: null } },
+      { type: 'roles', id: 'r3', attributes: { name: 'Teilnehmer*in', start_on: '2020-01-01', end_on: null }, relationships: { group: one('groups', 'g1') } },
+      { type: 'groups', id: 'g1', attributes: { name: 'M Imperius' } },
       { type: 'roles', id: 'r4', attributes: { name: 'Leiter*in', start_on: '2015-01-01', end_on: '2020-12-31' } },
       { type: 'roles', id: 'r5', attributes: { name: 'Externe-/r', type: 'Group::VereinExterne::Externer', start_on: '2020-01-01', end_on: null } },
       { type: 'roles', id: 'r6', attributes: { name: 'Externe/-r', type: 'Group::JungscharExterne::Externer', start_on: '2020-01-01', end_on: null } },
@@ -312,7 +313,8 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
       ]
     },
     {
-      id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in', groups: [],
+      id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in',
+      groups: [{ id: 'g1', name: 'M Imperius', shortName: '', departmentId: 'g1', departmentName: '' }],
       completedCourses: ['sec_wasser'],
       inProgressCourses: ['heku'],
       qualifications: [

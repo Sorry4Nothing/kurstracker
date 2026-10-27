@@ -141,15 +141,26 @@ export class StufenleiterPlanningEngine {
       if (expirationDate) {
         const validUntil = new Date(expirationDate);
         const monthsRemaining = (validUntil - new Date()) / (1000 * 60 * 60 * 24 * 30.5);
-        if (monthsRemaining <= 12) {
+        const courseTitle = tree.nodes.mf_lst.title;
+        if (monthsRemaining < 0) {
           hasExpiringJsLeiter = true;
-          const courseTitle = tree.nodes.mf_lst.title;
+          recommendedCourses.unshift({
+            courseId: 'mf_lst',
+            title: courseTitle,
+            courseTitle: courseTitle,
+            priority: 'DRINGEND',
+            reason: `J+S-Brevetierung ist am ${formatEuropeanDate(expirationDate)} abgelaufen.`
+          });
+        } else if (monthsRemaining <= 12) {
+          hasExpiringJsLeiter = true;
           recommendedCourses.unshift({
             courseId: 'mf_lst',
             title: courseTitle,
             courseTitle: courseTitle,
             priority: monthsRemaining <= 6 ? 'DRINGEND' : 'HOCH',
-            reason: `J+S Leiterstatus verfällt am ${formatEuropeanDate(expirationDate)} (in ca. ${Math.round(monthsRemaining)} Monaten). Fortbildungsmodul nötig!`
+            reason: monthsRemaining <= 6
+              ? `J+S-Status verfällt am ${formatEuropeanDate(expirationDate)}. Fortbildung nötig.`
+              : `J+S-Status verfällt am ${formatEuropeanDate(expirationDate)}. Auffrischung nötig.`
           });
         }
       }

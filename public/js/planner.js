@@ -24,7 +24,7 @@ export async function loadPlannerData() {
   if (!tableBody) return;
 
   try {
-    const [res, courses] = await Promise.all([fetch('/api/planner/overview'), loadCourses()]);
+    const res = await fetch('/api/planner/overview');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { analysis, nominations, departments, realDataViaMockLogin } = await res.json();
     document.getElementById('plannerMockHint')?.toggleAttribute('hidden', !realDataViaMockLogin);
@@ -53,17 +53,11 @@ export async function loadPlannerData() {
       let recBadge = '<span class="text-dim">Keine Empfehlung</span>';
       if (primaryRec) {
         const prioClass = primaryRec.priority === 'DRINGEND' ? 'prio-urgent' : 'prio-high';
-        const nextDate = upcomingDates(courses, primaryRec.courseId)[0];
         recBadge = `
           <span class="recommendation-pill ${prioClass}">
             ${primaryRec.priority === 'DRINGEND' ? '<i class="fa-solid fa-triangle-exclamation"></i> ' : ''}${esc(primaryRec.courseTitle || primaryRec.title || 'Empfohlener Kurs')}
           </span>
           <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.2rem;">${esc(primaryRec.reason)}</div>
-          ${nextDate ? `
-            <div style="font-size: 0.72rem; margin-top: 0.2rem;">
-              Nächster Termin: ${esc(dateRange(nextDate))} ·
-              <a href="${esc(nextDate.registration_url)}" target="_blank" rel="noopener noreferrer" aria-label="Anmelden (öffnet in neuem Tab)">Anmelden</a>
-            </div>` : ''}
         `;
       }
 
@@ -81,7 +75,10 @@ export async function loadPlannerData() {
             ${item.age ?? '–'} J.
             ${tn.birthdate ? `<div style="font-size: 0.7rem; color: var(--text-dim);">${esc(formatEuropeanDate(tn.birthdate))}</div>` : ''}
           </td>
-          <td><div class="role-badges">${(tn.currentRole || '').split(', ').filter(Boolean).map(role => `<span class="role-badge">${esc(role)}</span>`).join('')}</div></td>
+          <td>
+            ${(tn.groups || []).length ? `<div style="font-size: 0.75rem; color: var(--text-dim);">${esc(tn.groups.map(g => g.name).join(', '))}</div>` : ''}
+            <div class="role-badges">${(tn.currentRole || '').split(', ').filter(Boolean).map(role => `<span class="role-badge">${esc(role)}</span>`).join('')}</div>
+          </td>
           <td>${completedBadges}</td>
           <td>${recBadge}</td>
           <td>
