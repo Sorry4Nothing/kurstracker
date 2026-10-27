@@ -189,8 +189,14 @@ function setSession(res, sessionData) {
   return sessionId;
 }
 
+// Sicherheitsereignis ins Log (SR-52): Zeit setzt das Log, Akteur ist die Person-ID oder anonym, keine Secrets
+function logSecurity(req, event, session) {
+  console.warn(logSafe(`[Sicherheit] ${event} ${req.method} ${req.originalUrl.split('?')[0]} akteur=${session?.user?.id ?? 'anonym'}`));
+}
+
 function requireAuth(req, res, next) {
   if (getSession(req)) return next();
+  logSecurity(req, '401 nicht angemeldet');
   res.status(401).json({ error: 'Nicht angemeldet' });
 }
 
@@ -223,6 +229,7 @@ const canUsePlanner = user => plannerScope(user) !== null;
 function requirePlanner(req, res, next) {
   const session = getSession(req);
   if (!session) {
+    logSecurity(req, '401 nicht angemeldet');
     return res.status(401).json({ error: 'Nicht angemeldet' });
   }
   if (canUsePlanner(session.user)) {
@@ -230,6 +237,7 @@ function requirePlanner(req, res, next) {
     res.locals.mockLogin = Boolean(session.isMock);
     return next();
   }
+  logSecurity(req, '403 kein Planer-Zugriff', session);
   res.status(403).json({ error: 'Kein Zugriff auf den Stufenleiter-Planer' });
 }
 
@@ -278,6 +286,7 @@ app.get('/api/auth/callback', async (req, res) => {
 
   // Reihenfolge wichtig: erst Cookie-Abgleich, dann einlösen, damit gefälschte Versuche einen echten State nicht verbrauchen
   if (!state || state !== expectedState || !consumeState(state)) {
+    logSecurity(req, 'OAuth-Callback mit ungültigem state abgewiesen');
     return res.redirect('/?error=invalid_state');
   }
 
