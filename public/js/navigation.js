@@ -6,6 +6,7 @@
 import { renderTreeSvgLines, resetMapTransform } from './tree-map.js';
 import { getTreeStructure, getSelectedTargetCourseId } from './tree.js';
 import { loadApiOutput } from './api-output.js';
+import { plannerSubtitle } from './planner.js';
 
 export function switchTab(tabId) {
   // Navigation Buttons & Cards
@@ -43,7 +44,7 @@ export function switchTab(tabId) {
     navPlanner?.classList.add('active');
     panelPlanner?.classList.add('active');
     if (pageTitle) pageTitle.textContent = 'Stufenleiter-Planer';
-    if (pageSubtitle) pageSubtitle.textContent = 'Ausbildungsreife der Abteilung Flaach / Winti & Kursplanung';
+    if (pageSubtitle) pageSubtitle.textContent = plannerSubtitle();
   } else if (tabId === 'api') {
     navApi?.classList.add('active');
     panelApi?.classList.add('active');

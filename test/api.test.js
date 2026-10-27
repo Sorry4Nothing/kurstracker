@@ -313,7 +313,8 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
       ]
     },
     {
-      id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in', groups: ['M Imperius'],
+      id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in',
+      groups: [{ id: 'g1', name: 'M Imperius', shortName: '', departmentId: 'g1', departmentName: '' }],
       completedCourses: ['sec_wasser'],
       inProgressCourses: ['heku'],
       qualifications: [

@@ -13,6 +13,11 @@ const dateRange = course => formatEuropeanDateRange(course.start_date, course.en
 // Ohne Kursdaten bleibt der Planer nutzbar, nur ohne Termine
 const loadCourses = () => fetchCourses().catch(() => []);
 
+// Namen der Abteilungen aus der Cevi-DB, gesetzt beim Laden des Planers
+let plannerDepartments = [];
+export const plannerSubtitle = () =>
+  `Ausbildungsreife der Abteilung ${plannerDepartments.join(', ') || '…'}`;
+
 export async function loadPlannerData() {
   const tableBody = document.getElementById('plannerTableBody');
   const nominationsList = document.getElementById('nominationsList');
@@ -21,8 +26,12 @@ export async function loadPlannerData() {
   try {
     const res = await fetch('/api/planner/overview');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { analysis, nominations } = await res.json();
+    const { analysis, nominations, departments, realDataViaMockLogin } = await res.json();
+    document.getElementById('plannerMockHint')?.toggleAttribute('hidden', !realDataViaMockLogin);
     const readiness = analysis.analyzedParticipants;
+    plannerDepartments = departments || [];
+    const subtitle = document.getElementById('topbarPageSubtitle');
+    if (subtitle && document.getElementById('panel-planner')?.classList.contains('active')) subtitle.textContent = plannerSubtitle();
 
     // KPI-Zahlen aus der Server-Analyse
     const statTotal = document.getElementById('statPlannerTotal');
@@ -67,7 +76,7 @@ export async function loadPlannerData() {
             ${tn.birthdate ? `<div style="font-size: 0.7rem; color: var(--text-dim);">${esc(formatEuropeanDate(tn.birthdate))}</div>` : ''}
           </td>
           <td>
-            ${(tn.groups || []).length ? `<div style="font-size: 0.75rem; color: var(--text-dim);">${esc(tn.groups.join(', '))}</div>` : ''}
+            ${(tn.groups || []).length ? `<div style="font-size: 0.75rem; color: var(--text-dim);">${esc(tn.groups.map(g => g.name).join(', '))}</div>` : ''}
             <div class="role-badges">${(tn.currentRole || '').split(', ').filter(Boolean).map(role => `<span class="role-badge">${esc(role)}</span>`).join('')}</div>
           </td>
           <td>${completedBadges}</td>
