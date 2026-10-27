@@ -190,6 +190,48 @@
   gap: var(--sp-4);
 }
 
+/* Eigenstaendige Zusatzkurse (keine Pflicht-Vorgaenger): eigene horizontale Leiste statt in der
+   Graph-Flaeche, damit nie der Eindruck entsteht, sie haengen von einem anderen Kurs ab */
+.tree-standalone-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.tree-standalone-rail-label {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+  color: var(--text-main);
+}
+
+.tree-standalone-rail-hint {
+  font-weight: normal;
+  color: var(--text-muted);
+}
+
+.tree-standalone-rail-cards {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--sp-3);
+  overflow-x: auto;
+  padding-bottom: var(--sp-1);
+}
+
+.tree-standalone-rail-cards .tree-node-card {
+  position: static;
+  flex: 0 0 220px;
+}
+
+/* Kurs-Karte wird gerade frei verschoben (tree.js): angehoben, kein Uebergang, damit sie dem
+   Zeiger 1:1 folgt */
+.tree-node-card.is-dragging {
+  z-index: 5;
+  cursor: grabbing;
+  transition: none;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.25);
+}
+
 /* ------------------------------------------------------------------------------
    4. Canvas. JS writes the pan and zoom transform inline on .tree-map-canvas
       and toggles .is-panning on the container while dragging. The transform

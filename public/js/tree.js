@@ -3,7 +3,7 @@
  * Knoten-Rendering, Pfadberechnung, Onboarding-Checkliste und Interaktionen
  */
 
-import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, setCanvasSize, resetMapTransform } from './tree-map.js';
+import { COURSE_MAP_COORDS, mapTransform, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, setCanvasSize, resetMapTransform } from './tree-map.js';
 import { esc } from './utils.js';
 import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
@@ -11,6 +11,28 @@ let treeStructure = null;
 let currentTreeEvaluation = null;
 let selectedTargetCourseId = null;
 let selectedRegion = '';
+
+// Freies Verschieben der Kurskarten (nur Vorschau, nicht der echte Pflichtpfad): Position pro
+// Region im Browser gemerkt, damit ein Reload die eigene Anordnung behaelt
+function dragStorageKey(region) {
+  return `kurstracker.tree.dragPositions.${region || 'default'}`;
+}
+function loadDragPositions(region) {
+  try {
+    return JSON.parse(localStorage.getItem(dragStorageKey(region))) || {};
+  } catch {
+    return {};
+  }
+}
+function saveDragPosition(region, nodeId, coord) {
+  try {
+    const all = loadDragPositions(region);
+    all[nodeId] = coord;
+    localStorage.setItem(dragStorageKey(region), JSON.stringify(all));
+  } catch {
+    // Privater Modus o.ae.: Verschieben bleibt dann nur bis zum Reload erhalten
+  }
+}
 
 export function getTreeStructure() {
   return treeStructure;
@@ -28,6 +50,10 @@ async function applyRegion(regionKey) {
   treeStructure = await structRes.json();
   const extent = layoutRegionalCoords(Object.keys(treeStructure.nodes), treeStructure.nodes);
   if (extent) setCanvasSize(extent.width, extent.height); // sonst schneidet die feste 2360x840-Leinwand Karten/Linien ab
+  const dragged = loadDragPositions(regionKey);
+  Object.entries(dragged).forEach(([id, coord]) => {
+    if (treeStructure.nodes[id]) COURSE_MAP_COORDS[id] = coord;
+  });
   renderTree();
   resetMapTransform(); // neu einpassen, die Leinwand kann jetzt groesser sein als beim letzten Zoom
 }
@@ -66,6 +92,7 @@ export async function loadCourseTree() {
 
     renderTree();
     setupInteractiveMap(pickStartCourse());
+    setupNodeDrag();
     setupRegionSwitcher();
   } catch (err) {
     console.error('Fehler beim Laden des Kursbaums:', err);
@@ -82,8 +109,50 @@ function pickStartCourse() {
   return ids.find(withStatus('IN_PROGRESS')) || ids.find(withStatus('AVAILABLE')) || ids.findLast(withStatus('COMPLETED')) || 'voku';
 }
 
+function nodeCardHtml(node, nodeStates, { positioned }) {
+  const state = nodeStates[node.id] || { status: 'LOCKED' };
+  const statusLower = (state.status || 'locked').toLowerCase();
+
+  let statusLabel = 'Gesperrt';
+  if (statusLower === 'completed') statusLabel = '<i class="fa-solid fa-check" aria-hidden="true"></i> Absolviert';
+  else if (statusLower === 'in_progress') statusLabel = '<i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> Angemeldet';
+  else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open" aria-hidden="true"></i> Bereit';
+
+  const isSelected = selectedTargetCourseId === node.id;
+  const coordStyle = positioned
+    ? (() => { const c = COURSE_MAP_COORDS[node.id] || { x: 100, y: 100 }; return `left: ${c.x}px; top: ${c.y}px;`; })()
+    : '';
+
+  // Kein aria-label: der Name kommt aus dem sichtbaren Text (Code, Status, Titel), WCAG 2.5.3
+  const fullText = node.code && node.code !== node.title ? `${node.code} – ${node.title}` : node.title;
+  return `
+    <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''}"
+         id="nodeCard-${node.id}"
+         style="${coordStyle}"
+         onclick="selectTargetCourse('${node.id}')"
+         tabindex="0"
+         role="button"
+         title="${esc(fullText)}"
+         aria-current="${isSelected}">
+      <div class="node-header">
+        <div class="node-header-left">
+          <span class="node-code">${node.code || node.id.toUpperCase()}</span>
+        </div>
+        <span class="node-status-pill status-${statusLower}">${statusLabel}</span>
+      </div>
+      <div class="node-title">${esc(node.title)}</div>
+      <div class="node-meta">
+        <span>${node.category}</span>
+        <span>${node.js_type ? node.js_type : ''}</span>
+      </div>
+    </div>
+  `;
+}
+
 export function renderTree() {
   const container = document.getElementById('treeLevelsContainer');
+  const rail = document.getElementById('treeStandaloneRail');
+  const railCards = document.getElementById('treeStandaloneRailCards');
   if (!container || !treeStructure || !currentTreeEvaluation) return;
 
   const nodeStates = currentTreeEvaluation?.evaluation?.nodes || currentTreeEvaluation?.evaluation?.nodeStates || {};
@@ -94,51 +163,90 @@ export function renderTree() {
     return true;
   });
 
-  // Node Cards (Absolute Koordinaten-Positionierung)
-  const cardsHtml = nodes.map(node => {
-    const coord = COURSE_MAP_COORDS[node.id] || { x: 100, y: 100 };
-    const state = nodeStates[node.id] || { status: 'LOCKED' };
-    const statusLower = (state.status || 'locked').toLowerCase();
+  // Eigenstaendige Zusatzkurse (kein Pflicht- oder empfohlener Vorgaenger) stehen in einer
+  // eigenen Leiste statt im Abhaengigkeitsgraph - sonst wirken sie wie ein Folgekurs von GLK 3
+  const standalone = nodes.filter(n => !(n.prerequisites?.length || n.recommendedPrerequisites?.length) && n.category === 'Optionale Sonderkurse');
+  const pipeline = nodes.filter(n => !standalone.includes(n));
 
-    let statusLabel = 'Gesperrt';
-    if (statusLower === 'completed') statusLabel = '<i class="fa-solid fa-check" aria-hidden="true"></i> Absolviert';
-    else if (statusLower === 'in_progress') statusLabel = '<i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> Angemeldet';
-    else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open" aria-hidden="true"></i> Bereit';
+  container.innerHTML = pipeline.map(node => nodeCardHtml(node, nodeStates, { positioned: true })).join('');
 
-    const isSelected = selectedTargetCourseId === node.id;
-
-    // Kein aria-label: der Name kommt aus dem sichtbaren Text (Code, Status, Titel), WCAG 2.5.3
-    const fullText = node.code && node.code !== node.title ? `${node.code} – ${node.title}` : node.title;
-    return `
-      <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''}"
-           id="nodeCard-${node.id}"
-           style="left: ${coord.x}px; top: ${coord.y}px;"
-           onclick="selectTargetCourse('${node.id}')"
-           tabindex="0"
-           role="button"
-           title="${esc(fullText)}"
-           aria-current="${isSelected}">
-        <div class="node-header">
-          <div class="node-header-left">
-            <span class="node-code">${node.code || node.id.toUpperCase()}</span>
-          </div>
-          <span class="node-status-pill status-${statusLower}">${statusLabel}</span>
-        </div>
-        <div class="node-title">${esc(node.title)}</div>
-        <div class="node-meta">
-          <span>${node.category}</span>
-          <span>${node.js_type ? node.js_type : ''}</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  container.innerHTML = cardsHtml;
+  if (rail && railCards) {
+    if (standalone.length) {
+      railCards.innerHTML = standalone.map(node => nodeCardHtml(node, nodeStates, { positioned: false })).join('');
+      rail.style.display = '';
+    } else {
+      railCards.innerHTML = '';
+      rail.style.display = 'none';
+    }
+  }
 
   // Render SVG Verbindungen
   setTimeout(() => {
     renderTreeSvgLines(treeStructure, selectedTargetCourseId);
   }, 40);
+}
+
+// Kurskarte frei verschieben (nur Vorschau): Pointer-Events auf dem Container, damit sie auch
+// nach jedem renderTree() (innerHTML-Ersatz) noch funktionieren. Ein Ziehen waehlt den Kurs
+// nicht aus - derselbe Trick wie beim Verschieben der ganzen Karte in tree-map.js
+let dragState = null;
+let dragJustHappened = false;
+
+function setupNodeDrag() {
+  const container = document.getElementById('treeLevelsContainer');
+  if (!container || container._dragInitialized) return;
+  container._dragInitialized = true;
+
+  container.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button !== 0) return;
+    const card = e.target.closest('.tree-node-card');
+    if (!card || !COURSE_MAP_COORDS[card.id.replace('nodeCard-', '')]) return;
+    e.stopPropagation(); // nicht gleichzeitig die ganze Karte verschieben (tree-map.js)
+    const id = card.id.replace('nodeCard-', '');
+    dragState = {
+      id, card, pointerId: e.pointerId,
+      startClientX: e.clientX, startClientY: e.clientY,
+      origX: COURSE_MAP_COORDS[id].x, origY: COURSE_MAP_COORDS[id].y,
+      moved: false
+    };
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    const dx = (e.clientX - dragState.startClientX) / mapTransform.zoom;
+    const dy = (e.clientY - dragState.startClientY) / mapTransform.zoom;
+    if (!dragState.moved) {
+      if (Math.hypot(dx, dy) < 4) return;
+      dragState.moved = true;
+      dragState.card.classList.add('is-dragging');
+      dragState.card.setPointerCapture(dragState.pointerId);
+    }
+    const x = Math.max(0, dragState.origX + dx);
+    const y = Math.max(0, dragState.origY + dy);
+    COURSE_MAP_COORDS[dragState.id] = { x, y };
+    dragState.card.style.left = `${x}px`;
+    dragState.card.style.top = `${y}px`;
+    renderTreeSvgLines(treeStructure, selectedTargetCourseId);
+  });
+
+  const endDrag = (e) => {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    dragState.card.classList.remove('is-dragging');
+    if (dragState.moved) {
+      saveDragPosition(selectedRegion, dragState.id, COURSE_MAP_COORDS[dragState.id]);
+      dragJustHappened = true;
+      setTimeout(() => { dragJustHappened = false; });
+    }
+    dragState = null;
+  };
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+
+  // Der Klick nach dem Verschieben waehlt den Kurs nicht aus (Capture-Phase, wie beim
+  // Verschieben der ganzen Karte in tree-map.js)
+  container.addEventListener('click', (e) => {
+    if (dragJustHappened && e.target.closest('.tree-node-card')) e.stopPropagation();
+  }, true);
 }
 
 export async function selectTargetCourse(courseId) {
