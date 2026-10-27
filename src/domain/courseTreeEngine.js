@@ -1,4 +1,17 @@
-import { COURSE_NODES, withGenderTitles } from './courseTreeData.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION, withGenderTitles } from './courseTreeData.js';
+
+// Qualifikations-Label uber alle Baeume hinweg (Standardbaum + jede Region): manche Qualifikationen
+// (z.B. SLRG-Module) werden nur in einer einzelnen Region vergeben - eine Engine, die nur auf der
+// eigenen Region rechnet, faende den vergebenden Kurs sonst nicht und zeigte den rohen Key an.
+const GLOBAL_QUAL_LABELS = (() => {
+  const map = {};
+  const scan = (nodes) => Object.values(nodes).forEach(n => (n.grantsQualifications || []).forEach(q => {
+    if (!map[q]) map[q] = n.title;
+  }));
+  scan(COURSE_NODES);
+  Object.values(COURSE_NODES_BY_REGION).forEach(scan);
+  return map;
+})();
 
 // Kurzbezeichnungen aus Altdaten und Tests auf die Baum-IDs abbilden
 const COURSE_ALIASES = { glk: 'glk3', hlk: 'heku', mf: 'mf_lst' };
@@ -58,6 +71,17 @@ export class CourseTreeEngine {
       if (set.has(id)) set.add(alias);
     }
     return set;
+  }
+
+  /**
+   * Lesbarer Name einer Qualifikation (z.B. "js_sec_wasser" -> "J+S-Modul Sicherheitsbereich
+   * Wasser"): der Titel des Kurses, der sie vergibt. Ohne Treffer der rohe Key, nie erfunden.
+   * @param {string} qualKey
+   * @returns {string}
+   */
+  qualLabel(qualKey) {
+    const granter = Object.values(this.nodes).find(n => (n.grantsQualifications || []).includes(qualKey));
+    return granter?.title || GLOBAL_QUAL_LABELS[qualKey] || qualKey;
   }
 
   /**
@@ -151,7 +175,7 @@ export class CourseTreeEngine {
           blockers.push(`Fehlende Vorgangerkurse: ${titles}`);
         }
         if (missingQuals.length > 0) {
-          blockers.push(`Fehlende Qualifikationen: ${missingQuals.join(', ')}`);
+          blockers.push(`Fehlende Qualifikationen: ${missingQuals.map(q => this.qualLabel(q)).join(', ')}`);
         }
 
         if (blockers.length === 0) {
@@ -268,6 +292,7 @@ export class CourseTreeEngine {
 
     const targetQualCheck = (targetNode.requiredQualifications || []).map(q => ({
       id: q,
+      label: this.qualLabel(q),
       isFulfilled: quals.has(q)
     }));
 
@@ -314,10 +339,11 @@ export class CourseTreeEngine {
       return recommendation ? `${eligible} ${recommendation}` : eligible;
     }
 
+    // Kurz halten: die genauen Titel/Namen stehen schon einzeln in der Checkliste darunter,
+    // hier nur die Kernaussage - sonst wird daraus bei mehreren offenen Punkten ein Fliesstext-Block
     const messages = [];
     if (missingCourses.length > 0) {
-      const titles = missingCourses.map(c => c.title).join(' -> ');
-      messages.push(`Noch ${missingCourses.length} Kurs(e) notwendig: ${titles}`);
+      messages.push(`Noch ${missingCourses.length} Kurs${missingCourses.length === 1 ? '' : 'e'} offen.`);
     }
     if (!ageCheck.isFulfilled) {
       messages.push(ageCheck.actual === null
@@ -326,11 +352,11 @@ export class CourseTreeEngine {
     }
     const missingQuals = qualChecks.filter(q => !q.isFulfilled);
     if (missingQuals.length > 0) {
-      messages.push(`Fehlende Qualifikation: ${missingQuals.map(q => q.id).join(', ')}.`);
+      messages.push(`Noch ${missingQuals.length} Qualifikation${missingQuals.length === 1 ? '' : 'en'} offen.`);
     }
     if (recommendation) messages.push(recommendation);
 
-    return messages.join(' | ');
+    return messages.join(' ');
   }
 }
 

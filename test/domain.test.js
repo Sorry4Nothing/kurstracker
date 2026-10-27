@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, applyKindLabels } from '../src/domain/courseTreeData.js';
-import { courseTreeEngine } from '../src/domain/courseTreeEngine.js';
+import { courseTreeEngine, CourseTreeEngine } from '../src/domain/courseTreeEngine.js';
 import { StufenleiterPlanningEngine } from '../src/domain/stufenleiterPlanningEngine.js';
 import { COURSE_MAP_COORDS } from '../public/js/tree-map.js';
 
@@ -246,10 +246,18 @@ test('Pfad: Sicherheit Wasser scheitert nur an der fehlenden SLRG-Qualifikation'
   assert.equal(result.stepsRemainingCount, 0);
   assert.equal(result.isDirectlyEligible, false);
   assert.deepEqual(result.targetQualCheck, [
-    { id: 'js_leiter_lst', isFulfilled: true },
-    { id: 'slrg_basis_pool', isFulfilled: false }
+    { id: 'js_leiter_lst', label: 'Gruppenleiter/-innen-Kurs 3 (GLK 3)', isFulfilled: true },
+    { id: 'slrg_basis_pool', label: 'SLRG Brevet Basis Pool + BLS-AED', isFulfilled: false }
   ]);
-  assert.equal(result.summary, 'Fehlende Qualifikation: slrg_basis_pool.');
+  assert.equal(result.summary, 'Noch 1 Qualifikation offen.');
+});
+
+test('qualLabel: findet den Titel auch ueber eine fremde Region hinweg, sonst den rohen Key', () => {
+  // slrg_modul_see wird in der Zuerich-Baumvorschau von keinem Kurs vergeben, nur in Bern -
+  // qualLabel() muss trotzdem einen lesbaren Namen finden, keinen rohen Key anzeigen (#128 Folgefehler)
+  const zuerichEngine = new CourseTreeEngine(COURSE_NODES_BY_REGION.zuerich);
+  assert.notEqual(zuerichEngine.qualLabel('slrg_modul_see'), 'slrg_modul_see');
+  assert.equal(zuerichEngine.qualLabel('nicht_vergebene_qualifikation'), 'nicht_vergebene_qualifikation');
 });
 
 test('Pfad: mit 11 zu jung für den Vorkurs, mit 12 direkt anmeldbar', () => {

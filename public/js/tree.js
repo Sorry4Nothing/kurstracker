@@ -311,16 +311,18 @@ export function updateTreeInspector(targetNode, pathResult) {
   // Kokonut Pro Onboarding Checklist Logik
   const checkItems = [];
 
-  // Schritt 1: Alterspruefung
-  checkItems.push({
-    title: `Mindestalter (${targetNode.minAge} Jahre)`,
-    desc: ageCheck.actual === null
-      ? 'Geburtsdatum fehlt in der Cevi-DB, Alter nicht pruefbar.'
-      : ageCheck.isFulfilled
-        ? `Erfuellt! Du bist aktuell ${ageCheck.actual} Jahre alt.`
-        : `Fehlt noch: Du bist ${ageCheck.actual} Jahre alt (benoetigt: ${targetNode.minAge}).`,
-    isFulfilled: ageCheck.isFulfilled
-  });
+  // Schritt 1: Alterspruefung (nur wenn der Kurs ueberhaupt ein Mindestalter verlangt)
+  if (targetNode.minAge) {
+    checkItems.push({
+      title: `Mindestalter (${targetNode.minAge} Jahre)`,
+      desc: ageCheck.actual === null
+        ? 'Geburtsdatum fehlt in der Cevi-DB, Alter nicht pruefbar.'
+        : ageCheck.isFulfilled
+          ? `Erfuellt! Du bist aktuell ${ageCheck.actual} Jahre alt.`
+          : `Fehlt noch: Du bist ${ageCheck.actual} Jahre alt (benoetigt: ${targetNode.minAge}).`,
+      isFulfilled: ageCheck.isFulfilled
+    });
+  }
 
   // Schritt 2: Vorbereitende Cevi-Kurse
   if (targetNode.prerequisites && targetNode.prerequisites.length > 0) {
@@ -335,16 +337,17 @@ export function updateTreeInspector(targetNode, pathResult) {
     });
   }
 
-  // Schritt 3: Qualifikationen / Brevets
+  // Schritt 3: Qualifikationen / Brevets - ein Sammel-Eintrag wie bei den Kursstufen oben,
+  // statt pro Qualifikation eine eigene durchnummerierte Zeile
   if (qualificationChecks && qualificationChecks.length > 0) {
-    qualificationChecks.forEach(q => {
-      checkItems.push({
-        title: `Zertifikat: ${q.id.toUpperCase()}`,
-        desc: q.isFulfilled
-          ? 'Qualifikation in der Cevi-DB bestaetigt.'
-          : 'Anerkennung fehlt noch im Profil.',
-        isFulfilled: q.isFulfilled
-      });
+    const isFulfilled = qualificationChecks.every(q => q.isFulfilled);
+    const missingLabels = qualificationChecks.filter(q => !q.isFulfilled).map(q => q.label || q.id).join(', ');
+    checkItems.push({
+      title: 'Qualifikationen',
+      desc: isFulfilled
+        ? 'Alle noetigen Qualifikationen in der Cevi-DB bestaetigt.'
+        : `Anerkennung fehlt noch im Profil: ${missingLabels}.`,
+      isFulfilled: isFulfilled
     });
   }
 
