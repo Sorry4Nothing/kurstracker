@@ -58,9 +58,17 @@ async function applyRegion(regionKey) {
   resetMapTransform(); // neu einpassen, die Leinwand kann jetzt groesser sein als beim letzten Zoom
 }
 
+// Verworfene Handplatzierung: Koordinaten dieser Region vergessen (auch im Speicher, sonst haelt
+// layoutRegionalCoords sie fuer schon platziert und rechnet nichts neu) und neu laden
+function resetRegionLayout(regionKey) {
+  Object.keys(treeStructure?.nodes || {}).forEach(id => { delete COURSE_MAP_COORDS[id]; });
+  try { localStorage.removeItem(dragStorageKey(regionKey)); } catch { /* z.B. privater Modus */ }
+}
+
 async function setupRegionSwitcher() {
   const group = document.getElementById('treeRegionGroup');
   const select = document.getElementById('treeRegionSelect');
+  const resetBtn = document.getElementById('treeResetLayoutBtn');
   if (!group || !select) return;
   try {
     const res = await fetch('/api/tree/regions');
@@ -71,6 +79,10 @@ async function setupRegionSwitcher() {
     select.value = initialRegion;
     group.style.display = '';
     select.addEventListener('change', () => applyRegion(select.value));
+    resetBtn?.addEventListener('click', () => {
+      resetRegionLayout(selectedRegion);
+      applyRegion(selectedRegion);
+    });
     await applyRegion(initialRegion); // Dropdown zeigt sonst eine Region, laedt aber noch den Standardbaum
   } catch (err) {
     console.error('Regionen fuer Baum-Vorschau nicht geladen:', err);
