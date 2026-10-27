@@ -116,7 +116,7 @@ test('bald fällige J+S-Weiterbildung meldet Verfallsdatum', () => {
   const rec = recommendedCourses.find(r => r.courseId === 'mf_lst');
   assert.equal(rec.priority, 'HOCH');
   assert.match(rec.reason, /verfällt am/);
-  assert.match(rec.reason, /Anerkennung auffrischen nötig/);
+  assert.match(rec.reason, /Auffrischung nötig/);
 });
 
 let baseUrl;
