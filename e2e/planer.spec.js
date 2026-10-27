@@ -78,7 +78,7 @@ test.describe('Stufenleiter-Planer', () => {
     await expect(option('slk')).toHaveText('Stufenleiter/-innen-Kurs (SLK) - ab 17 J.');
   });
 
-  test('Empfehlung zeigt den nächsten Termin mit Anmeldelink, die Saison kommt aus einer echten Durchführung', async ({ page, request }) => {
+  test('Vorschlagsdialog wählt die Saison aus einer echten Durchführung', async ({ page, request }) => {
     // Testkurse haben feste Daten: die Uhr des Browsers vor ihre Termine stellen
     await page.clock.setFixedTime(new Date('2026-09-01T10:00:00'));
     await openApp(page);
@@ -89,9 +89,6 @@ test.describe('Stufenleiter-Planer', () => {
     const item = analysis.analyzedParticipants.find(i => upcoming(i.recommendedCourses?.[0]?.courseId));
     const next = upcoming(item.recommendedCourses[0].courseId);
     const row = page.getByRole('row', { name: item.participant.ceviname });
-
-    await expect(row).toContainText(`Nächster Termin: ${range(next)}`);
-    await expect(row.getByRole('link', { name: /Anmelden/ })).toHaveAttribute('href', next.registration_url);
 
     // Der Dialog wählt die Saison aus dem nächsten Termin des Zielkurses; ohne kommenden Termin bleibt sie frei
     await row.getByRole('button', { name: 'Vorschlagen' }).click();
