@@ -227,6 +227,7 @@ function requirePlanner(req, res, next) {
   }
   if (canUsePlanner(session.user)) {
     res.locals.plannerScope = plannerScope(session.user);
+    res.locals.mockLogin = Boolean(session.isMock);
     return next();
   }
   res.status(403).json({ error: 'Kein Zugriff auf den Stufenleiter-Planer' });
@@ -456,7 +457,7 @@ app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
 // -----------------------------------------------------------------------------
 
 // Demo-Abteilung mit zwei Stufen, damit Filter und Untertitel auch ohne Cevi-DB etwas zeigen
-const demoDepartment = { departmentId: 'demo', departmentName: 'Flaach / Winti' };
+const demoDepartment = { departmentId: 'demo', departmentName: 'Demo-Abteilung' };
 const demoStufen = {
   fuchs: [{ id: 'demo_fuchs', name: 'Stufe Fuchs', type: 'Group::Stufe', ...demoDepartment }],
   adler: [{ id: 'demo_adler', name: 'Stufe Adler', type: 'Group::Stufe', ...demoDepartment }]
@@ -540,6 +541,8 @@ app.get('/api/planner/overview', requirePlanner, async (req, res) => {
     res.json({
       group,
       ...groupsOf(group),
+      // Echte Cevi-DB-Daten über den Mock-Login: gibt es nur lokal, bis der OAuth-Login steht (#4)
+      realDataViaMockLogin: res.locals.mockLogin && members !== defaultDemoGroup,
       analysis,
       nominations: stufenleiterPlanningEngine.getAllNominations()
     });

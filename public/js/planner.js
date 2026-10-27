@@ -26,7 +26,8 @@ export async function loadPlannerData() {
   try {
     const [res, courses] = await Promise.all([fetch('/api/planner/overview'), loadCourses()]);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { analysis, nominations, departments } = await res.json();
+    const { analysis, nominations, departments, realDataViaMockLogin } = await res.json();
+    document.getElementById('plannerMockHint')?.toggleAttribute('hidden', !realDataViaMockLogin);
     const readiness = analysis.analyzedParticipants;
     plannerDepartments = departments || [];
     const subtitle = document.getElementById('topbarPageSubtitle');

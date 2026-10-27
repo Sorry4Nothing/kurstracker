@@ -3,7 +3,7 @@
 // Gruppentypen, die als Stufe zählen (Fröschli ist eine normale Stufe)
 export const STUFE_TYPES = ['Group::Stufe', 'Group::Froeschli'];
 const ABTEILUNGSLEITUNG = 'Group::Jungschar::Abteilungsleiter';
-const STUFENLEITUNG = ['Group::Stufe::Stufenleiter', 'Group::Froeschli::Froeschlihauptleiter'];
+const STUFENLEITUNG = ['Group::Stufe::Stufenleiter'];
 
 // shortcut: Rollen als Text (Testdaten, Demo-Profil) öffnen den Planer wie bisher für alle Gruppen; echte Logins liefern Rollenobjekte
 const LEGACY_ROLES = ['abteilungsleiter', 'stufenleiter'];

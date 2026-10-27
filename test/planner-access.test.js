@@ -13,17 +13,15 @@ const members = [
 test('Planner-Zugriff: Rollen ohne Planer-Recht und Teilnehmende bekommen keinen Scope (#108)', () => {
   assert.equal(plannerScope(null), null);
   assert.equal(plannerScope({ roles: [] }), null);
-  for (const cls of ['Group::Gruppe::Gruppenleiter', 'Group::Froeschli::Froeschlileiter', 'Group::Jungschar::Coach', 'Group::Stufe::Teilnehmer']) {
+  for (const cls of ['Group::Gruppe::Gruppenleiter', 'Group::Froeschli::Froeschlileiter', 'Group::Froeschli::Froeschlihauptleiter', 'Group::Jungschar::Coach', 'Group::Stufe::Teilnehmer']) {
     assert.equal(plannerScope({ roles: [role(cls, 10)] }), null, cls);
   }
 });
 
-test('Planner-Zugriff: Stufenleitung sieht nur die eigene Stufe, auch Fröschli (#108)', () => {
+test('Planner-Zugriff: Stufenleitung sieht nur die eigene Stufe (#108)', () => {
   const scope = plannerScope({ roles: [role('Group::Stufe::Stufenleiter', 10)] });
   assert.deepEqual(visibleTo(scope, members).map(m => m.id), ['a', 'c']);
   assert.deepEqual(visibleTo(scope, members).find(m => m.id === 'c').groups.map(g => g.id), ['10']);
-  const froeschli = plannerScope({ roles: [role('Group::Froeschli::Froeschlihauptleiter', 11)] });
-  assert.deepEqual(visibleTo(froeschli, members).map(m => m.id), ['b']);
 });
 
 test('Planner-Zugriff: Abteilungsleitung sieht alle Stufen ihrer Abteilung, nicht fremde (#108)', () => {
