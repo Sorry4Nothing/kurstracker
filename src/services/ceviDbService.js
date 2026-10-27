@@ -296,17 +296,20 @@ export class CeviDbService {
 
   /**
    * Mitglieder der Gruppe des Service-Tokens für den Stufenleiter-Planer (#26), in der Form der Demo-Gruppe.
-   * Fragt nur ab, was der Planer zeigt: Name, Ceviname, Geschlecht, Geburtstag, Rollen, Kurse und Qualifikationen.
-   * Adresse, E-Mail und Telefon bleiben in der Cevi-DB. Mitglied ist, wer eine laufende Rolle ausserhalb einer Externe-Gruppe hat.
+   * Fragt nur ab, was der Planer zeigt: Name, Ceviname, Geschlecht, Geburtstag, Rollen, Gruppen samt Abteilung (Layer-Gruppe), Kurse und Qualifikationen.
+   * Adresse, E-Mail und Telefon bleiben in der Cevi-DB.
+   * Wer davon wem gezeigt wird, entscheidet plannerAccess.js (#108), nicht dieser Dienst.
+   * Mitglied ist, wer eine laufende Rolle ausserhalb einer Externe-Gruppe hat.
    * @returns {Promise<Array>}
    */
   async getGroupMembers() {
     const today = new Date().toISOString().slice(0, 10);
     // shortcut: kein Cache, jeder Planer-Aufruf lädt die ganze Gruppe neu; zwischenspeichern mit #27
     // fields[...] nennt auch die Beziehungen, sonst fehlt die Verknüpfung zu den mitgeladenen Einträgen
-    const people = await this.fetchList('/api/people?include=roles,qualifications.qualification_kind,event_participations.event.dates'
+    const people = await this.fetchList('/api/people?include=roles.group.layer_group,qualifications.qualification_kind,event_participations.event.dates'
       + '&fields[people]=first_name,last_name,nickname,gender,birthday,roles,qualifications,event_participations'
-      + '&fields[roles]=name,type,start_on,end_on&fields[qualifications]=finish_at,qualification_kind'
+      + '&fields[roles]=name,type,start_on,end_on,group&fields[groups]=name,short_name,type,layer,layer_group_id,layer_group'
+      + '&fields[qualifications]=finish_at,qualification_kind'
       + '&fields[event_participations]=active,event');
 
     return people.map(person => {
@@ -332,6 +335,16 @@ export class CeviDbService {
         for (const [pattern, nodeId] of QUALIFICATION_COURSES) if (pattern.test(label)) courses.completed.add(nodeId);
       }
 
+      // Gruppen und ihre Abteilung stehen in der Cevi-DB, nie im Code: eine andere Abteilung bringt ihre eigenen mit
+      const groups = [...new Map(roles.filter(r => r.group).map(({ group }) => [String(group.id), {
+        id: String(group.id),
+        name: group.name,
+        shortName: group.short_name || '',
+        type: group.type,
+        departmentId: String(group.layer_group_id ?? group.id),
+        departmentName: group.layer_group?.name || (group.layer ? group.name : '')
+      }])).values()];
+
       return {
         id: person.id,
         name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
@@ -339,6 +352,7 @@ export class CeviDbService {
         gender: person.gender,
         birthdate: person.birthday,
         currentRole: [...new Set(roles.map(r => r.name))].join(', '),
+        groups,
         completedCourses: [...courses.completed],
         inProgressCourses: [...courses.upcoming],
         qualifications

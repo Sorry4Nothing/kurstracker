@@ -13,6 +13,11 @@ const dateRange = course => formatEuropeanDateRange(course.start_date, course.en
 // Ohne Kursdaten bleibt der Planer nutzbar, nur ohne Termine
 const loadCourses = () => fetchCourses().catch(() => []);
 
+// Namen der Abteilungen aus der Cevi-DB, gesetzt beim Laden des Planers
+let plannerDepartments = [];
+export const plannerSubtitle = () =>
+  `Ausbildungsreife der Abteilung ${plannerDepartments.join(', ') || '…'}`;
+
 export async function loadPlannerData() {
   const tableBody = document.getElementById('plannerTableBody');
   const nominationsList = document.getElementById('nominationsList');
@@ -21,8 +26,11 @@ export async function loadPlannerData() {
   try {
     const [res, courses] = await Promise.all([fetch('/api/planner/overview'), loadCourses()]);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { analysis, nominations } = await res.json();
+    const { analysis, nominations, departments } = await res.json();
     const readiness = analysis.analyzedParticipants;
+    plannerDepartments = departments || [];
+    const subtitle = document.getElementById('topbarPageSubtitle');
+    if (subtitle && document.getElementById('panel-planner')?.classList.contains('active')) subtitle.textContent = plannerSubtitle();
 
     // KPI-Zahlen aus der Server-Analyse
     const statTotal = document.getElementById('statPlannerTotal');

@@ -10,6 +10,7 @@ import { ceviDbService } from './services/ceviDbService.js';
 import { courseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
 import { COURSE_NODES, withGenderTitles } from './domain/courseTreeData.js';
+import { plannerScope, visibleTo, groupsOf } from './domain/plannerAccess.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -217,17 +218,7 @@ function consumeState(state) {
   return expiresAt !== undefined && expiresAt > Date.now();
 }
 
-// Rollen mit Zugriff auf den Stufenleiter-Planer
-const PLANNER_ROLES = ['abteilungsleiter', 'stufenleiter', 'kader', 'kursleiter', 'admin'];
-
-function canUsePlanner(user) {
-  // Wortweise vergleichen statt Substring: "J+S Kursleiter" und "Stufenleiterin" zählen, "Ex-Abteilungsleiter-Kurs" als Teilwort nicht
-  return (user?.roles || []).some(role =>
-    String(role).toLowerCase().replace(/[*:]/g, '').split(/[^a-zäöüéèà]+/).some(word =>
-      PLANNER_ROLES.some(allowed => word === allowed || word === `${allowed}in`)
-    )
-  );
-}
+const canUsePlanner = user => plannerScope(user) !== null;
 
 function requirePlanner(req, res, next) {
   const session = getSession(req);
@@ -235,6 +226,7 @@ function requirePlanner(req, res, next) {
     return res.status(401).json({ error: 'Nicht angemeldet' });
   }
   if (canUsePlanner(session.user)) {
+    res.locals.plannerScope = plannerScope(session.user);
     return next();
   }
   res.status(403).json({ error: 'Kein Zugriff auf den Stufenleiter-Planer' });
@@ -463,9 +455,17 @@ app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
 // STUFENLEITER & ABTEILUNGSPLANUNG API
 // -----------------------------------------------------------------------------
 
+// Demo-Abteilung mit zwei Stufen, damit Filter und Untertitel auch ohne Cevi-DB etwas zeigen
+const demoDepartment = { departmentId: 'demo', departmentName: 'Flaach / Winti' };
+const demoStufen = {
+  fuchs: [{ id: 'demo_fuchs', name: 'Stufe Fuchs', type: 'Group::Stufe', ...demoDepartment }],
+  adler: [{ id: 'demo_adler', name: 'Stufe Adler', type: 'Group::Stufe', ...demoDepartment }]
+};
+
 const defaultDemoGroup = [
   {
     id: 'tn_1',
+    groups: demoStufen.fuchs,
     name: 'Noah Keller',
     ceviname: 'Fuchs',
     gender: 'm',
@@ -475,6 +475,7 @@ const defaultDemoGroup = [
   },
   {
     id: 'tn_2',
+    groups: demoStufen.fuchs,
     name: 'Lea Meier',
     ceviname: 'Amsel',
     gender: 'w',
@@ -485,6 +486,7 @@ const defaultDemoGroup = [
   },
   {
     id: 'tn_3',
+    groups: demoStufen.adler,
     name: 'Marc Brunner',
     ceviname: 'Milan',
     gender: 'm',
@@ -496,6 +498,7 @@ const defaultDemoGroup = [
   },
   {
     id: 'tn_4',
+    groups: demoStufen.fuchs,
     name: 'Sara Wyss',
     ceviname: 'Kolibri',
     gender: 'w',
@@ -506,6 +509,7 @@ const defaultDemoGroup = [
   },
   {
     id: 'tn_5',
+    groups: demoStufen.adler,
     name: 'Luca Frei',
     ceviname: 'Biber',
     gender: 'm',
@@ -530,10 +534,12 @@ app.get('/api/planner/overview', requirePlanner, async (req, res) => {
     // plannerGroup gibt die Demo-Gruppe direkt zurück, die echten Mitglieder als Promise
     const members = plannerGroup();
     setSource(res, members === defaultDemoGroup ? 'testdaten' : 'cevi-db');
-    const group = await members;
+    // Nur was die Rolle der Person zeigt: fremde Stufen verlassen den Server nie (#108)
+    const group = visibleTo(res.locals.plannerScope, await members);
     const analysis = stufenleiterPlanningEngine.analyzeGroup(group);
     res.json({
       group,
+      ...groupsOf(group),
       analysis,
       nominations: stufenleiterPlanningEngine.getAllNominations()
     });
@@ -547,7 +553,7 @@ app.post('/api/planner/propose', requirePlanner, async (req, res) => {
   try {
     // Express 5 leaves req.body undefined when no JSON body was sent
     const { personId, targetCourseId, proposedSeason, notes, proposedBy } = req.body ?? {};
-    const person = (await plannerGroup()).find(p => p.id === personId);
+    const person = visibleTo(res.locals.plannerScope, await plannerGroup()).find(p => p.id === personId);
     if (!person) {
       return res.status(404).json({ error: 'Person nicht gefunden' });
     }

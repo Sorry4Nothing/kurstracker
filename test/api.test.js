@@ -301,6 +301,7 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
       gender: 'w',
       birthdate: '2009-05-01',
       currentRole: 'Leiter*in',
+      groups: [],
       completedCourses: ['glk3', 'heku'],
       inProgressCourses: [],
       // Neueste Anerkennung zuerst
@@ -311,7 +312,7 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
       ]
     },
     {
-      id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in',
+      id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in', groups: [],
       completedCourses: ['sec_wasser'],
       inProgressCourses: ['heku'],
       qualifications: [
