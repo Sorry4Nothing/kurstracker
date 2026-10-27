@@ -22,7 +22,7 @@
   <!-- Font Awesome 6 Pro Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <link rel="stylesheet" href="style.css?v=31">
+  <link rel="stylesheet" href="style.css?v=34">
 </head>
 <body class="dark-theme">
 
@@ -63,7 +63,12 @@
           <span class="nav-text">Stufenleiter-Planer</span>
         </button>
 
-        <!-- Nur für Abteilungsleitungen: auth.js blendet die Seite ein, wenn der Server sie freigibt -->
+        <!-- Nur für Abteilungsleitungen: auth.js blendet die Seiten ein, wenn der Server sie freigibt -->
+        <button class="sidebar-nav-item" id="tabProposals" onclick="switchTab('proposals')" hidden>
+          <i class="fa-solid fa-clipboard-check nav-icon" aria-hidden="true"></i>
+          <span class="nav-text">Kursvorschläge</span>
+        </button>
+
         <button class="sidebar-nav-item" id="tabSettings" onclick="switchTab('settings')" hidden>
           <i class="fa-solid fa-gear nav-icon" aria-hidden="true"></i>
           <span class="nav-text">Umgebungseinstellungen</span>
@@ -276,7 +281,7 @@
               Echte Daten der Cevi-DB, angezeigt mit einem Mock-Login, weil der Cevi-DB-Login noch nicht angebunden ist. Das geht nur lokal auf localhost.
             </p>
             <div class="planner-actions">
-              <button class="btn btn-secondary" onclick="loadPlannerData()">
+              <button class="btn btn-secondary" onclick="loadPlannerData(true)">
                 <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Aktualisieren
               </button>
             </div>
@@ -324,7 +329,7 @@
                       <th aria-sort="none"><button type="button" class="sort-button" data-sort="age">Alter</button></th>
                       <th id="plannerStufeHead" aria-sort="none" hidden><button type="button" class="sort-button" data-sort="stufe">Stufe</button></th>
                       <th>Aktuelle Rolle</th>
-                      <th>Bisherige Kurse</th>
+                      <th>Qualifikationen</th>
                       <th>Automatische Kursempfehlung</th>
                       <th>Aktion</th>
                     </tr>
@@ -338,9 +343,10 @@
 
             <div class="card planner-nominations-card">
               <div class="card-header-flex">
-                <h3>Erfasste Kursvorschläge</h3>
+                <h3>Kursvorschläge</h3>
                 <span class="badge badge-success" id="nominationsCountBadge">0</span>
               </div>
+              <p class="text-danger proposals-error" id="proposalsError" role="alert" hidden></p>
               <div class="nominations-list" id="nominationsList">
                 <p class="empty-text">Noch keine Kursvorschläge erfasst. Klicke bei einem Teilnehmer auf &laquo;Vorschlagen&raquo;.</p>
               </div>
@@ -561,6 +567,10 @@
         <!-- ===================================================================
              5. UMGEBUNGSEINSTELLUNGEN (#129): Cevi-DB-API-Key der eigenen Abteilung
              =================================================================== -->
+        <section class="tab-panel" id="panel-proposals" role="tabpanel">
+          <div id="proposalsOverviewList" class="proposals-overview"></div>
+        </section>
+
         <section class="tab-panel" id="panel-settings" role="tabpanel">
           <div class="settings-layout">
             <div id="settingsList" class="settings-layout">
@@ -629,66 +639,91 @@
   <div class="modal-backdrop" id="nominationModal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 id="modalTitle">Kurs vorschlagen</h3>
+        <span class="modal-icon" aria-hidden="true"><i class="fa-solid fa-graduation-cap"></i></span>
+        <div class="modal-heading">
+          <h3 id="modalTitle">Kurs vorschlagen</h3>
+          <p class="modal-subtitle">Der Vorschlag landet in der Liste der Stufe.</p>
+        </div>
         <button class="modal-close" onclick="closeNominationModal()" aria-label="Schliessen">
           <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
       </div>
       <form id="nominationForm" onsubmit="submitNomination(event)">
         <input type="hidden" id="modalPersonId">
-        <div class="form-group">
-          <label for="modalPersonName">Teilnehmer / Leiter:</label>
-          <input type="text" id="modalPersonName" class="form-input" readonly>
+        <input type="hidden" id="modalGroupId">
+        <div class="form-group" id="modalPersonNameGroup">
+          <span class="form-label" id="modalPersonNameLabel">Teilnehmer / Leiter</span>
+          <div class="person-chip" aria-labelledby="modalPersonNameLabel">
+            <span class="person-chip-avatar" id="modalPersonAvatar" aria-hidden="true"></span>
+            <span id="modalPersonName"></span>
+          </div>
+        </div>
+        <div class="form-group" id="modalPersonPickGroup" hidden>
+          <label for="modalPersonPick">Person aus der Stufe</label>
+          <select id="modalPersonPick" class="form-input"></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group form-group-wide">
+            <label for="modalCourseSelect">Kurs</label>
+            <select id="modalCourseSelect" class="form-input">
+              <option value="voku" data-code="Voku">Vorkurs (Voku) - ab 12 J.</option>
+              <option value="heku" data-code="Heku">Helfer/-innen-Kurs (Heku) - ab 13 J.</option>
+              <option value="glk1" data-code="GLK 1">Gruppenleiter/-innen-Kurs 1 (GLK 1) - ab 14 J.</option>
+              <option value="glk2" data-code="GLK 2">Gruppenleiter/-innen-Kurs 2 (GLK 2) - ab 15 J.</option>
+              <option value="glk3" data-code="GLK 3">Gruppenleiter/-innen-Kurs 3 (GLK 3) - ab 17 J.</option>
+              <option value="slk" data-code="SLK">Stufenleiter/-innen-Kurs (SLK) - ab 17 J.</option>
+              <option value="mf_lst" data-code="Fortbildung">J+S-Modul Fortbildung (MF) - ab 18 J.</option>
+              <option value="slrg_pool" data-code="SLRG Pool">SLRG Brevet Basis Pool + BLS-AED - ab 14 J.</option>
+              <option value="pionier" data-code="Pionier">Pioniertechnik-Modul - ab 15 J.</option>
+              <option value="sec_berg" data-code="SiBe Berg">J+S-Modul Sicherheitsbereich Berg - ab 18 J.</option>
+              <option value="sec_wasser" data-code="SiBe Wasser">J+S-Modul Sicherheitsbereich Wasser - ab 18 J.</option>
+              <option value="sec_winter" data-code="SiBe Winter">J+S-Modul Sicherheitsbereich Winter - ab 18 J.</option>
+              <option value="llm" data-code="LLM">Lagerleiter/-innen-Modul (LLM) - ab 19 J.</option>
+              <option value="al_seminar" data-code="AL-Semi">Abteilungsleiter/-innen-Seminar (AL-Semi) - ab 18 J.</option>
+              <option value="js_coach" data-code="Coach">J+S-Coachkurs - ab 20 J.</option>
+              <option value="experte" data-code="Experte">J+S-Expertenkurs - ab 21 J.</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="modalSeason">Jahr</label>
+            <select id="modalSeason" class="form-input"></select>
+          </div>
         </div>
         <div class="form-group">
-          <label for="modalCourseSelect">Zielkurs (Cevi Region Zürich):</label>
-          <select id="modalCourseSelect" class="form-input">
-            <optgroup label="Level 0: Jungschar Einstieg">
-              <option value="voku">Vorkurs (Voku) - ab 12 J.</option>
-              <option value="heku">Helfer/-innen-Kurs (Heku) - ab 13 J.</option>
-              <option value="glk1">Gruppenleiter/-innen-Kurs 1 (GLK 1) - ab 14 J.</option>
-              <option value="glk2">Gruppenleiter/-innen-Kurs 2 (GLK 2) - ab 15 J.</option>
-            </optgroup>
-            <optgroup label="Level 1: J+S Leiterstufe">
-              <option value="glk3">Gruppenleiter/-innen-Kurs 3 (GLK 3) - ab 17 J.</option>
-            </optgroup>
-            <optgroup label="Level 2: Stufenleitung, Weiterbildung & Sicherheit">
-              <option value="slk">Stufenleiter/-innen-Kurs (SLK) - ab 17 J.</option>
-              <option value="mf_lst">J+S-Modul Fortbildung (MF) - ab 18 J.</option>
-              <option value="slrg_pool">SLRG Brevet Basis Pool + BLS-AED - ab 14 J.</option>
-              <option value="pionier">Pioniertechnik-Modul - ab 15 J.</option>
-              <option value="sec_berg">J+S-Modul Sicherheitsbereich Berg - ab 18 J.</option>
-              <option value="sec_wasser">J+S-Modul Sicherheitsbereich Wasser - ab 18 J.</option>
-              <option value="sec_winter">J+S-Modul Sicherheitsbereich Winter - ab 18 J.</option>
-            </optgroup>
-            <optgroup label="Level 3: Kaderstufe">
-              <option value="llm">Lagerleiter/-innen-Modul (LLM) - ab 19 J.</option>
-              <option value="al_seminar">Abteilungsleiter/-innen-Seminar (AL-Semi) - ab 18 J.</option>
-              <option value="js_coach">J+S-Coachkurs - ab 20 J.</option>
-            </optgroup>
-            <optgroup label="Level 4: Expertenstufe">
-              <option value="experte">J+S-Expertenkurs - ab 21 J.</option>
-            </optgroup>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="modalSeason">Geplante Saison / Jahr:</label>
-          <!-- Vorschläge aus den echten Durchführungen des Zielkurses, eigene Eingabe bleibt möglich -->
-          <input type="text" id="modalSeason" class="form-input" list="modalSeasonOptions" placeholder="z. B. Herbst 2027">
-          <datalist id="modalSeasonOptions"></datalist>
-        </div>
-        <div class="form-group">
-          <label for="modalNotes">Bemerkungen / Motivation:</label>
-          <textarea id="modalNotes" class="form-input" rows="2" placeholder="z.B. Ist sehr engagiert in der Stufe und bereit für mehr Verantwortung."></textarea>
+          <label for="modalNotes">Bemerkungen / Motivation</label>
+          <p class="text-dim" id="modalManualHint" hidden>Das System sieht diese Person für diesen Kurs nicht vor. Bitte begründe den Vorschlag: die Abteilungsleitung liest die Bemerkung.</p>
+          <textarea id="modalNotes" class="form-input" rows="2" aria-describedby="modalManualHint" maxlength="500" placeholder="z.B. Ist sehr engagiert in der Stufe und bereit für mehr Verantwortung."></textarea>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" onclick="closeNominationModal()">Abbrechen</button>
-          <button type="submit" class="btn btn-primary">Vorschlag speichern</button>
+          <button type="submit" class="btn btn-primary">Vorschlag übernehmen</button>
         </div>
       </form>
     </div>
   </div>
 
-  <script type="module" src="app.js?v=23"></script>
+  <!-- Bestätigungsdialog, geöffnet über confirmDialog() in js/confirm.js -->
+  <div class="modal-backdrop" id="confirmModal" style="display: none;" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-icon" aria-hidden="true"><i class="fa-solid fa-circle-question"></i></span>
+        <div class="modal-heading">
+          <h3 id="confirmTitle"></h3>
+        </div>
+      </div>
+      <p class="confirm-text" id="confirmText"></p>
+      <div class="form-group" id="confirmNoteGroup" hidden>
+        <label for="confirmNote"></label>
+        <textarea id="confirmNote" class="form-input" rows="3" maxlength="500"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary">Abbrechen</button>
+        <button type="button" class="btn btn-primary"></button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js?v=24"></script>
+<div class="toast-region" id="toastRegion" role="status" aria-live="polite"></div>
 </body>
 </html>

@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures.js';
 
-// Ladeanimation (#91): vor dem Ladetext dreht ein Ring, bis die Daten da sind; Fehler und «Bewegung reduzieren» bleiben ruhig
+// Ladeanimation (#91): über dem Ladetext zeigt ein Pinselwisch Cevi- und J+S-Logo im Wechsel, bis die Daten da sind; Fehler und «Bewegung reduzieren» bleiben ruhig
 test.describe('Ladeanimation', () => {
   // Hält die Baumdaten zurück, damit «Lade Ausbildungsbaum...» stehen bleibt
   async function openWhileLoading(page) {
@@ -10,17 +10,17 @@ test.describe('Ladeanimation', () => {
     await expect(placeholder).toBeVisible();
     return placeholder;
   }
-  // subtree: true, sonst fehlt die Animation des Rings auf ::before
+  // subtree: true, sonst fehlt die Animation des Logos auf ::before
   const animations = placeholder => placeholder.evaluate(el => el.getAnimations({ subtree: true }).map(a => a.animationName));
 
-  test('vor dem Ladetext dreht ein Ring, eine Fehlermeldung bleibt ruhig', async ({ page }) => {
+  test('über dem Ladetext wischt der Pinsel die Logos ein, eine Fehlermeldung bleibt ruhig', async ({ page }) => {
     const placeholder = await openWhileLoading(page);
-    expect(await animations(placeholder)).toEqual(['loading-spin']);
+    expect(await animations(placeholder)).toEqual(['logo-wipe']);
     await placeholder.evaluate(el => el.classList.add('text-danger'));
     await expect.poll(() => animations(placeholder)).toEqual([]);
   });
 
-  test('mit «Bewegung reduzieren» steht der Ring still', async ({ page }) => {
+  test('mit «Bewegung reduzieren» steht das Logo still', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const placeholder = await openWhileLoading(page);
     await expect.poll(() => animations(placeholder)).toEqual([]);

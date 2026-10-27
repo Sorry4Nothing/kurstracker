@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import pg from 'pg';
 import { envConfig } from '../config/env.js';
+import { query } from './database.js';
 
 // Cevi-DB-API-Keys der Abteilungen (#129), AES-256-GCM-verschlüsselt in der Datenbank.
 // Der Schlüssel liegt nur in der Server-Umgebung; ohne ihn oder ohne Datenbank bleibt die Seite aus.
@@ -80,17 +80,4 @@ export function createCredentialStore({ query, key }) {
   };
 }
 
-const { databaseUrl, encryptionKey } = envConfig.credentials;
-const key = parseKey(encryptionKey);
-let pool;
-function newPool() {
-  const created = new pg.Pool({ connectionString: databaseUrl, max: 3 });
-  // Ein gekappter Leerlauf-Client (Neon schläft ein) darf den Prozess nicht beenden
-  created.on('error', err => console.error('[Datenbank] Leerlauf-Verbindung verloren:', err.code || err.message));
-  return created;
-}
-const query = databaseUrl
-  ? (sql, params) => (pool ??= newPool()).query(sql, params)
-  : null;
-
-export const credentialStore = createCredentialStore({ query, key });
+export const credentialStore = createCredentialStore({ query, key: parseKey(envConfig.credentials.encryptionKey) });

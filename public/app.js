@@ -54,10 +54,11 @@ if (document.documentElement.classList.contains('intro-pending')) {
 // Tastatur-Navigation (Escape zum Schliessen von Modals & Menues)
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    closeNominationModal();
+    // Ein offenes Dropdown im Dialog schliesst zuerst, der Dialog erst mit dem nächsten Escape (capture: vor theme.js, das offene Dropdowns schliesst)
+    if (!document.querySelector('.custom-dropdown.open')) closeNominationModal();
     closeAllDropdowns();
   }
-});
+}, true);
 
 // Responsive Re-Layout bei Fenster-Groessenaenderung
 window.addEventListener('resize', debounce(() => {

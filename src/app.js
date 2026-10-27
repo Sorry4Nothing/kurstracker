@@ -10,8 +10,11 @@ import { ceviDbService } from './services/ceviDbService.js';
 import { courseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
 import { COURSE_NODES, withGenderTitles } from './domain/courseTreeData.js';
-import { plannerScope, visibleTo, groupsOf, leadDepartments } from './domain/plannerAccess.js';
+import { plannerScope, visibleTo, groupsOf, leadDepartments, canEditGroup, canReopenGroup } from './domain/plannerAccess.js';
+import { normalizeEntries, MAX_NOTE, STATUS_OPEN, STATUS_SUBMITTED } from './domain/proposals.js';
 import { credentialStore } from './services/credentialStore.js';
+import { proposalStore } from './services/proposalStore.js';
+import { query as databaseQuery } from './services/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -333,7 +336,8 @@ app.get('/api/auth/me', (req, res) => {
     user: session.user,
     isMock: session.isMock,
     canUsePlanner: canUsePlanner(session.user),
-    canManageSettings: leadDepartments(session.user).length > 0
+    canManageSettings: leadDepartments(session.user).length > 0,
+    canReviewProposals: leadDepartments(session.user).length > 0
   });
 });
 
@@ -537,16 +541,17 @@ const defaultDemoGroup = [
 // Echte Mitglieder lädt der Service-Token ohne Login (#26). Darum nur, wenn die App bloss auf diesem Rechner erreichbar ist:
 // sonst sähe jede Besucherin Namen und Geburtsdaten der ganzen Gruppe.
 // shortcut: ohne Login nur lokal, nach dem OAuth-Login (#4) auch Leitenden dieser Gruppe zeigen
-function plannerGroup() {
+function plannerGroup(fresh = false) {
   const localOnly = envConfig.app.isLocal && ['localhost', '127.0.0.1', '::1'].includes(envConfig.server.host);
-  return ceviDbService.serviceToken && localOnly ? ceviDbService.getGroupMembers() : defaultDemoGroup;
+  return ceviDbService.serviceToken && localOnly ? ceviDbService.getGroupMembers({ fresh }) : defaultDemoGroup;
 }
 
 // Gesamtübersicht und Analyse für Stufenleiter
 app.get('/api/planner/overview', requirePlanner, async (req, res) => {
   try {
     // plannerGroup gibt die Demo-Gruppe direkt zurück, die echten Mitglieder als Promise
-    const members = plannerGroup();
+    // «Aktualisieren» schickt ?refresh=1 und umgeht den Cache der Cevi-DB-Daten (höchstens alle 10 s, siehe CeviDbService)
+    const members = plannerGroup(req.query.refresh === '1');
     setSource(res, members === defaultDemoGroup ? 'testdaten' : 'cevi-db');
     // Nur was die Rolle der Person zeigt: fremde Stufen verlassen den Server nie (#108)
     const group = visibleTo(res.locals.plannerScope, await members);
@@ -597,6 +602,154 @@ app.post('/api/planner/propose', requirePlanner, async (req, res) => {
     });
   } catch (err) {
     sendError(res, err, 'Kursvorschlag');
+  }
+});
+
+// -----------------------------------------------------------------------------
+// KURSVORSCHLÄGE JE STUFE (#131): Entwurf speichern, abgeben, zurückgeben
+// -----------------------------------------------------------------------------
+
+const actorName = user => (user.nickname || [user.first_name, user.last_name].filter(Boolean).join(' ')).slice(0, 100) || String(user.id ?? 'unbekannt');
+
+// Ohne Datenbank gehen Vorschläge beim Neustart verloren: auf dem Server lieber ablehnen als still verlieren
+function requireProposalStorage(req, res, next) {
+  if (databaseQuery || !envConfig.app.isProduction) return next();
+  res.status(503).json({ error: 'Vorschläge sind auf diesem Server nicht eingerichtet' });
+}
+
+const proposalWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.RATE_LIMIT_PROPOSALS_MAX || 120),
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({ error: 'Zu viele Änderungen. Bitte später erneut versuchen.' })
+});
+
+// Stufen, die der Scope zeigt, samt ihren sichtbaren Mitgliedern; die Stufe kommt nur aus dem Scope, nie aus dem Body
+async function visibleStufen(scope, res) {
+  const members = visibleTo(scope, await plannerGroup());
+  setSource(res, 'kurstracker');
+  return { members, groups: groupsOf(members).groups };
+}
+
+app.get('/api/planner/proposals', requirePlanner, requireProposalStorage, async (req, res) => {
+  try {
+    const scope = res.locals.plannerScope;
+    const { groups } = await visibleStufen(scope, res);
+    const saved = await proposalStore.getMany(groups.map(group => group.id));
+    res.json({
+      user: actorName(getSession(req).user),
+      groups: groups.map(group => {
+        const row = saved.get(group.id);
+        return {
+          groupId: group.id,
+          status: row?.status ?? STATUS_OPEN,
+          entries: row?.entries ?? [],
+          updatedBy: row?.updatedBy ?? null,
+          updatedAt: row?.updatedAt ?? null,
+          submittedBy: row?.submittedBy ?? null,
+          submittedAt: row?.submittedAt ?? null,
+          returnNote: row?.returnNote ?? null,
+          // Abgegeben: nur die Abteilungsleitung passt an, die Stufe bleibt abgegeben (PUT …/final)
+          canEdit: row?.status === STATUS_SUBMITTED ? canReopenGroup(scope, group) : canEditGroup(scope, group),
+          canReopen: canReopenGroup(scope, group) && row?.status === STATUS_SUBMITTED
+        };
+      })
+    });
+  } catch (err) {
+    sendError(res, err, 'Vorschläge laden');
+  }
+});
+
+// Gemeinsame Prüfung der drei schreibenden Routen: Stufe sichtbar (sonst 404), Recht dafür (sonst 403)
+function stufeAction(permission, handler) {
+  return async (req, res) => {
+    try {
+      const scope = res.locals.plannerScope;
+      const { members, groups } = await visibleStufen(scope, res);
+      const group = groups.find(g => g.id === req.params.groupId);
+      if (!group) return res.status(404).json({ error: 'Stufe nicht gefunden' });
+      if (!permission(scope, group)) {
+        logSecurity(req, `403 keine Berechtigung stufe=${group.id}`, getSession(req));
+        return res.status(403).json({ error: 'Dafür fehlt die Berechtigung' });
+      }
+      const { user } = getSession(req);
+      const saved = await handler({ req, group, members: members.filter(m => m.groups.some(g => g.id === group.id)), user: actorName(user) });
+      if (!saved) return res.status(409).json({ error: 'Der Status dieser Stufe erlaubt das nicht (abgegeben oder noch kein Entwurf)' });
+      res.json(saved);
+    } catch (err) {
+      sendError(res, err, 'Vorschläge speichern');
+    }
+  };
+}
+
+const returnNoteOf = note => {
+  if (note != null && typeof note !== 'string') throw Object.assign(new Error('Ungültige Bemerkung'), { status: 400 });
+  const trimmed = (note ?? '').trim();
+  if (trimmed.length > MAX_NOTE) throw Object.assign(new Error(`Bemerkung höchstens ${MAX_NOTE} Zeichen`), { status: 400 });
+  return trimmed || null;
+};
+
+const entriesOf = async ({ req, group, members, user }) => normalizeEntries(req.body?.entries, {
+  members,
+  candidatesByCourse: stufenleiterPlanningEngine.analyzeGroup(members).candidatesByCourse,
+  previous: (await proposalStore.getMany([group.id])).get(group.id)?.entries,
+  user
+});
+
+app.put('/api/planner/proposals/:groupId', proposalWriteLimiter, requirePlanner, requireProposalStorage,
+  stufeAction(canEditGroup, async ctx => proposalStore.saveDraft({
+    groupId: ctx.group.id, departmentId: ctx.group.departmentId, entries: await entriesOf(ctx), user: ctx.user
+  })));
+
+// Abgeben speichert die mitgeschickten Einträge als letzten Stand und sperrt die Stufe
+app.post('/api/planner/proposals/:groupId/submit', proposalWriteLimiter, requirePlanner, requireProposalStorage,
+  stufeAction(canEditGroup, async ctx => {
+    const base = { groupId: ctx.group.id, departmentId: ctx.group.departmentId, user: ctx.user };
+    if (!await proposalStore.saveDraft({ ...base, entries: await entriesOf(ctx) })) return null;
+    return proposalStore.submit(base);
+  }));
+
+// Die Abteilungsleitung passt abgegebene Vorschläge an, ohne die Stufe wieder zu öffnen
+app.put('/api/planner/proposals/:groupId/final', proposalWriteLimiter, requirePlanner, requireProposalStorage,
+  stufeAction(canReopenGroup, async ctx => proposalStore.saveFinal({
+    groupId: ctx.group.id, entries: await entriesOf(ctx), user: ctx.user
+  })));
+
+// Die Bemerkung der Abteilungsleitung («bitte Heku-Plätze prüfen») sieht die Stufe beim Bearbeiten
+app.post('/api/planner/proposals/:groupId/reopen', proposalWriteLimiter, requirePlanner, requireProposalStorage,
+  stufeAction(canReopenGroup, ctx => proposalStore.reopen({ groupId: ctx.group.id, user: ctx.user, note: returnNoteOf(ctx.req.body?.note) })));
+
+// Übersicht der abgegebenen Vorschläge für die Abteilungsleitung: nur finale Stände (abgegeben), je Stufe, mit Namen statt Personen-IDs.
+// Stufen ohne Abgabe erscheinen nur als Name, damit die Leitung sieht, worauf sie noch wartet.
+app.get('/api/proposals/final', requireDepartmentLead, requireProposalStorage, async (req, res) => {
+  try {
+    const scope = plannerScope(res.locals.session.user);
+    const { members, groups } = await visibleStufen(scope, res);
+    const saved = await proposalStore.getMany(groups.map(group => group.id));
+    const submitted = [];
+    const pending = [];
+    for (const group of groups) {
+      const row = saved.get(group.id);
+      if (row?.status !== STATUS_SUBMITTED) { pending.push({ groupId: group.id, name: group.name }); continue; }
+      submitted.push({
+        groupId: group.id,
+        name: group.name,
+        departmentName: group.departmentName ?? null,
+        submittedBy: row.submittedBy,
+        submittedAt: row.submittedAt,
+        updatedBy: row.updatedBy,
+        updatedAt: row.updatedAt,
+        entries: row.entries.map(entry => {
+          const person = members.find(member => member.id === entry.personId);
+          // Eine Person, die nicht mehr in der Stufe ist, bleibt als Eintrag ohne Namen stehen
+          return { ...entry, ceviname: person?.ceviname ?? null, name: person?.name ?? null, gender: person?.gender ?? null, birthYear: Number(String(person?.birthdate ?? '').slice(0, 4)) || null };
+        })
+      });
+    }
+    res.json({ submitted, pending });
+  } catch (err) {
+    sendError(res, err, 'Abgegebene Vorschläge');
   }
 });
 

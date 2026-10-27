@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { plannerScope, visibleTo, groupsOf } from '../src/domain/plannerAccess.js';
+import { plannerScope, visibleTo, groupsOf, canEditGroup } from '../src/domain/plannerAccess.js';
 
 const role = (role_class, group_id) => ({ role_class, group_id });
 const stufe = (id, departmentId = '1') => ({ id, name: `Stufe ${id}`, type: 'Group::Stufe', departmentId, departmentName: 'JS Stäfa-Hombrechtikon' });
@@ -42,6 +42,24 @@ test('Planner-Zugriff: Region, Schweiz und Vereine zählen nie als Stufe, auch n
   const region = { id: '99', name: 'Region Zürich', type: 'Group::Region', departmentId: '99', departmentName: 'Region Zürich' };
   const people = [{ id: 'a', groups: [stufe('10'), region] }, { id: 'b', groups: [region] }];
   const visible = visibleTo({ all: true }, people);
-  assert.deepEqual(visible.map(m => m.groups.map(g => g.id)), [['10'], []]);
+  assert.deepEqual(visible.map(m => m.groups.map(g => g.id)), [['10']]);
   assert.deepEqual(groupsOf(visible).departments, ['JS Stäfa-Hombrechtikon']);
+});
+
+test('Planner-Zugriff: Fröschli zeigt nur Leitende, vorgeschlagen werden sie allein von der Abteilungsleitung (#131)', () => {
+  const froeschli = roleTypes => ({ id: '30', name: 'Fröschli', type: 'Group::Froeschli', departmentId: '1', roleTypes });
+  const people = [
+    { id: 'kind', groups: [froeschli(['Group::Froeschli::Teilnehmer'])] },
+    { id: 'leiter', groups: [froeschli(['Group::Froeschli::Froeschlileiter'])] },
+    { id: 'haupt', groups: [froeschli(['Group::Froeschli::Froeschlihauptleiter'])] }
+  ];
+  const lead = plannerScope({ roles: [role('Group::Jungschar::Abteilungsleiter', '1')] });
+  assert.deepEqual(visibleTo(lead, people).map(m => m.id), ['leiter', 'haupt']);
+  assert.deepEqual(visibleTo({ all: true }, people).map(m => m.id), ['leiter', 'haupt']);
+
+  const stufenleitung = plannerScope({ roles: [role('Group::Stufe::Stufenleiter', 10)] });
+  assert.deepEqual(visibleTo(stufenleitung, people), []);
+  assert.equal(canEditGroup(lead, people[1].groups[0]), true);
+  assert.equal(canEditGroup(stufenleitung, people[1].groups[0]), false);
+  assert.equal(canEditGroup(lead, stufe('10')), false, 'normale Stufen schlägt die Stufenleitung vor');
 });
