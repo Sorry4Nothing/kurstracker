@@ -304,9 +304,9 @@ export class CeviDbService {
     const today = new Date().toISOString().slice(0, 10);
     // shortcut: kein Cache, jeder Planer-Aufruf lädt die ganze Gruppe neu; zwischenspeichern mit #27
     // fields[...] nennt auch die Beziehungen, sonst fehlt die Verknüpfung zu den mitgeladenen Einträgen
-    const people = await this.fetchList('/api/people?include=roles,qualifications.qualification_kind,event_participations.event.dates'
+    const people = await this.fetchList('/api/people?include=roles.group,qualifications.qualification_kind,event_participations.event.dates'
       + '&fields[people]=first_name,last_name,nickname,gender,birthday,roles,qualifications,event_participations'
-      + '&fields[roles]=name,type,start_on,end_on&fields[qualifications]=finish_at,qualification_kind'
+      + '&fields[roles]=name,type,start_on,end_on,group&fields[groups]=name,display_name&fields[qualifications]=finish_at,qualification_kind'
       + '&fields[event_participations]=active,event');
 
     return people.map(person => {
@@ -339,6 +339,7 @@ export class CeviDbService {
         gender: person.gender,
         birthdate: person.birthday,
         currentRole: [...new Set(roles.map(r => r.name))].join(', '),
+        groups: [...new Set(roles.map(r => r.group?.display_name || r.group?.name).filter(Boolean))],
         completedCourses: [...courses.completed],
         inProgressCourses: [...courses.upcoming],
         qualifications
