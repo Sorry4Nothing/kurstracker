@@ -42,6 +42,15 @@ export const COURSE_MAP_COORDS = {
 // Level Up, NOLK) haengen an keinem anderen Kurs und wuerden sonst wie ein Folgekurs von GLK 3 wirken.
 // Sie bekommen eine eigene Reihe ganz oben im selben Canvas, durch eine groessere Luecke optisch
 // abgesetzt - alles bleibt ein Fenster, nur raeumlich getrennt statt eine zweite Flaeche daneben.
+// Kleiner, pro Kurs-ID fester Versatz statt eines perfekten Rasters - wirkt handgezeichnet statt
+// maschinell aufgereiht, bleibt aber bei jedem Laden gleich (kein Math.random(), sonst springen
+// die Karten bei jedem Region-Wechsel neu herum)
+function jitterFor(id) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return { x: ((h & 0xff) / 255 - 0.5) * 36, y: (((h >> 8) & 0xff) / 255 - 0.5) * 26 };
+}
+
 export function layoutRegionalCoords(nodeIds, nodesById) {
   const todo = nodeIds.filter(id => !COURSE_MAP_COORDS[id] && nodesById[id]);
   if (!todo.length) return null;
@@ -60,7 +69,8 @@ export function layoutRegionalCoords(nodeIds, nodesById) {
 
   if (standaloneIds.length) {
     standaloneIds.forEach((id, i) => {
-      COURSE_MAP_COORDS[id] = { x: X0 + i * COL_W, y: 40 };
+      const j = jitterFor(id);
+      COURSE_MAP_COORDS[id] = { x: X0 + i * COL_W + j.x, y: 40 + j.y };
     });
     maxWidth = Math.max(maxWidth, X0 + standaloneIds.length * COL_W + NODE_WIDTH + 40);
     pipelineY0 = 40 + ROW_H + STANDALONE_GAP;
@@ -90,15 +100,17 @@ export function layoutRegionalCoords(nodeIds, nodesById) {
     ids.forEach((id, i) => {
       const subCol = Math.floor(i / MAX_ROWS);
       const row = i % MAX_ROWS;
-      COURSE_MAP_COORDS[id] = { x: X0 + (colCursor + subCol) * COL_W, y: pipelineY0 + row * ROW_H };
+      const j = jitterFor(id);
+      COURSE_MAP_COORDS[id] = { x: X0 + (colCursor + subCol) * COL_W + j.x, y: pipelineY0 + row * ROW_H + j.y };
       maxRowsUsed = Math.max(maxRowsUsed, row + 1);
     });
     colCursor += subCols;
   });
 
   return {
-    width: Math.max(maxWidth, X0 + colCursor * COL_W + NODE_WIDTH + 40),
-    height: pipelineY0 + maxRowsUsed * ROW_H + 40
+    // +20 Rand, da der Versatz (jitterFor) einzelne Karten leicht ueber das Rasterende hinausschiebt
+    width: Math.max(maxWidth, X0 + colCursor * COL_W + NODE_WIDTH + 40) + 20,
+    height: pipelineY0 + maxRowsUsed * ROW_H + 40 + 20
   };
 }
 

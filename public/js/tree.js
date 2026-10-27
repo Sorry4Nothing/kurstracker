@@ -204,7 +204,10 @@ function setupNodeDrag() {
       if (Math.hypot(dx, dy) < 4) return;
       dragState.moved = true;
       dragState.card.classList.add('is-dragging');
-      dragState.card.setPointerCapture(dragState.pointerId);
+      // Capture kann vereinzelt NotFoundError werfen (Pointer gilt in dem Moment als nicht aktiv) -
+      // ohne try/catch bricht das hier die ganze Verschiebung ab, bevor die Position unten
+      // ueberhaupt aktualisiert wird. Die Karte bleibt auch ohne Capture verschiebbar.
+      try { dragState.card.setPointerCapture(dragState.pointerId); } catch { /* siehe oben */ }
     }
     const x = Math.max(0, dragState.origX + dx);
     const y = Math.max(0, dragState.origY + dy);
