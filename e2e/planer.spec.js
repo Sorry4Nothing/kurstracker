@@ -31,6 +31,23 @@ test.describe('Stufenleiter-Planer', () => {
     await expect(page.locator('#plannerTableBody')).not.toContainText('HLK');
   });
 
+  test('Spaltenformat bleibt gleich, mit und ohne Spalte Stufe', async ({ page }) => {
+    const row = page.locator('#plannerTableBody tr').first();
+    const styles = () => row.locator('td').evaluateAll(cells => cells.map(c => getComputedStyle(c).textAlign));
+    await expect(page.locator('#plannerStufeHead')).toBeVisible();
+    const withStufe = await styles();
+    // Nur die Aktion steht rechts (und das Alter); die Empfehlung davor bleibt linksbündig
+    expect(withStufe.at(-1)).toBe('right');
+    expect(withStufe.at(-2)).not.toBe('right');
+
+    await page.locator('#plannerStufeTrigger').click();
+    await page.getByRole('option').nth(1).click();
+    await expect(page.locator('#plannerStufeHead')).toBeHidden();
+    const withoutStufe = await styles();
+    expect(withoutStufe.at(-1)).toBe('right');
+    expect(withoutStufe.at(-2)).not.toBe('right');
+  });
+
   test('«Vorschlagen» öffnet den Dialog mit Person und Empfehlung, Abbrechen, X und Escape schliessen ihn', async ({ page, request }) => {
     const { analysis } = await fetchOverview(request);
     const { participant, recommendedCourses } = analysis.analyzedParticipants.find(p => p.recommendedCourses?.length);
