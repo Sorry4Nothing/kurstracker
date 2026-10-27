@@ -554,6 +554,54 @@ test('Live-Login: Planer ist ohne Leitungsrolle gesperrt, Stufenleiterin hat Zug
   assert.equal((await request('/api/planner/overview', { cookie: leader })).status, 200);
 });
 
+// Rechtematrix (SR-12): jede /api-Route braucht hier eine Zeile, sonst schlägt der Test fehl (deny by default)
+const RIGHTS = {
+  'GET /api/auth/login': 'public',
+  'GET /api/auth/mock-login': 'public',
+  'GET /api/auth/callback': 'public',
+  'GET /api/auth/me': 'public',
+  'POST /api/auth/logout': 'public',
+  'GET /api/tree/structure': 'public',
+  'GET /api/system/status': 'public',
+  'GET /api/courses': 'session',
+  'GET /api/user/history': 'session',
+  'GET /api/user/qualifications': 'session',
+  'GET /api/tree/evaluation': 'session',
+  'GET /api/tree/path/:courseId': 'session',
+  'GET /api/planner/overview': 'planner',
+  'POST /api/planner/propose': 'planner'
+};
+
+test('Rechtematrix (SR-12): jede API-Route hat eine Zeile, Session- und Planer-Routen verweigern ohne Recht', async (t) => {
+  const registered = app.router.stack
+    .filter(layer => layer.route?.path.startsWith('/api'))
+    .flatMap(({ route }) => Object.keys(route.methods).map(method => `${method.toUpperCase()} ${route.path}`));
+  assert.ok(registered.length >= Object.keys(RIGHTS).length - 1, 'Routen aus dem Express-Router gelesen');
+  assert.deepEqual(registered.filter(route => !RIGHTS[route]), [], 'Route ohne Zeile in RIGHTS');
+
+  const login = useLiveCeviDb(t);
+  const member = cookiePair(await login({ id: 'p_6', first_name: 'Tim', roles: ['Mitglied'] }));
+  for (const [route, right] of Object.entries(RIGHTS)) {
+    if (right === 'public') continue;
+    const [method, pattern] = route.split(' ');
+    const path = pattern.replace(':courseId', 'heku');
+    const anonymous = await request(path, { method });
+    assert.equal(anonymous.status, 401, `${route} ohne Session`);
+    if (right === 'planner') {
+      const noRole = await request(path, { method, cookie: member });
+      assert.equal(noRole.status, 403, `${route} ohne Leitungsrolle`);
+    }
+  }
+});
+
+test('Session: jeder Login bekommt eine neue Session-ID, auch mit vorhandenem Cookie (SR-02)', async (t) => {
+  const login = useLiveCeviDb(t);
+  const first = await login({ id: 'p_7', roles: [] });
+  const { state, cookie } = await startLogin();
+  const res = await request(`/api/auth/callback?code=abc&state=${state}`, { cookie: `${cookiePair(first)}; ${cookie}` });
+  assert.notEqual(cookiePair(setCookieLine(res, 'cevi_session_id')), cookiePair(first));
+});
+
 test('Logout: nur per POST, beendet die Session serverseitig und löscht das Cookie', async (t) => {
   const login = useLiveCeviDb(t);
   const cookie = cookiePair(await login({ id: 'p_4', first_name: 'Ida', roles: [] }));
