@@ -19,7 +19,7 @@ export async function loadPlannerData() {
   if (!tableBody) return;
 
   try {
-    const [res, courses] = await Promise.all([fetch('/api/planner/overview'), loadCourses()]);
+    const res = await fetch('/api/planner/overview');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { analysis, nominations } = await res.json();
     const readiness = analysis.analyzedParticipants;
@@ -44,17 +44,11 @@ export async function loadPlannerData() {
       let recBadge = '<span class="text-dim">Keine Empfehlung</span>';
       if (primaryRec) {
         const prioClass = primaryRec.priority === 'DRINGEND' ? 'prio-urgent' : 'prio-high';
-        const nextDate = upcomingDates(courses, primaryRec.courseId)[0];
         recBadge = `
           <span class="recommendation-pill ${prioClass}">
             ${primaryRec.priority === 'DRINGEND' ? '<i class="fa-solid fa-triangle-exclamation"></i> ' : ''}${esc(primaryRec.courseTitle || primaryRec.title || 'Empfohlener Kurs')}
           </span>
           <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.2rem;">${esc(primaryRec.reason)}</div>
-          ${nextDate ? `
-            <div style="font-size: 0.72rem; margin-top: 0.2rem;">
-              Nächster Termin: ${esc(dateRange(nextDate))} ·
-              <a href="${esc(nextDate.registration_url)}" target="_blank" rel="noopener noreferrer" aria-label="Anmelden (öffnet in neuem Tab)">Anmelden</a>
-            </div>` : ''}
         `;
       }
 
