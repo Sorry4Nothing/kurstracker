@@ -573,6 +573,15 @@ test('Log: verweigerte Zugriffe und ungültiger state erscheinen mit Akteur, ohn
   assert.ok(!lines.join().includes(member.split('=')[1]), 'Session-Cookie nicht im Log');
 });
 
+test('Session: ein neuer Login beendet die alte Session serverseitig (SR-02)', async (t) => {
+  const login = useLiveCeviDb(t);
+  const old = cookiePair(await login({ id: 'p_7', roles: [] }));
+  const { state, cookie } = await startLogin();
+  const res = await request(`/api/auth/callback?code=abc&state=${state}`, { cookie: `${old}; ${cookie}` });
+  assert.notEqual(cookiePair(setCookieLine(res, 'cevi_session_id')), old);
+  assert.deepEqual(await (await request('/api/auth/me', { cookie: old })).json(), { authenticated: false });
+});
+
 // Rechtematrix (SR-12): jede /api-Route braucht hier eine Zeile, sonst schlägt der Test fehl (deny by default)
 const RIGHTS = {
   'GET /api/auth/login': 'public',

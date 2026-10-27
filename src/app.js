@@ -302,6 +302,8 @@ app.get('/api/auth/callback', async (req, res) => {
     const tokenData = await ceviDbService.exchangeCodeForToken(code);
     const userInfo = await ceviDbService.getUserInfo(tokenData.access_token);
 
+    // Eine mitgesendete alte Session endet mit dem neuen Login (SR-02)
+    activeSessions.delete(req.signedCookies?.cevi_session_id);
     setSession(res, {
       user: userInfo,
       accessToken: tokenData.access_token,
