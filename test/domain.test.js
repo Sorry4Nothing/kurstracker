@@ -382,7 +382,7 @@ test('Planer: Anerkennung, die vor dem Kursjahr endet, heisst «verfällt», nic
   });
   const [mf] = leader(`${planYear - 1}-12-31`).recommendedCourses;
   assert.equal(mf.priority, 'DRINGEND');
-  assert.match(mf.reason, new RegExp(`verfällt am 31\.12\.${planYear - 1}, vor Beginn ${planYear}`));
+  assert.match(mf.reason, new RegExp(`verfällt am 31\\.12\\.${planYear - 1}, vor Beginn ${planYear}`));
   assert.doesNotMatch(mf.reason, /abgelaufen/);
   assert.equal(leader(`${planYear}-01-01`).hasExpiringJsLeiter, true);
 });
