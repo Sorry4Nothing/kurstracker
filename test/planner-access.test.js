@@ -37,3 +37,11 @@ test('Planner-Zugriff: ohne Scope bleibt die Liste leer, Gruppen und Abteilungen
   assert.deepEqual(groups.map(g => g.id).sort(), ['10', '11', '20']);
   assert.deepEqual(departments, ['JS Stäfa-Hombrechtikon']);
 });
+
+test('Planner-Zugriff: Region, Schweiz und Vereine zählen nie als Stufe, auch nicht bei vollem Zugriff', () => {
+  const region = { id: '99', name: 'Region Zürich', type: 'Group::Region', departmentId: '99', departmentName: 'Region Zürich' };
+  const people = [{ id: 'a', groups: [stufe('10'), region] }, { id: 'b', groups: [region] }];
+  const visible = visibleTo({ all: true }, people);
+  assert.deepEqual(visible.map(m => m.groups.map(g => g.id)), [['10'], []]);
+  assert.deepEqual(groupsOf(visible).departments, ['JS Stäfa-Hombrechtikon']);
+});
