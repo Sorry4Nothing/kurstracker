@@ -112,14 +112,16 @@ test('Kurskarte: jeder Kurs hat eine Position auf der Leinwand, ohne Überlappun
 // Altersregeln
 // -----------------------------------------------------------------------------
 
-test('Alter: zählt erst am Geburtstag hoch, für TT.MM.JJJJ, ISO-Datum und Date', () => {
+test('Alter: zählt nach Jahrgang (Kalenderjahr), nicht am exakten Geburtstag, für TT.MM.JJJJ, ISO-Datum und Date', () => {
   const day = (y, m, d) => new Date(y, m - 1, d);
-  assert.equal(courseTreeEngine.calculateAge('14.08.2009', day(2026, 8, 13)), 16);
-  assert.equal(courseTreeEngine.calculateAge('14.08.2009', day(2026, 8, 14)), 17);
-  assert.equal(courseTreeEngine.calculateAge(day(2009, 8, 14), day(2026, 8, 13)), 16);
-  assert.equal(courseTreeEngine.calculateAge(day(2009, 8, 14), day(2026, 8, 14)), 17);
-  assert.equal(courseTreeEngine.calculateAge('2009-08-14', day(2026, 7, 14)), 16);
-  assert.equal(courseTreeEngine.calculateAge('2009-08-14', day(2026, 9, 14)), 17);
+  // cevi.db selbst prüft Mindestalter als "(Jahrgang)": wer im laufenden Kalenderjahr
+  // das Alter erreicht, gilt schon als zugelassen, unabhängig vom genauen Geburtstag.
+  assert.equal(courseTreeEngine.calculateAge('14.08.2009', day(2026, 1, 1)), 17);
+  assert.equal(courseTreeEngine.calculateAge('14.08.2009', day(2026, 8, 13)), 17);
+  assert.equal(courseTreeEngine.calculateAge('14.08.2009', day(2026, 12, 31)), 17);
+  assert.equal(courseTreeEngine.calculateAge(day(2009, 8, 14), day(2025, 12, 31)), 16);
+  assert.equal(courseTreeEngine.calculateAge(day(2009, 8, 14), day(2027, 1, 1)), 18);
+  assert.equal(courseTreeEngine.calculateAge('2009-08-14', day(2026, 7, 14)), 17);
   for (const invalid of [undefined, null, '', 'unbekannt']) {
     assert.equal(courseTreeEngine.calculateAge(invalid), null, String(invalid));
   }
