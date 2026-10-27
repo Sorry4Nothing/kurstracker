@@ -29,36 +29,31 @@ export const COURSE_MAP_COORDS = {
   sec_winter: { x: 1740, y: 670 }
 };
 
-// Regionale Vorstufen-Knoten (id-Muster "<region>_s<stufe>" bzw. "<region>_s<stufe>_<parallel-index>",
-// siehe buildRegionNodes in courseTreeData.js) haben keine feste Koordinate. Reiht sie zwischen Vokus
-// und GLK 3s Position ein, parallele Module einer Stufe uebereinander. Ergaenzt COURSE_MAP_COORDS nur,
-// ueberschreibt nie eine feste Koordinate (Zuerich und alles ab GLK 3 bleiben unberuehrt).
-const REGION_STAGE_RE = /_s(\d+)(?:_(\d+))?$/;
-export function layoutRegionalCoords(nodeIds) {
-  const stageCounts = {};
-  let maxStage = -1;
-  nodeIds.forEach(id => {
-    const m = REGION_STAGE_RE.exec(id);
-    if (!m) return;
-    const stage = Number(m[1]);
-    stageCounts[stage] = (stageCounts[stage] || 0) + 1;
-    maxStage = Math.max(maxStage, stage);
-  });
-  if (maxStage < 0) return;
-  const stageCount = maxStage + 1;
-  const xStart = COURSE_MAP_COORDS.voku.x;
-  const xEnd = COURSE_MAP_COORDS.glk3.x;
-  const yCenter = COURSE_MAP_COORDS.voku.y;
-  nodeIds.forEach(id => {
-    if (COURSE_MAP_COORDS[id]) return;
-    const m = REGION_STAGE_RE.exec(id);
-    if (!m) return;
-    const stage = Number(m[1]);
-    const memberIndex = m[2] !== undefined ? Number(m[2]) : 0;
-    const memberCount = stageCounts[stage];
-    const x = Math.round(xStart + (stage / Math.max(stageCount - 1, 1)) * (xEnd - xStart));
-    const y = Math.round(yCenter + (memberIndex - (memberCount - 1) / 2) * (NODE_HEIGHT + 10));
-    COURSE_MAP_COORDS[id] = { x, y };
+// Regionale Baum-Vorschau (COURSE_NODES_BY_REGION, siehe courseTreeData.js) hat eigene Kurs-IDs ohne
+// feste Koordinate. Reiht sie per Tiefensuche ueber prerequisites/recommendedPrerequisites in Spalten
+// ein (Tiefe = Spalte, mehrere Kurse derselben Tiefe untereinander) und ergaenzt COURSE_MAP_COORDS nur
+// um die fehlenden Ids - ueberschreibt nie eine feste Koordinate.
+export function layoutRegionalCoords(nodeIds, nodesById) {
+  const todo = nodeIds.filter(id => !COURSE_MAP_COORDS[id] && nodesById[id]);
+  if (!todo.length) return;
+  const depth = {};
+  todo.forEach(id => { depth[id] = 0; });
+  for (let pass = 0; pass < 30; pass++) {
+    todo.forEach(id => {
+      const node = nodesById[id];
+      const preds = [...(node.prerequisites || []), ...(node.recommendedPrerequisites || [])];
+      preds.forEach(p => {
+        if (!(p in depth)) return; // Vorgaenger hat schon eine feste Koordinate -> nicht Teil dieser Tiefenzaehlung
+        const d = Math.min(depth[p] + 1, 25);
+        if (d > depth[id]) depth[id] = d;
+      });
+    });
+  }
+  const byDepth = {};
+  todo.forEach(id => { (byDepth[depth[id]] = byDepth[depth[id]] || []).push(id); });
+  const COL_W = 270, ROW_H = NODE_HEIGHT + 20, X0 = 60, Y0 = 40;
+  Object.entries(byDepth).forEach(([d, ids]) => {
+    ids.forEach((id, i) => { COURSE_MAP_COORDS[id] = { x: X0 + Number(d) * COL_W, y: Y0 + i * ROW_H }; });
   });
 }
 

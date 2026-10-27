@@ -37,7 +37,7 @@ async function setupRegionSwitcher() {
       selectedRegion = select.value;
       const structRes = await fetch(`/api/tree/structure?region=${encodeURIComponent(selectedRegion)}`);
       treeStructure = await structRes.json();
-      layoutRegionalCoords(Object.keys(treeStructure.nodes));
+      layoutRegionalCoords(Object.keys(treeStructure.nodes), treeStructure.nodes);
       renderTree();
     });
   } catch (err) {

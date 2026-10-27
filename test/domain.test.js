@@ -127,34 +127,27 @@ test('Alter: zählt nach Jahrgang (Kalenderjahr), nicht am exakten Geburtstag, f
   }
 });
 
-test('Regionen: jede hat eine eigene Vorstufenkette bis GLK 3, Zürich bleibt der unveränderte Standardbaum, ab GLK 3 ist der Pfad sonst überall gleich', () => {
+test('Regionen (Baum-Vorschau aus dem Kursablauf-Editor-Artefakt): jeder Kurs hat Titel/Mindestalter, keine hängenden Vorgänger-Referenzen, nationale Kurse laufen in jeder Region mit', () => {
   assert.deepEqual(REGIONS.map(r => r.key), ['zuerich', 'winterthur-schaffhausen', 'bern', 'ostschweiz', 'agsoluzg']);
-  assert.equal(COURSE_NODES_BY_REGION.zuerich, COURSE_NODES);
+  // COURSE_NODES (Zürich, handgepflegt) bleibt unberührt - die Vorschau ist eine separate, aus dem Artefakt gebaute Datenquelle
+  assert.ok(COURSE_NODES.voku, 'Standardbaum unverändert');
+  assert.notEqual(COURSE_NODES_BY_REGION.zuerich, COURSE_NODES);
+
   for (const { key } of REGIONS) {
     const nodes = COURSE_NODES_BY_REGION[key];
-    const prestageIds = nodes.glk3.recommendedPrerequisites;
-    assert.ok(prestageIds.length, `${key}: GLK 3 hat keine empfohlene Vorstufe`);
-
-    // jeder Knoten in der Vorstufenkette existiert, hat Titel/Mindestalter, Vorgänger existieren auch
-    const visited = new Set();
-    const toCheck = [...prestageIds];
-    while (toCheck.length) {
-      const id = toCheck.pop();
-      if (visited.has(id)) continue;
-      visited.add(id);
-      assert.ok(nodes[id], `${key}: Vorstufen-Knoten ${id} fehlt`);
-      assert.ok(nodes[id].title, `${key}.${id} hat keinen Titel`);
-      assert.ok(nodes[id].minAge > 0, `${key}.${id} hat kein Mindestalter`);
-      toCheck.push(...nodes[id].prerequisites);
+    assert.ok(Object.keys(nodes).length > 0, `${key}: keine Kurse`);
+    for (const [id, node] of Object.entries(nodes)) {
+      assert.ok(node.title, `${key}.${id} hat keinen Titel`);
+      assert.ok(typeof node.minAge === 'number', `${key}.${id} hat kein Mindestalter-Feld`); // 0 = DB nennt keins (z.B. Kaderkurse)
+      for (const prereqId of [...node.prerequisites, ...node.recommendedPrerequisites]) {
+        assert.ok(nodes[prereqId], `${key}.${id}: Vorgänger ${prereqId} fehlt in derselben Region`);
+      }
     }
+  }
 
-    // ab GLK 3 ist der Pfad national gleich; nur dessen empfohlene Vorstufe ist ja gerade regional
-    const { recommendedPrerequisites, ...glk3Rest } = nodes.glk3;
-    const { recommendedPrerequisites: _zuerich, ...zuerichGlk3Rest } = COURSE_NODES.glk3;
-    assert.deepEqual(glk3Rest, zuerichGlk3Rest, `${key}.glk3 weicht (ausser Vorstufe) vom Standardbaum ab`);
-    for (const id of ['slk', 'mf_lst', 'llm', 'al_seminar', 'js_coach', 'experte']) {
-      assert.deepEqual(nodes[id], COURSE_NODES[id], `${key}.${id} weicht vom Standardbaum ab`);
-    }
+  // nationale Kurse (Cevi Schweiz, Externe Kurse, wassermodul.ch) laufen in jeder Region mit (eigene id-Vorsilbe pro Region)
+  for (const { key } of REGIONS) {
+    assert.ok(Object.keys(COURSE_NODES_BY_REGION[key]).includes(`${key}_j_s_coachkurs_2027`), `${key} hat den nationalen J+S-Coachkurs nicht`);
   }
 });
 
