@@ -260,6 +260,15 @@ test('qualLabel: findet den Titel auch ueber eine fremde Region hinweg, sonst de
   assert.equal(zuerichEngine.qualLabel('nicht_vergebene_qualifikation'), 'nicht_vergebene_qualifikation');
 });
 
+test('isEffectivelyCompleted: ein Kurs gilt auch erledigt, wenn seine Qualifikation schon bestaetigt ist, auch ohne passenden Kurs-Teilnahme-Datensatz', () => {
+  // Cevi-DB fuehrt Brevets/Qualifikationen und Kursteilnahmen getrennt - sonst widerspricht sich
+  // der Kurs-Pfad ("noch offen") der Qualifikations-Checkliste ("bestaetigt") fuer denselben Kurs
+  assert.equal(courseTreeEngine.isEffectivelyCompleted('sec_wasser', new Set(), new Set(['js_sec_wasser'])), true);
+  assert.equal(courseTreeEngine.isEffectivelyCompleted('sec_berg', new Set(), new Set(['js_sec_wasser'])), false);
+  assert.equal(courseTreeEngine.isEffectivelyCompleted('voku', new Set(), new Set()), false);
+  assert.equal(courseTreeEngine.isEffectivelyCompleted('voku', new Set(['voku']), new Set()), true);
+});
+
 test('Pfad: mit 11 zu jung für den Vorkurs, mit 12 direkt anmeldbar', () => {
   const tooYoung = courseTreeEngine.findPathToTarget({ birthdate: birthdateForAge(11) }, 'voku');
   assert.deepEqual(tooYoung.ageCheck, { required: 12, actual: 11, isFulfilled: false });

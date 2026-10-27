@@ -75,6 +75,23 @@ export class CourseTreeEngine {
   }
 
   /**
+   * Ein Kurs gilt auch als absolviert, wenn completedCourses ihn nicht listet, aber die Person
+   * bereits alle Qualifikationen hat, die der Kurs vergibt (z.B. ein Brevet aus der Cevi-DB ohne
+   * passenden Kurs-Teilnahme-Datensatz) - sonst widersprechen sich Kurs-Pfad und Qualifikations-
+   * Checkliste: derselbe Kurs steht als "noch offen" und seine Qualifikation gleichzeitig als
+   * "bestaetigt".
+   * @param {string} id
+   * @param {Set<string>} completed
+   * @param {Set<string>} quals
+   * @returns {boolean}
+   */
+  isEffectivelyCompleted(id, completed, quals) {
+    if (completed.has(id)) return true;
+    const grants = this.nodes[id]?.grantsQualifications || [];
+    return grants.length > 0 && grants.every(q => quals.has(q));
+  }
+
+  /**
    * Kurs, der eine Qualifikation vergibt (z.B. "js_sec_wasser" -> der Kurs "J+S-Modul
    * Sicherheitsbereich Wasser"): zeigt, wie man an die Qualifikation kommt. Erst im eigenen
    * Baum gesucht, sonst ueber alle Regionen; ohne Treffer null, nie erfunden.
@@ -275,11 +292,11 @@ export class CourseTreeEngine {
     const fitsAge = (id) => personAge === null ||
       personAge <= (this.nodes[id].recommendedAge ?? Infinity) + RECOMMENDED_AGE_TOLERANCE_YEARS;
     const recommendedIds = collect(true, new Set(requiredIds))
-      .filter(id => completed.has(id) || fitsAge(id));
+      .filter(id => this.isEffectivelyCompleted(id, completed, quals) || fitsAge(id));
 
     const toStep = (id, openStatus) => {
       const node = this.nodes[id];
-      const done = completed.has(id);
+      const done = this.isEffectivelyCompleted(id, completed, quals);
       return {
         id,
         title: node.title,
@@ -299,7 +316,7 @@ export class CourseTreeEngine {
     const targetDirectPrereqs = (targetNode.prerequisites || []).map(id => ({
       id,
       title: this.nodes[id]?.title || id,
-      isFulfilled: completed.has(id)
+      isFulfilled: this.isEffectivelyCompleted(id, completed, quals)
     }));
 
     const targetQualCheck = (targetNode.requiredQualifications || []).map(q => {
