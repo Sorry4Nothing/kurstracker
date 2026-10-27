@@ -191,6 +191,10 @@
 
           <!-- Tree Toolbar: Canvas Zoom & Ansicht -->
           <div class="tree-toolbar">
+            <div class="tree-zoom-group" id="treeRegionGroup" style="display:none">
+              <span class="tree-zoom-caption">Region (Vorschau):</span>
+              <select id="treeRegionSelect" class="form-select form-select-sm" style="width:auto;display:inline-block"></select>
+            </div>
             <div class="tree-zoom-group">
               <span class="tree-zoom-caption">Ansicht:</span>
               <button class="btn btn-secondary btn-sm" onclick="zoomMap(-0.15)" title="Verkleinern" aria-label="Baum verkleinern">

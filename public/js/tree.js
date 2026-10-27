@@ -10,6 +10,7 @@ import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 let treeStructure = null;
 let currentTreeEvaluation = null;
 let selectedTargetCourseId = null;
+let selectedRegion = '';
 
 export function getTreeStructure() {
   return treeStructure;
@@ -17,6 +18,30 @@ export function getTreeStructure() {
 
 export function getSelectedTargetCourseId() {
   return selectedTargetCourseId;
+}
+
+// Temporaere Vorschau: Pfad einer anderen Region laden, ohne Status/Evaluation neu zu holen
+// (die bleibt auf der eigenen Person, nur die Baumstruktur/Beschriftung wechselt)
+async function setupRegionSwitcher() {
+  const group = document.getElementById('treeRegionGroup');
+  const select = document.getElementById('treeRegionSelect');
+  if (!group || !select) return;
+  try {
+    const res = await fetch('/api/tree/regions');
+    const { regions } = await res.json();
+    if (!regions?.length) return;
+    select.innerHTML = regions.map(r => `<option value="${esc(r.key)}">${esc(r.label)}</option>`).join('');
+    select.value = selectedRegion || regions[0].key;
+    group.style.display = '';
+    select.addEventListener('change', async () => {
+      selectedRegion = select.value;
+      const structRes = await fetch(`/api/tree/structure?region=${encodeURIComponent(selectedRegion)}`);
+      treeStructure = await structRes.json();
+      renderTree();
+    });
+  } catch (err) {
+    console.error('Regionen fuer Baum-Vorschau nicht geladen:', err);
+  }
 }
 
 export async function loadCourseTree() {
@@ -34,6 +59,7 @@ export async function loadCourseTree() {
 
     renderTree();
     setupInteractiveMap(pickStartCourse());
+    setupRegionSwitcher();
   } catch (err) {
     console.error('Fehler beim Laden des Kursbaums:', err);
     container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursbaums: ${esc(err.message)}</div>`;

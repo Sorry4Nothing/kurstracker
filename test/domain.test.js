@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COURSE_NODES, withGenderTitles, applyKindLabels } from '../src/domain/courseTreeData.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, applyKindLabels } from '../src/domain/courseTreeData.js';
 import { courseTreeEngine } from '../src/domain/courseTreeEngine.js';
 import { StufenleiterPlanningEngine } from '../src/domain/stufenleiterPlanningEngine.js';
 import { COURSE_MAP_COORDS } from '../public/js/tree-map.js';
@@ -124,6 +124,22 @@ test('Alter: zählt nach Jahrgang (Kalenderjahr), nicht am exakten Geburtstag, f
   assert.equal(courseTreeEngine.calculateAge('2009-08-14', day(2026, 7, 14)), 17);
   for (const invalid of [undefined, null, '', 'unbekannt']) {
     assert.equal(courseTreeEngine.calculateAge(invalid), null, String(invalid));
+  }
+});
+
+test('Regionen: jede hat Vorstufen bis GLK 3, Zürich bleibt der unveränderte Standardbaum, GLK 3 und alles danach ist überall gleich', () => {
+  assert.deepEqual(REGIONS.map(r => r.key), ['zuerich', 'winterthur-schaffhausen', 'bern', 'ostschweiz', 'agsoluzg']);
+  assert.equal(COURSE_NODES_BY_REGION.zuerich, COURSE_NODES);
+  for (const { key } of REGIONS) {
+    const nodes = COURSE_NODES_BY_REGION[key];
+    for (const id of ['voku', 'heku', 'glk1', 'glk2']) {
+      assert.ok(nodes[id].title, `${key}.${id} hat keinen Titel`);
+      assert.ok(nodes[id].minAge > 0, `${key}.${id} hat kein Mindestalter`);
+    }
+    // ab GLK 3 (J+S-Zertifizierung) ist der Pfad national gleich, keine Region überschreibt ihn
+    for (const id of ['glk3', 'slk', 'mf_lst', 'llm', 'al_seminar', 'js_coach', 'experte']) {
+      assert.deepEqual(nodes[id], COURSE_NODES[id], `${key}.${id} weicht vom Standardbaum ab`);
+    }
   }
 });
 

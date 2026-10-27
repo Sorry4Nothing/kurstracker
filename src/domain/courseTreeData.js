@@ -274,6 +274,72 @@ COURSE_NODES.hlk = COURSE_NODES.heku;
 COURSE_NODES.mf = COURSE_NODES.mf_lst;
 
 /**
+ * Vorstufen (Level 0, vor der J+S-Zertifizierung via GLK 3) sind von Region zu Region
+ * unterschiedlich benannt und unterschiedlich gestuft (Quelle: cevi.db, Veranstalter-Filter
+ * "Alle Gruppen", Kurse vom 27.10.2026-27.10.2027, siehe Kursablauf-Editor-Recherche). Ab GLK 3
+ * sind die Kurse national/sportartspezifisch gleich, deshalb bleibt dort nichts ueberschrieben.
+ *
+ * Nicht jede Region hat exakt 4 Vorstufen wie Zuerich (Voku/Heku/GLK1/GLK2): Bern hat nur 3
+ * echte Stufen (voku und heku zeigen hier beide auf den gleichen Grundkurs GK), AGSOLUZG hat
+ * eigentlich 6 (GKu A/B, dann parallel Sanitaet/Pionier/Programmplanung, dann Gruppenleiterkurs
+ * GLK 3.13) und wurde hier auf die 4 Plaetze zusammengequetscht, mit Pionier als Platzhalter fuer
+ * die drei parallelen 2.x-Module. Das ist ein erster Entwurf zum Anschauen (Robin, 2026-10-27),
+ * keine bestaetigte Vorgaenger-Kette: in den DB-Daten der einzelnen Kurse steht fast nur ein
+ * Mindestalter, kein expliziter Kurs-Vorgaenger.
+ */
+const PRESTAGE_OVERRIDES_BY_REGION = {
+  zuerich: null, // Standardbaum oben, keine Ueberschreibung noetig
+  'winterthur-schaffhausen': {
+    voku: { code: 'ELKU', title: 'Erlebniskurs (ELKU)', minAge: 11, recommendedAge: 11 },
+    heku: { code: 'HeKu', title: 'Helfer/-innen-Kurs (HeKu)', minAge: 12, recommendedAge: 12 },
+    glk1: { code: 'GLK 1', title: 'Gruppenleiter/-innen-Kurs 1 (GLK 1)', minAge: 13, recommendedAge: 13 },
+    glk2: { code: 'GLK 2', title: 'Gruppenleiter/-innen-Kurs 2 (GLK 2)', minAge: 15, recommendedAge: 15 }
+  },
+  bern: {
+    voku: { code: 'GK', title: 'Grundkurs (GK)', minAge: 14, recommendedAge: 14 },
+    heku: { code: 'GK', title: 'Grundkurs (GK)', minAge: 14, recommendedAge: 14 },
+    glk1: { code: 'GLK', title: 'Gruppenleitendenkurs (GLK)', minAge: 15, recommendedAge: 15 },
+    glk2: { code: 'LK', title: 'J+S-Leiter*innen-Kurs (LK)', minAge: 17, recommendedAge: 17 }
+  },
+  ostschweiz: {
+    voku: { code: 'GK/NH', title: 'Grundkurs / Nau Hau', minAge: 13, recommendedAge: 13 },
+    heku: { code: 'LT', title: 'Leiter*innentraining', minAge: 14, recommendedAge: 14 },
+    glk1: { code: 'GLK', title: 'Gruppenleiter*innenkurs', minAge: 16, recommendedAge: 16 },
+    glk2: { code: 'LK', title: 'J+S-Leiter*innenkurs', minAge: 17, recommendedAge: 17 }
+  },
+  agsoluzg: {
+    voku: { code: 'GKu A', title: 'Grundlagenkurs A (1.13)', minAge: 14, recommendedAge: 14 },
+    heku: { code: 'GKu B', title: 'Grundlagenkurs B (1.27)', minAge: 14, recommendedAge: 14 },
+    glk1: { code: 'Pionier', title: 'Modul Pionier (2.32)', minAge: 15, recommendedAge: 15 },
+    glk2: { code: 'GLK 3.13', title: 'Gruppenleiterkurs GLK (3.13)', minAge: 17, recommendedAge: 17 }
+  }
+};
+
+/**
+ * Regionen, deren Kurse cevi.db im Zeitraum 27.10.2026-27.10.2027 fuehrt (Veranstalter-Filter
+ * "Alle Gruppen" bei den Kursen, ohne Cevi Schweiz [national] und Cevi Alpin [kein Ausbildungspfad]).
+ */
+export const REGIONS = [
+  { key: 'zuerich', label: 'Cevi Region Zürich' },
+  { key: 'winterthur-schaffhausen', label: 'Cevi Region Winterthur-Schaffhausen' },
+  { key: 'bern', label: 'Cevi Region Bern' },
+  { key: 'ostschweiz', label: 'Cevi Ostschweiz' },
+  { key: 'agsoluzg', label: 'Cevi Regionalverband AGSOLUZG' }
+];
+
+function buildRegionNodes(overrides) {
+  if (!overrides) return COURSE_NODES;
+  const nodes = JSON.parse(JSON.stringify(COURSE_NODES));
+  for (const [id, fields] of Object.entries(overrides)) Object.assign(nodes[id], fields);
+  return nodes;
+}
+
+/** COURSE_NODES pro Region; 'zuerich' ist dieselbe Referenz wie der Standardbaum oben. */
+export const COURSE_NODES_BY_REGION = Object.fromEntries(
+  REGIONS.map(({ key }) => [key, buildRegionNodes(PRESTAGE_OVERRIDES_BY_REGION[key])])
+);
+
+/**
  * Kursknoten mit dem Titel in der Form fur `gender` aus der Cevi-DB ('m' oder 'w').
  * Ohne Angabe bleibt die neutrale Form der Website.
  * @param {object} nodes

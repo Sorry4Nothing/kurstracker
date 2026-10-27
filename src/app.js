@@ -9,7 +9,7 @@ import { envConfig, validateEnv } from './config/env.js';
 import { ceviDbService } from './services/ceviDbService.js';
 import { courseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
-import { COURSE_NODES, withGenderTitles } from './domain/courseTreeData.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles } from './domain/courseTreeData.js';
 import { plannerScope, visibleTo, groupsOf } from './domain/plannerAccess.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -391,11 +391,19 @@ app.get('/api/user/qualifications', requireAuth, async (req, res) => {
 // AUSBIILUNGSBAUM & PATHFINDING API
 // -----------------------------------------------------------------------------
 
-// Liefert die vollständige Baumstruktur
+// Liefert die Liste der Regionen mit eigenem Ausbildungspfad (fuer den Regionen-Umschalter)
+app.get('/api/tree/regions', (req, res) => {
+  setSource(res, 'kurstracker');
+  res.json({ regions: REGIONS });
+});
+
+// Liefert die vollständige Baumstruktur; ?region=<key> zeigt probeweise den Pfad dieser
+// Region (siehe REGIONS/COURSE_NODES_BY_REGION in courseTreeData.js), sonst Zuerich/Standard
 app.get('/api/tree/structure', (req, res) => {
   setSource(res, 'kurstracker');
+  const nodes = COURSE_NODES_BY_REGION[req.query.region] || COURSE_NODES;
   res.json({
-    nodes: withGenderTitles(COURSE_NODES, getSession(req)?.user?.gender)
+    nodes: withGenderTitles(nodes, getSession(req)?.user?.gender)
   });
 });
 
