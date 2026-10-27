@@ -290,7 +290,8 @@ async function showUpcomingDates(courseId) {
 }
 
 export function updateTreeInspector(targetNode, pathResult) {
-  const { isDirectlyEligible, missingCourses, ageCheck, summary } = pathResult;
+  const { isDirectlyEligible, ageCheck, summary } = pathResult;
+  const pathSteps = pathResult.pathSteps || [];
   const qualificationChecks = pathResult.targetQualCheck || pathResult.qualificationChecks || [];
 
   const titleEl = document.getElementById('inspectorTitle');
@@ -305,28 +306,10 @@ export function updateTreeInspector(targetNode, pathResult) {
   titleEl.innerHTML = `<span class="node-org-pill org-${orgClass}" style="vertical-align: middle; margin-right: 0.4rem;">${org}</span> <span>${esc(targetNode.title)}</span>${targetNode.code ? ` <span style="font-size: 0.85em; opacity: 0.7; font-weight: normal;">(${targetNode.code})</span>` : ''}`;
   catEl.style.display = 'none';
 
+  // Kurzer Status-Satz hier, jedes einzelne Kurs/Qualifikation steht unten in der Checkliste -
+  // nicht beides an zwei Orten in zwei verschiedenen Stilen zeigen
   summaryBox.className = `path-summary-box ${isDirectlyEligible ? 'eligible' : ''}`;
-  if (isDirectlyEligible) {
-    summaryBox.textContent = summary;
-  } else {
-    // Als Pfad statt als Aufzaehlung: Kurse in Reihenfolge mit Pfeil dazwischen (missingCourses
-    // steht schon vom Vorgaenger zum Nachfolger geordnet). Qualifikationen stehen einzeln, mit
-    // Weg dahin, in der Checkliste darunter statt hier nochmal als Chips.
-    const ageLine = !ageCheck.isFulfilled
-      ? `<p class="path-summary-text">${esc(ageCheck.actual === null
-          ? `Geburtsdatum fehlt, Mindestalter (${targetNode.minAge} Jahre) nicht pruefbar.`
-          : `Mindestalter (${targetNode.minAge} Jahre) noch nicht erreicht (aktuell: ${ageCheck.actual} Jahre).`)}</p>`
-      : '';
-    const coursePath = missingCourses.length
-      ? `<div class="path-summary-group">
-           <span class="path-summary-group-label">Nächste Kurse</span>
-           <div class="path-chain">
-             ${missingCourses.map(c => `<span class="path-chip path-chip-course">${esc(c.title)}</span>`).join('<span class="path-chain-arrow" aria-hidden="true"></span>')}
-           </div>
-         </div>`
-      : '';
-    summaryBox.innerHTML = ageLine + coursePath;
-  }
+  summaryBox.textContent = summary;
 
   // Kokonut Pro Onboarding Checklist Logik
   const checkItems = [];
@@ -344,23 +327,26 @@ export function updateTreeInspector(targetNode, pathResult) {
     });
   }
 
-  // Schritt 2: Vorbereitende Cevi-Kurse
-  if (targetNode.prerequisites && targetNode.prerequisites.length > 0) {
-    const isFulfilled = missingCourses.length === 0;
-    const missingNames = missingCourses.map(m => m.title).join(', ');
+  // Schritt 2: Vorbereitende Cevi-Kurse - eine Zeile pro Kurs auf dem Pfad (wie bei den
+  // Qualifikationen unten), nicht mehr als eine Zeile mit allen Namen aufgezaehlt. Noch offene
+  // Kurse sind anklickbar und springen dorthin, zeigen so den Pfad selbst
+  pathSteps.forEach(step => {
+    const stepInTree = treeStructure?.nodes[step.id];
     checkItems.push({
-      title: 'Ausbildungsstufen & Kurse',
-      desc: isFulfilled
-        ? 'Alle vorherigen Kursstufen erfolgreich abgeschlossen.'
-        : `Noch zu absolvieren: ${missingNames}.`,
-      isFulfilled: isFulfilled
+      title: step.title,
+      desc: step.isCompleted ? 'Abgeschlossen.' : 'Noch zu absolvieren - anklicken fuer den Weg dahin.',
+      isFulfilled: step.isCompleted,
+      onClickCourseId: !step.isCompleted && stepInTree ? step.id : null
     });
-  }
+  });
 
   // Schritt 3: Qualifikationen / Brevets - eine Zeile pro Qualifikation (wie eine eigene
   // Mini-Checkliste); fehlt eine und ist ihr vergebender Kurs im aktuellen Baum bekannt, ist die
-  // Zeile anklickbar und springt dorthin - zeigt so den Weg dahin, auch rekursiv weiter
-  qualificationChecks.forEach(q => {
+  // Zeile anklickbar und springt dorthin - zeigt so den Weg dahin, auch rekursiv weiter.
+  // Eine Qualifikation, deren vergebender Kurs schon oben als Kurs-Schritt steht, nicht nochmal
+  // unter demselben Namen zeigen
+  const coursePathTitles = new Set(pathSteps.map(s => s.title));
+  qualificationChecks.filter(q => !coursePathTitles.has(q.label || q.id)).forEach(q => {
     const granterInTree = q.grantedByCourseId && treeStructure?.nodes[q.grantedByCourseId];
     checkItems.push({
       title: q.label || q.id,
