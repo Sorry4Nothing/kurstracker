@@ -592,20 +592,23 @@
 
 /* Kursreihenfolge als Pfad: Kurs-Chips durch einen Pfeil verbunden, bricht bei Platzmangel
    zeilenweise um (der Pfeil haengt dann am Zeilenende, das ist in Ordnung) */
+/* Vertikal statt horizontal: die Sidebar ist zu schmal, um zwei Kurs-Chips nebeneinander zu
+   zeigen (lange deutsche Kurstitel) - ein horizontaler Pfeil haette fast immer verwaist am
+   Zeilenende gehangen, weil praktisch jeder Chip ohnehin in eine eigene Zeile umbricht */
 .path-chain {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
 }
 
 .path-chain-arrow {
-  flex-shrink: 0;
+  margin-left: var(--sp-3);
   opacity: 0.5;
 }
 
 .path-chain-arrow::before {
-  content: '→';
+  content: '↓';
 }
 
 /* Heller Oberflaechen-Hintergrund statt eines Pastelltons: der sitzt in der blassblauen Box
