@@ -3,7 +3,7 @@
  * Knoten-Rendering, Pfadberechnung, Onboarding-Checkliste und Interaktionen
  */
 
-import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords } from './tree-map.js';
+import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, setCanvasSize, resetMapTransform } from './tree-map.js';
 import { esc } from './utils.js';
 import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
@@ -26,8 +26,10 @@ async function applyRegion(regionKey) {
   selectedRegion = regionKey;
   const structRes = await fetch(`/api/tree/structure?region=${encodeURIComponent(regionKey)}`);
   treeStructure = await structRes.json();
-  layoutRegionalCoords(Object.keys(treeStructure.nodes), treeStructure.nodes);
+  const extent = layoutRegionalCoords(Object.keys(treeStructure.nodes), treeStructure.nodes);
+  if (extent) setCanvasSize(extent.width, extent.height); // sonst schneidet die feste 2360x840-Leinwand Karten/Linien ab
   renderTree();
+  resetMapTransform(); // neu einpassen, die Leinwand kann jetzt groesser sein als beim letzten Zoom
 }
 
 async function setupRegionSwitcher() {

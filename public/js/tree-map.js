@@ -31,11 +31,15 @@ export const COURSE_MAP_COORDS = {
 
 // Regionale Baum-Vorschau (COURSE_NODES_BY_REGION, siehe courseTreeData.js) hat eigene Kurs-IDs ohne
 // feste Koordinate. Reiht sie per Tiefensuche ueber prerequisites/recommendedPrerequisites in Spalten
-// ein (Tiefe = Spalte, mehrere Kurse derselben Tiefe untereinander) und ergaenzt COURSE_MAP_COORDS nur
-// um die fehlenden Ids - ueberschreibt nie eine feste Koordinate.
+// ein (Tiefe = Spalte-Gruppe), ergaenzt COURSE_MAP_COORDS nur um die fehlenden Ids - ueberschreibt nie
+// eine feste Koordinate. Eine Tiefe mit vielen Kursen (z.B. "alles ohne erkannten DB-Vorgaenger") wuerde
+// sonst in einer einzigen, beliebig hohen Spalte uebereinanderstehen und die feste 2360x840-Leinwand
+// sprengen (Linien liefen dann ueber den Rand hinaus und wurden abgeschnitten) - deshalb bricht eine
+// Tiefe nach MAX_ROWS Kursen in weitere Unter-Spalten um. Gibt die noetige Leinwandgroesse zurueck
+// (oder null, wenn nichts zu platzieren war), die setCanvasSize() dann anwendet.
 export function layoutRegionalCoords(nodeIds, nodesById) {
   const todo = nodeIds.filter(id => !COURSE_MAP_COORDS[id] && nodesById[id]);
-  if (!todo.length) return;
+  if (!todo.length) return null;
   const depth = {};
   todo.forEach(id => { depth[id] = 0; });
   for (let pass = 0; pass < 30; pass++) {
@@ -51,10 +55,37 @@ export function layoutRegionalCoords(nodeIds, nodesById) {
   }
   const byDepth = {};
   todo.forEach(id => { (byDepth[depth[id]] = byDepth[depth[id]] || []).push(id); });
-  const COL_W = 270, ROW_H = NODE_HEIGHT + 20, X0 = 60, Y0 = 40;
-  Object.entries(byDepth).forEach(([d, ids]) => {
-    ids.forEach((id, i) => { COURSE_MAP_COORDS[id] = { x: X0 + Number(d) * COL_W, y: Y0 + i * ROW_H }; });
+  const COL_W = 270, ROW_H = NODE_HEIGHT + 20, X0 = 60, Y0 = 40, MAX_ROWS = 7;
+
+  let colCursor = 0; // naechste freie Spalte ueber alle Tiefen hinweg
+  let maxRowsUsed = 0;
+  Object.keys(byDepth).map(Number).sort((a, b) => a - b).forEach(d => {
+    const ids = byDepth[d];
+    const subCols = Math.max(1, Math.ceil(ids.length / MAX_ROWS));
+    ids.forEach((id, i) => {
+      const subCol = Math.floor(i / MAX_ROWS);
+      const row = i % MAX_ROWS;
+      COURSE_MAP_COORDS[id] = { x: X0 + (colCursor + subCol) * COL_W, y: Y0 + row * ROW_H };
+      maxRowsUsed = Math.max(maxRowsUsed, row + 1);
+    });
+    colCursor += subCols;
   });
+
+  return {
+    width: X0 + colCursor * COL_W + NODE_WIDTH + 40,
+    height: Y0 + maxRowsUsed * ROW_H + 40
+  };
+}
+
+/** Vergroessert die feste Leinwand (Standard 2360x840) auf mindestens w x h, fuer eine Baum-Vorschau
+ *  mit mehr Platzbedarf als der handgepflegte Standardbaum. Nie kleiner als der Standard. */
+export function setCanvasSize(w, h) {
+  CANVAS_WIDTH = Math.max(2360, Math.ceil(w));
+  CANVAS_HEIGHT = Math.max(840, Math.ceil(h));
+  const canvas = document.getElementById('treeMapCanvas');
+  const svg = document.getElementById('treeSvgLines');
+  if (canvas) { canvas.style.width = CANVAS_WIDTH + 'px'; canvas.style.height = CANVAS_HEIGHT + 'px'; }
+  if (svg) { svg.style.width = CANVAS_WIDTH + 'px'; svg.style.height = CANVAS_HEIGHT + 'px'; svg.setAttribute('viewBox', `0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`); }
 }
 
 export const mapTransform = {
@@ -69,8 +100,8 @@ export const mapTransform = {
 
 const NODE_WIDTH = 220;
 const NODE_HEIGHT = 80;
-const CANVAS_WIDTH = 2360;
-const CANVAS_HEIGHT = 840;
+let CANVAS_WIDTH = 2360;
+let CANVAS_HEIGHT = 840;
 
 // Kurs, auf den die Startansicht zentriert (setzt tree.js ueber setupInteractiveMap)
 let startCourseId = 'voku';
