@@ -42,15 +42,6 @@ export const COURSE_MAP_COORDS = {
 // Level Up, NOLK) haengen an keinem anderen Kurs und wuerden sonst wie ein Folgekurs von GLK 3 wirken.
 // Sie bekommen eine eigene Reihe ganz oben im selben Canvas, durch eine groessere Luecke optisch
 // abgesetzt - alles bleibt ein Fenster, nur raeumlich getrennt statt eine zweite Flaeche daneben.
-// Kleiner, pro Kurs-ID fester Versatz statt eines perfekten Rasters - wirkt handgezeichnet statt
-// maschinell aufgereiht, bleibt aber bei jedem Laden gleich (kein Math.random(), sonst springen
-// die Karten bei jedem Region-Wechsel neu herum)
-function jitterFor(id) {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return { x: ((h & 0xff) / 255 - 0.5) * 36, y: (((h >> 8) & 0xff) / 255 - 0.5) * 26 };
-}
-
 export function layoutRegionalCoords(nodeIds, nodesById) {
   const todo = nodeIds.filter(id => !COURSE_MAP_COORDS[id] && nodesById[id]);
   if (!todo.length) return null;
@@ -69,8 +60,7 @@ export function layoutRegionalCoords(nodeIds, nodesById) {
 
   if (standaloneIds.length) {
     standaloneIds.forEach((id, i) => {
-      const j = jitterFor(id);
-      COURSE_MAP_COORDS[id] = { x: X0 + i * COL_W + j.x, y: 40 + j.y };
+      COURSE_MAP_COORDS[id] = { x: X0 + i * COL_W, y: 40 };
     });
     maxWidth = Math.max(maxWidth, X0 + standaloneIds.length * COL_W + NODE_WIDTH + 40);
     pipelineY0 = 40 + ROW_H + STANDALONE_GAP;
@@ -92,25 +82,27 @@ export function layoutRegionalCoords(nodeIds, nodesById) {
   const byDepth = {};
   pipelineIds.forEach(id => { (byDepth[depth[id]] = byDepth[depth[id]] || []).push(id); });
 
-  let colCursor = 0; // naechste freie Spalte ueber alle Tiefen hinweg
-  let maxRowsUsed = 0;
+  // Erst alle Spalten (Tiefe + Unter-Spalte) als Listen sammeln, dann an der hoechsten Spalte
+  // vertikal zentrieren, statt alle oben buendig zu beginnen - eine Spalte mit nur 2 Kursen stand
+  // sonst stur am oberen Rand, auch wenn ihr Vorgaenger (z.B. GLK 3) mittig auf der Flaeche sitzt
+  const columns = [];
   Object.keys(byDepth).map(Number).sort((a, b) => a - b).forEach(d => {
     const ids = byDepth[d];
     const subCols = Math.max(1, Math.ceil(ids.length / MAX_ROWS));
-    ids.forEach((id, i) => {
-      const subCol = Math.floor(i / MAX_ROWS);
-      const row = i % MAX_ROWS;
-      const j = jitterFor(id);
-      COURSE_MAP_COORDS[id] = { x: X0 + (colCursor + subCol) * COL_W + j.x, y: pipelineY0 + row * ROW_H + j.y };
-      maxRowsUsed = Math.max(maxRowsUsed, row + 1);
+    for (let s = 0; s < subCols; s++) columns.push(ids.slice(s * MAX_ROWS, (s + 1) * MAX_ROWS));
+  });
+  const maxRowsUsed = columns.reduce((m, col) => Math.max(m, col.length), 0);
+
+  columns.forEach((col, colIndex) => {
+    const centerOffset = (maxRowsUsed - col.length) / 2 * ROW_H;
+    col.forEach((id, row) => {
+      COURSE_MAP_COORDS[id] = { x: X0 + colIndex * COL_W, y: pipelineY0 + centerOffset + row * ROW_H };
     });
-    colCursor += subCols;
   });
 
   return {
-    // +20 Rand, da der Versatz (jitterFor) einzelne Karten leicht ueber das Rasterende hinausschiebt
-    width: Math.max(maxWidth, X0 + colCursor * COL_W + NODE_WIDTH + 40) + 20,
-    height: pipelineY0 + maxRowsUsed * ROW_H + 40 + 20
+    width: Math.max(maxWidth, X0 + columns.length * COL_W + NODE_WIDTH + 40),
+    height: pipelineY0 + maxRowsUsed * ROW_H + 40
   };
 }
 
