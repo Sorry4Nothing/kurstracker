@@ -73,7 +73,10 @@ export class CourseTreeEngine {
   }
 
   /**
-   * Berechnet das Alter in Jahren basierend auf Geburtsdatum
+   * Berechnet das Alter nach Jahrgang (Kalenderjahr), so wie Cevi/J+S die
+   * Mindestalter-Angaben auf cevi.db selbst auswerten ("13 Jahre (Jahrgang)"):
+   * massgebend ist nur das Geburtsjahr, nicht der exakte Geburtstag. Wer im
+   * laufenden Kalenderjahr das Mindestalter erreicht, ist schon zugelassen.
    * @param {string|Date} birthdate
    * @param {Date} [referenceDate]
    * @returns {number|null} null, wenn das Geburtsdatum fehlt oder ungultig ist
@@ -89,12 +92,7 @@ export class CourseTreeEngine {
     }
     if (isNaN(birth.getTime())) return null;
 
-    let age = referenceDate.getFullYear() - birth.getFullYear();
-    const m = referenceDate.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && referenceDate.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
+    return referenceDate.getFullYear() - birth.getFullYear();
   }
 
   /**
