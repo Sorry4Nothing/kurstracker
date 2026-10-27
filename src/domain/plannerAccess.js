@@ -1,7 +1,10 @@
 // Wer im Stufenleiter-Planer welche Gruppen sieht (#108). Rollen werden am Rollentyp der Cevi-DB erkannt, nicht am Anzeigenamen.
 
-// Gruppentypen, die als Stufe zählen (Fröschli ist eine normale Stufe)
-export const STUFE_TYPES = ['Group::Stufe', 'Group::Froeschli'];
+// Gruppentypen, die als Stufe zählen. Im Fröschli besuchen die Kinder keine Kurse: dort zählen nur Leitende
+// (Froeschlileiter, Froeschlihauptleiter), und die schlägt allein die Abteilungsleitung vor (canEditGroup)
+export const FROESCHLI = 'Group::Froeschli';
+export const STUFE_TYPES = ['Group::Stufe', FROESCHLI];
+const isFroeschliLeiter = group => (group.roleTypes || []).some(type => /leiter$/i.test(type));
 export const ABTEILUNGSLEITUNG = 'Group::Jungschar::Abteilungsleiter';
 const STUFENLEITUNG = ['Group::Stufe::Stufenleiter'];
 
@@ -38,8 +41,13 @@ export function plannerScope(user) {
 export function visibleTo(scope, members) {
   if (!scope) return [];
   // Region, Schweiz oder aufgelöste Vereine sind keine Stufen und gehören nie in den Planer
-  const isStufe = group => STUFE_TYPES.includes(group.type);
-  if (scope.all) return members.map(member => ({ ...member, groups: (member.groups || []).filter(isStufe) }));
+  const isStufe = group => STUFE_TYPES.includes(group.type) && (group.type !== FROESCHLI || isFroeschliLeiter(group));
+  if (scope.all) {
+    // Wer nur in Nicht-Stufen (Region, Fröschli-Kinder) steckt, fällt weg; Mitglieder ganz ohne Gruppen (Demo, lokal) bleiben
+    return members
+      .map(member => ({ ...member, groups: (member.groups || []).filter(isStufe) }))
+      .filter((member, i) => member.groups.length || !(members[i].groups || []).length);
+  }
   const allowed = group => isStufe(group) && (scope.groups.has(group.id) || scope.departments.has(group.departmentId));
   return members
     .map(member => ({ ...member, groups: (member.groups || []).filter(allowed) }))
@@ -79,3 +87,10 @@ export function leadDepartments(user) {
   }
   return [...departments.values()];
 }
+
+/** Vorschläge einer Stufe bearbeiten (#131): die Stufenleitung dieser Stufe, im Fröschli nur die Abteilungsleitung (scope.all = Demo-/Testrollen) */
+export const canEditGroup = (scope, group) => Boolean(scope) && (scope.all === true || scope.groups.has(group.id)
+  || (group.type === FROESCHLI && scope.departments.has(group.departmentId)));
+
+/** Abgegebene Vorschläge zurückgeben (#131): nur die Abteilungsleitung der Abteilung */
+export const canReopenGroup = (scope, group) => Boolean(scope) && (scope.all === true || scope.departments.has(group.departmentId));

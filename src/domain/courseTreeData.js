@@ -136,7 +136,7 @@ export const COURSE_NODES = {
 
   slrg_pool: {
     id: 'slrg_pool',
-    code: 'Pool',
+    code: 'SLRG Pool',
     org: 'SLRG',
     kindId: 45,
     title: 'SLRG Brevet Basis Pool + BLS-AED',
@@ -163,7 +163,7 @@ export const COURSE_NODES = {
 
   sec_berg: {
     id: 'sec_berg',
-    code: 'Berg',
+    code: 'SiBe Berg',
     org: 'J+S',
     kindId: 83,
     title: 'J+S-Modul Sicherheitsbereich Berg',
@@ -177,7 +177,7 @@ export const COURSE_NODES = {
 
   sec_wasser: {
     id: 'sec_wasser',
-    code: 'Wasser',
+    code: 'SiBe Wasser',
     org: 'J+S',
     kindId: 79,
     title: 'J+S-Modul Sicherheitsbereich Wasser',
@@ -191,7 +191,7 @@ export const COURSE_NODES = {
 
   sec_winter: {
     id: 'sec_winter',
-    code: 'Winter',
+    code: 'SiBe Winter',
     org: 'J+S',
     kindId: 82,
     title: 'J+S-Modul Sicherheitsbereich Winter',
@@ -237,7 +237,7 @@ export const COURSE_NODES = {
 
   js_coach: {
     id: 'js_coach',
-    code: 'Coach',
+    code: 'J+S-Coach',
     org: 'J+S',
     kindId: 33,
     title: 'J+S-Coachkurs',
@@ -254,7 +254,7 @@ export const COURSE_NODES = {
   // ---------------------------------------------------------------------------
   experte: {
     id: 'experte',
-    code: 'Experte',
+    code: 'J+S-Experte',
     org: 'J+S',
     kindId: 32,
     title: 'J+S-Expertenkurs',

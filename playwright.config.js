@@ -29,6 +29,9 @@ export default defineConfig({
       CEVI_DB_PREPARATION_MODE: 'true',
       // Testdaten statt Live-Kursen, auch wenn .env.local einen Service-Token hat
       CEVI_DB_SERVICE_TOKEN: '',
+      // Keine echte Datenbank aus .env.local: Vorschläge liegen im Arbeitsspeicher des Testservers
+      DATABASE_URL: '',
+      RATE_LIMIT_PROPOSALS_MAX: '100000',
       // Alle Browser-Tests laufen von einer IP gegen einen Server: Rate Limits hier nicht greifen lassen
       RATE_LIMIT_AUTH_MAX: '100000',
       RATE_LIMIT_API_MAX: '100000'

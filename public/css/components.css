@@ -532,26 +532,84 @@
   text-wrap: balance;
 }
 
-/* Loading animation (#91): a ring in the primary colour spins in front of the
-   text, so a slow Cevi-DB does not look frozen. Errors (.text-danger) get no
-   ring. .is-loading gives inline text the same ring. Reduced motion stops it
-   through the global rule in variables.css. */
-.loading-placeholder:not(.text-danger)::before,
+/* Loading animation (#91): a loading line shows the Cevi logo, a brush wipe
+   reveals it, it fades out, then the Jugend+Sport logo does the same, in a loop.
+   One pseudo-element carries both logos: the keyframes swap background-image while
+   it is invisible. The mask is a 3x wide brush stroke (img/brush-mask.svg) that
+   slides: 115% = hidden, 50% = fully revealed. Errors (.text-danger) get no logo.
+   Reduced motion stops it through the global rule in variables.css and leaves the Cevi logo fully shown. */
+.loading-placeholder:not(.text-danger)::before {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 72px;
+  margin: var(--sp-4) auto var(--sp-4);
+  background: url("../favicon.svg") center / contain no-repeat;
+  -webkit-mask: url("../img/brush-mask.svg") 50% 0 / 300% 100% no-repeat;
+  mask: url("../img/brush-mask.svg") 50% 0 / 300% 100% no-repeat;
+  animation: logo-wipe 6s ease-in-out infinite;
+}
+
+/* .is-loading gives inline text three bouncing bars in the primary colour.
+   One pseudo-element is the middle bar; two box-shadows are the outer bars,
+   and the keyframes move their y offset. */
 .is-loading::before {
   content: "";
   display: inline-block;
-  width: 1em;
-  height: 1em;
-  margin-inline-end: 0.5em;
-  border: 2px solid var(--primary-text);
-  border-right-color: transparent;
-  border-radius: 50%;
-  vertical-align: -0.125em;
-  animation: loading-spin 0.8s linear infinite;
+  width: 0.2em;
+  height: 0.7em;
+  margin-inline: 0.45em 1em;
+  background: var(--primary-text);
+  border-radius: 1px;
+  vertical-align: -0.05em;
+  box-shadow: -0.45em 0 var(--primary-text), 0.45em 0 var(--primary-text);
+  animation: loading-bars 0.9s ease-in-out infinite;
 }
 
-@keyframes loading-spin {
-  to { transform: rotate(1turn); }
+@keyframes logo-wipe {
+  0% { background-image: url("../favicon.svg"); -webkit-mask-position: 115% 0; mask-position: 115% 0; opacity: 1; }
+  18% { background-image: url("../favicon.svg"); -webkit-mask-position: 50% 0; mask-position: 50% 0; }
+  38% { background-image: url("../favicon.svg"); -webkit-mask-position: 50% 0; mask-position: 50% 0; opacity: 1; }
+  46% { background-image: url("../favicon.svg"); -webkit-mask-position: 50% 0; mask-position: 50% 0; opacity: 0; }
+  46.01% { background-image: url("../img/js-logo.svg"); -webkit-mask-position: 115% 0; mask-position: 115% 0; opacity: 0; }
+  47% { background-image: url("../img/js-logo.svg"); -webkit-mask-position: 115% 0; mask-position: 115% 0; opacity: 1; }
+  68% { background-image: url("../img/js-logo.svg"); -webkit-mask-position: 50% 0; mask-position: 50% 0; }
+  88% { background-image: url("../img/js-logo.svg"); -webkit-mask-position: 50% 0; mask-position: 50% 0; opacity: 1; }
+  96%, 100% { background-image: url("../img/js-logo.svg"); -webkit-mask-position: 50% 0; mask-position: 50% 0; opacity: 0; }
+}
+
+/* Toast: short confirmation, bottom centre, above dialogs. The region is always in the DOM for screen readers. */
+.toast-region {
+  position: fixed;
+  inset: auto 0 var(--sp-6);
+  z-index: calc(var(--z-modal) + 1);
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--sp-4);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--ok-bg);
+  box-shadow: var(--shadow-float);
+  color: var(--ok-ink);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-medium);
+  animation: item-in var(--dur-med) var(--ease);
+}
+
+@keyframes loading-bars {
+  0%, 100% { box-shadow: -0.45em 0 var(--primary-text), 0.45em 0 var(--primary-text); }
+  25% { box-shadow: -0.45em -0.3em var(--primary-text), 0.45em 0 var(--primary-text); }
+  50% { box-shadow: -0.45em 0 var(--primary-text), 0.45em 0 var(--primary-text); transform: translateY(-0.3em); }
+  75% { box-shadow: -0.45em 0 var(--primary-text), 0.45em -0.3em var(--primary-text); transform: none; }
 }
 
 /* Empty result in a card grid (search without hits, courses.js): the

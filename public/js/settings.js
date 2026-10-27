@@ -5,6 +5,7 @@
  */
 
 import { esc, formatEuropeanDate } from './utils.js';
+import { confirmDialog } from './confirm.js';
 
 const ENDPOINT = '/api/settings/cevi-db-key';
 
@@ -96,7 +97,12 @@ document.getElementById('settingsList')?.addEventListener('submit', async event 
 document.getElementById('settingsList')?.addEventListener('click', async event => {
   if (event.target.closest('[data-action="remove"]') === null) return;
   const cardEl = event.target.closest('[data-department]');
-  if (!window.confirm('Den Key dieser Abteilung wirklich entfernen? Der Kurstracker kann dann keine Daten mehr für sie laden.')) return;
+  if (!await confirmDialog({
+    title: 'Key entfernen?',
+    text: 'Der Kurstracker kann dann keine Daten mehr für diese Abteilung laden.',
+    confirmLabel: 'Entfernen',
+    icon: 'fa-trash'
+  })) return;
   try {
     await call('DELETE', cardEl.dataset.department);
     await loadSettings();
