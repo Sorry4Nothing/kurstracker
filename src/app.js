@@ -459,14 +459,14 @@ app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
 // Demo-Abteilung mit zwei Stufen, damit Filter und Untertitel auch ohne Cevi-DB etwas zeigen
 const demoDepartment = { departmentId: 'demo', departmentName: 'Demo-Abteilung' };
 const demoStufen = {
-  fuchs: [{ id: 'demo_fuchs', name: 'Stufe Fuchs', type: 'Group::Stufe', ...demoDepartment }],
-  adler: [{ id: 'demo_adler', name: 'Stufe Adler', type: 'Group::Stufe', ...demoDepartment }]
+  nord: [{ id: 'demo_nord', name: 'Stufe Nord', type: 'Group::Stufe', ...demoDepartment }],
+  sued: [{ id: 'demo_sued', name: 'Stufe Süd', type: 'Group::Stufe', ...demoDepartment }]
 };
 
 const defaultDemoGroup = [
   {
     id: 'tn_1',
-    groups: demoStufen.fuchs,
+    groups: demoStufen.nord,
     name: 'Noah Keller',
     ceviname: 'Fuchs',
     gender: 'm',
@@ -476,7 +476,7 @@ const defaultDemoGroup = [
   },
   {
     id: 'tn_2',
-    groups: demoStufen.fuchs,
+    groups: demoStufen.nord,
     name: 'Lea Meier',
     ceviname: 'Amsel',
     gender: 'w',
@@ -487,7 +487,7 @@ const defaultDemoGroup = [
   },
   {
     id: 'tn_3',
-    groups: demoStufen.adler,
+    groups: demoStufen.sued,
     name: 'Marc Brunner',
     ceviname: 'Milan',
     gender: 'm',
@@ -499,7 +499,7 @@ const defaultDemoGroup = [
   },
   {
     id: 'tn_4',
-    groups: demoStufen.fuchs,
+    groups: demoStufen.nord,
     name: 'Sara Wyss',
     ceviname: 'Kolibri',
     gender: 'w',
@@ -510,7 +510,7 @@ const defaultDemoGroup = [
   },
   {
     id: 'tn_5',
-    groups: demoStufen.adler,
+    groups: demoStufen.sued,
     name: 'Luca Frei',
     ceviname: 'Biber',
     gender: 'm',
