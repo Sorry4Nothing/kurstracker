@@ -250,8 +250,9 @@ export async function selectTargetCourse(courseId) {
 
   // Pfadberechnung ueber Backend API
   try {
-    const res = await fetch(`/api/tree/path/${courseId}`);
+    const res = await fetch(`/api/tree/path/${courseId}${selectedRegion ? `?region=${encodeURIComponent(selectedRegion)}` : ''}`);
     const pathResult = await res.json();
+    if (!res.ok) throw new Error(pathResult.error || 'Pfadberechnung fehlgeschlagen');
 
     const targetNode = treeStructure.nodes[courseId];
     if (targetNode) {

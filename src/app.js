@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { envConfig, validateEnv } from './config/env.js';
 import { ceviDbService } from './services/ceviDbService.js';
-import { courseTreeEngine } from './domain/courseTreeEngine.js';
+import { courseTreeEngine, CourseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
 import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles } from './domain/courseTreeData.js';
 import { plannerScope, visibleTo, groupsOf } from './domain/plannerAccess.js';
@@ -453,18 +453,23 @@ app.get('/api/tree/evaluation', requireAuth, async (req, res) => {
   }
 });
 
-// Berechnet den Pfad zu einem Zielkurs via GET
+// Berechnet den Pfad zu einem Zielkurs via GET. ?region= rechnet auf der Baum-Vorschau einer
+// Region statt des Standardbaums (siehe /api/tree/structure) - die Kurs-IDs dort sind
+// regionsspezifisch (z.B. "zuerich_glk3_fa_2027") und stehen nicht in COURSE_NODES.
 app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
   try {
     const { courseId } = req.params;
+    const region = req.query.region;
+    const nodes = region && COURSE_NODES_BY_REGION[region] ? COURSE_NODES_BY_REGION[region] : COURSE_NODES;
+    const engine = nodes === COURSE_NODES ? courseTreeEngine : new CourseTreeEngine(nodes);
     // Unbekannter Zielkurs ist ein Client-Fehler (404), kein Serverfehler (Bug #53)
-    const resolved = courseTreeEngine.resolveCourseId(courseId);
-    if (!Object.hasOwn(COURSE_NODES, resolved)) {
+    const resolved = engine.resolveCourseId(courseId);
+    if (!Object.hasOwn(nodes, resolved)) {
       return res.status(404).json({ error: `Zielkurs '${String(courseId).slice(0, 40)}' existiert nicht im Ausbildungsbaum.` });
     }
     setPersonSource(req, res);
     const person = await resolveActivePerson(req);
-    const pathResult = courseTreeEngine.forGender(person.gender).findPathToTarget(person, courseId);
+    const pathResult = engine.forGender(person.gender).findPathToTarget(person, courseId);
     res.json(pathResult);
   } catch (err) {
     sendError(res, err, 'Pfadberechnung');
