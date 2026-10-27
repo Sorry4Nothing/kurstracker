@@ -1,12 +1,13 @@
 import { COURSE_NODES, COURSE_NODES_BY_REGION, withGenderTitles } from './courseTreeData.js';
 
-// Qualifikations-Label uber alle Baeume hinweg (Standardbaum + jede Region): manche Qualifikationen
-// (z.B. SLRG-Module) werden nur in einer einzelnen Region vergeben - eine Engine, die nur auf der
-// eigenen Region rechnet, faende den vergebenden Kurs sonst nicht und zeigte den rohen Key an.
-const GLOBAL_QUAL_LABELS = (() => {
+// Qualifikations-Herkunft uber alle Baeume hinweg (Standardbaum + jede Region): manche
+// Qualifikationen (z.B. SLRG-Module) werden nur in einer einzelnen Region vergeben - eine Engine,
+// die nur auf der eigenen Region rechnet, faende den vergebenden Kurs sonst nicht und zeigte den
+// rohen Key an, ohne Hinweis, wie man an die Qualifikation kommt.
+const GLOBAL_QUAL_GRANTERS = (() => {
   const map = {};
   const scan = (nodes) => Object.values(nodes).forEach(n => (n.grantsQualifications || []).forEach(q => {
-    if (!map[q]) map[q] = n.title;
+    if (!map[q]) map[q] = { id: n.id, title: n.title };
   }));
   scan(COURSE_NODES);
   Object.values(COURSE_NODES_BY_REGION).forEach(scan);
@@ -74,14 +75,25 @@ export class CourseTreeEngine {
   }
 
   /**
-   * Lesbarer Name einer Qualifikation (z.B. "js_sec_wasser" -> "J+S-Modul Sicherheitsbereich
-   * Wasser"): der Titel des Kurses, der sie vergibt. Ohne Treffer der rohe Key, nie erfunden.
+   * Kurs, der eine Qualifikation vergibt (z.B. "js_sec_wasser" -> der Kurs "J+S-Modul
+   * Sicherheitsbereich Wasser"): zeigt, wie man an die Qualifikation kommt. Erst im eigenen
+   * Baum gesucht, sonst ueber alle Regionen; ohne Treffer null, nie erfunden.
+   * @param {string} qualKey
+   * @returns {{id: string, title: string}|null}
+   */
+  qualGranter(qualKey) {
+    const local = Object.values(this.nodes).find(n => (n.grantsQualifications || []).includes(qualKey));
+    if (local) return { id: local.id, title: local.title };
+    return GLOBAL_QUAL_GRANTERS[qualKey] || null;
+  }
+
+  /**
+   * Lesbarer Name einer Qualifikation, siehe {@link qualGranter}. Ohne Treffer der rohe Key.
    * @param {string} qualKey
    * @returns {string}
    */
   qualLabel(qualKey) {
-    const granter = Object.values(this.nodes).find(n => (n.grantsQualifications || []).includes(qualKey));
-    return granter?.title || GLOBAL_QUAL_LABELS[qualKey] || qualKey;
+    return this.qualGranter(qualKey)?.title || qualKey;
   }
 
   /**
@@ -290,11 +302,15 @@ export class CourseTreeEngine {
       isFulfilled: completed.has(id)
     }));
 
-    const targetQualCheck = (targetNode.requiredQualifications || []).map(q => ({
-      id: q,
-      label: this.qualLabel(q),
-      isFulfilled: quals.has(q)
-    }));
+    const targetQualCheck = (targetNode.requiredQualifications || []).map(q => {
+      const granter = this.qualGranter(q);
+      return {
+        id: q,
+        label: granter?.title || q,
+        grantedByCourseId: granter?.id || null,
+        isFulfilled: quals.has(q)
+      };
+    });
 
     const ageCheck = {
       required: targetNode.minAge || 0,

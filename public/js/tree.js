@@ -289,6 +289,16 @@ async function showUpcomingDates(courseId) {
   }
 }
 
+// Qualifikations-Chip: klickbar und zum vergebenden Kurs verlinkt, wenn der im aktuell
+// gezeigten Baum steht (zeigt den Weg dahin) - sonst (andere Region, kein bekannter Kurs)
+// nur der Name, nichts erfunden
+function qualChipHtml(q) {
+  const label = esc(q.label || q.id);
+  const granterInTree = q.grantedByCourseId && treeStructure?.nodes[q.grantedByCourseId];
+  if (!granterInTree) return `<span class="path-chip path-chip-qual">${label}</span>`;
+  return `<button type="button" class="path-chip path-chip-qual is-linked" onclick="selectTargetCourse('${q.grantedByCourseId}')" title="Zeigt, wie man zu dieser Qualifikation kommt: ${label}">${label}</button>`;
+}
+
 export function updateTreeInspector(targetNode, pathResult) {
   const { isDirectlyEligible, missingCourses, ageCheck, summary } = pathResult;
   const qualificationChecks = pathResult.targetQualCheck || pathResult.qualificationChecks || [];
@@ -329,7 +339,7 @@ export function updateTreeInspector(targetNode, pathResult) {
       ? `<div class="path-summary-group">
            <span class="path-summary-group-label">Fehlende Qualifikationen</span>
            <div class="path-chip-row">
-             ${missingQuals.map(q => `<span class="path-chip path-chip-qual">${esc(q.label || q.id)}</span>`).join('')}
+             ${missingQuals.map(q => qualChipHtml(q)).join('')}
            </div>
          </div>`
       : '';

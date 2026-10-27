@@ -246,8 +246,8 @@ test('Pfad: Sicherheit Wasser scheitert nur an der fehlenden SLRG-Qualifikation'
   assert.equal(result.stepsRemainingCount, 0);
   assert.equal(result.isDirectlyEligible, false);
   assert.deepEqual(result.targetQualCheck, [
-    { id: 'js_leiter_lst', label: 'Gruppenleiter/-innen-Kurs 3 (GLK 3)', isFulfilled: true },
-    { id: 'slrg_basis_pool', label: 'SLRG Brevet Basis Pool + BLS-AED', isFulfilled: false }
+    { id: 'js_leiter_lst', label: 'Gruppenleiter/-innen-Kurs 3 (GLK 3)', grantedByCourseId: 'glk3', isFulfilled: true },
+    { id: 'slrg_basis_pool', label: 'SLRG Brevet Basis Pool + BLS-AED', grantedByCourseId: 'slrg_pool', isFulfilled: false }
   ]);
   assert.equal(result.summary, 'Noch 1 Qualifikation offen.');
 });
