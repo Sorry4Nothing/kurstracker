@@ -330,7 +330,10 @@ export const REGIONS = [
 function buildRegionNodes(overrides) {
   if (!overrides) return COURSE_NODES;
   const nodes = JSON.parse(JSON.stringify(COURSE_NODES));
-  for (const [id, fields] of Object.entries(overrides)) Object.assign(nodes[id], fields);
+  for (const [id, fields] of Object.entries(overrides)) {
+    Object.assign(nodes[id], fields);
+    delete nodes[id].titles; // regionaler Titel ersetzt die m/w-Form aus dem Zuercher Standardbaum
+  }
   return nodes;
 }
 
