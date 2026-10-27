@@ -88,6 +88,37 @@ test('summaryStats zählt Heku- und GLK-Kandidaten', () => {
   assert.equal(summaryStats.readyForGlk, 1);
 });
 
+const monthsFromNow = (months) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().split('T')[0];
+};
+
+test('abgelaufener J+S-Status meldet Ablauf statt negativer Monatszahl', () => {
+  const engine = new StufenleiterPlanningEngine();
+  const { recommendedCourses, hasExpiringJsLeiter } = engine.analyzeParticipant({
+    id: 'x', birthdate: yearsAgo(25), completedCourses: ['glk3'],
+    jsExpirationDate: monthsFromNow(-3)
+  });
+  assert.equal(hasExpiringJsLeiter, true);
+  const rec = recommendedCourses.find(r => r.courseId === 'mf_lst');
+  assert.equal(rec.priority, 'DRINGEND');
+  assert.match(rec.reason, /abgelaufen/);
+  assert.doesNotMatch(rec.reason, /-\d+ Monaten/);
+});
+
+test('bald fällige J+S-Weiterbildung meldet Verfallsdatum', () => {
+  const engine = new StufenleiterPlanningEngine();
+  const { recommendedCourses } = engine.analyzeParticipant({
+    id: 'y', birthdate: yearsAgo(25), completedCourses: ['glk3'],
+    jsExpirationDate: monthsFromNow(9)
+  });
+  const rec = recommendedCourses.find(r => r.courseId === 'mf_lst');
+  assert.equal(rec.priority, 'HOCH');
+  assert.match(rec.reason, /verfällt am/);
+  assert.match(rec.reason, /Auffrischung nötig/);
+});
+
 let baseUrl;
 let server;
 
