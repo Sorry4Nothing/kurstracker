@@ -33,7 +33,7 @@ export function switchTab(tabId) {
     navTree?.classList.add('active');
     panelTree?.classList.add('active');
     if (pageTitle) pageTitle.textContent = 'Ausbildungsbaum';
-    if (pageSubtitle) pageSubtitle.textContent = 'Interaktive Pfadplanung & Voraussetzungen (Cevi Region Zuerich & J+S)';
+    if (pageSubtitle) pageSubtitle.textContent = 'Interaktive Pfadplanung & Voraussetzungen';
   } else if (tabId === 'profile') {
     navUserCard?.classList.add('active');
     panelProfile?.classList.add('active');
