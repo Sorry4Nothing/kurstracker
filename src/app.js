@@ -10,7 +10,8 @@ import { ceviDbService } from './services/ceviDbService.js';
 import { courseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
 import { COURSE_NODES, withGenderTitles } from './domain/courseTreeData.js';
-import { plannerScope, visibleTo, groupsOf } from './domain/plannerAccess.js';
+import { plannerScope, visibleTo, groupsOf, leadDepartments } from './domain/plannerAccess.js';
+import { credentialStore } from './services/credentialStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -331,7 +332,8 @@ app.get('/api/auth/me', (req, res) => {
     authenticated: true,
     user: session.user,
     isMock: session.isMock,
-    canUsePlanner: canUsePlanner(session.user)
+    canUsePlanner: canUsePlanner(session.user),
+    canManageSettings: leadDepartments(session.user).length > 0
   });
 });
 
@@ -595,6 +597,91 @@ app.post('/api/planner/propose', requirePlanner, async (req, res) => {
     });
   } catch (err) {
     sendError(res, err, 'Kursvorschlag');
+  }
+});
+
+// -----------------------------------------------------------------------------
+// UMGEBUNGSEINSTELLUNGEN: Cevi-DB-API-Key je Abteilung (#129)
+// -----------------------------------------------------------------------------
+
+// Nur Abteilungsleitungen, und nur für ihre eigene Abteilung. Der Key geht nie an den Browser zurück, nur Status und letzte 4 Zeichen.
+function requireDepartmentLead(req, res, next) {
+  const session = getSession(req);
+  if (!session) {
+    logSecurity(req, '401 nicht angemeldet');
+    return res.status(401).json({ error: 'Nicht angemeldet' });
+  }
+  const departments = leadDepartments(session.user);
+  const { departmentId } = req.params;
+  if (!departments.length || (departmentId !== undefined && !departments.some(d => d.id === departmentId))) {
+    logSecurity(req, '403 keine Abteilungsleitung', session);
+    return res.status(403).json({ error: 'Nur die Abteilungsleitung verwaltet den Cevi-DB-Zugang ihrer Abteilung' });
+  }
+  res.locals.departments = departments;
+  res.locals.session = session;
+  next();
+}
+
+function requireCredentialStore(req, res, next) {
+  if (credentialStore.isConfigured()) return next();
+  res.status(503).json({ error: 'Die Umgebungseinstellungen sind auf diesem Server nicht eingerichtet' });
+}
+
+// Jedes Speichern löst drei Abrufe bei der Cevi-DB aus: enger begrenzen als die übrige API
+const settingsWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.RATE_LIMIT_SETTINGS_MAX || 30),
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({ error: 'Zu viele Änderungen. Bitte später erneut versuchen.' })
+});
+
+app.get('/api/settings/cevi-db-key', requireDepartmentLead, async (req, res) => {
+  try {
+    setSource(res, 'kurstracker');
+    const { departments } = res.locals;
+    if (!credentialStore.isConfigured()) return res.json({ available: false, departments });
+    res.json({
+      available: true,
+      departments: await Promise.all(departments.map(async d => ({ ...d, ...await credentialStore.status(d.id) })))
+    });
+  } catch (err) {
+    sendError(res, err, 'Einstellungen');
+  }
+});
+
+app.put('/api/settings/cevi-db-key/:departmentId', settingsWriteLimiter, requireDepartmentLead, requireCredentialStore, async (req, res) => {
+  try {
+    setSource(res, 'kurstracker');
+    const token = req.body?.token;
+    // Sichtbare ASCII-Zeichen ohne Leerraum: der Key wird als HTTP-Header gesendet, Steuerzeichen wären Header-Injektion
+    if (typeof token !== 'string' || !/^[\x21-\x7e]{16,200}$/.test(token.trim())) {
+      return res.status(400).json({ error: 'Der Key sieht ungültig aus. Bitte genau so einfügen, wie ihn die Cevi-DB anzeigt.' });
+    }
+    const department = res.locals.departments.find(d => d.id === req.params.departmentId);
+    const { user } = res.locals.session;
+    await ceviDbService.verifyServiceToken(token.trim());
+    const status = await credentialStore.save({
+      departmentId: department.id,
+      departmentName: department.name,
+      token: token.trim(),
+      savedBy: [user.first_name, user.last_name].filter(Boolean).join(' ').slice(0, 100) || String(user.id ?? 'unbekannt')
+    });
+    logSecurity(req, `Cevi-DB-Key gespeichert abteilung=${department.id}`, res.locals.session);
+    res.json({ id: department.id, name: department.name, ...status });
+  } catch (err) {
+    sendError(res, err, 'Einstellungen');
+  }
+});
+
+app.delete('/api/settings/cevi-db-key/:departmentId', settingsWriteLimiter, requireDepartmentLead, requireCredentialStore, async (req, res) => {
+  try {
+    setSource(res, 'kurstracker');
+    await credentialStore.remove(req.params.departmentId);
+    logSecurity(req, `Cevi-DB-Key entfernt abteilung=${req.params.departmentId}`, res.locals.session);
+    res.json({ configured: false });
+  } catch (err) {
+    sendError(res, err, 'Einstellungen');
   }
 });
 
