@@ -160,7 +160,7 @@ export class StufenleiterPlanningEngine {
             priority: monthsRemaining <= 6 ? 'DRINGEND' : 'HOCH',
             reason: monthsRemaining <= 6
               ? `J+S-Status verfällt am ${formatEuropeanDate(expirationDate)}. Fortbildung nötig.`
-              : `J+S-Status verfällt am ${formatEuropeanDate(expirationDate)}. J+S Jugend- und Sportauffrischung nötig.`
+              : `J+S-Status verfällt am ${formatEuropeanDate(expirationDate)}. J+S-Anerkennung auffrischen nötig.`
           });
         }
       }
