@@ -279,7 +279,8 @@
   color: var(--text-muted);
 }
 
-/* Planner columns: Name, Alter, Rolle, Kurse, Empfehlung, Aktion */
+/* Planner columns: Name, Alter, (Stufe), Rolle, Kurse, Empfehlung, Aktion. The Stufe column
+   comes and goes, so everything past it is addressed from the right edge. */
 .planner-table-card .data-table th:first-child,
 .planner-table-card .data-table td:first-child {
   padding-left: var(--sp-5);
@@ -298,18 +299,18 @@
 
 .planner-table-card .data-table th:nth-child(2),
 .planner-table-card .data-table td:nth-child(2),
-.planner-table-card .data-table th:nth-child(6),
-.planner-table-card .data-table td:nth-child(6) {
+.planner-table-card .data-table th:last-child,
+.planner-table-card .data-table td:last-child {
   text-align: right;
 }
 
 /* Completed courses: room for three codes on one line; longer lists wrap at the commas */
-.planner-table-card .data-table th:nth-child(4) {
+.planner-table-card .data-table th:nth-last-child(3) {
   width: 128px;
 }
 
 /* The 28px button sits centred on the 20px first text line of its row */
-.planner-table-card .data-table td:nth-child(6) {
+.planner-table-card .data-table td:last-child {
   padding-top: var(--sp-2);
   white-space: nowrap;
 }
