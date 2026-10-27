@@ -22,6 +22,14 @@ export function getSelectedTargetCourseId() {
 
 // Temporaere Vorschau: Pfad einer anderen Region laden, ohne Status/Evaluation neu zu holen
 // (die bleibt auf der eigenen Person, nur die Baumstruktur/Beschriftung wechselt)
+async function applyRegion(regionKey) {
+  selectedRegion = regionKey;
+  const structRes = await fetch(`/api/tree/structure?region=${encodeURIComponent(regionKey)}`);
+  treeStructure = await structRes.json();
+  layoutRegionalCoords(Object.keys(treeStructure.nodes), treeStructure.nodes);
+  renderTree();
+}
+
 async function setupRegionSwitcher() {
   const group = document.getElementById('treeRegionGroup');
   const select = document.getElementById('treeRegionSelect');
@@ -31,15 +39,11 @@ async function setupRegionSwitcher() {
     const { regions } = await res.json();
     if (!regions?.length) return;
     select.innerHTML = regions.map(r => `<option value="${esc(r.key)}">${esc(r.label)}</option>`).join('');
-    select.value = selectedRegion || regions[0].key;
+    const initialRegion = selectedRegion || regions[0].key;
+    select.value = initialRegion;
     group.style.display = '';
-    select.addEventListener('change', async () => {
-      selectedRegion = select.value;
-      const structRes = await fetch(`/api/tree/structure?region=${encodeURIComponent(selectedRegion)}`);
-      treeStructure = await structRes.json();
-      layoutRegionalCoords(Object.keys(treeStructure.nodes), treeStructure.nodes);
-      renderTree();
-    });
+    select.addEventListener('change', () => applyRegion(select.value));
+    await applyRegion(initialRegion); // Dropdown zeigt sonst eine Region, laedt aber noch den Standardbaum
   } catch (err) {
     console.error('Regionen fuer Baum-Vorschau nicht geladen:', err);
   }
