@@ -214,6 +214,35 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Sortierbare Spaltenköpfe: sehen aus wie der Kopf, der Pfeil zeigt die Richtung. Fokus: globaler Ring */
+.data-table .sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.data-table .sort-button:hover {
+  color: var(--text-main);
+}
+
+.data-table th[aria-sort="ascending"] .sort-button::after {
+  content: "\2191";
+}
+
+.data-table th[aria-sort="descending"] .sort-button::after {
+  content: "\2193";
+}
+
+.data-table td.stufe-cell {
+  white-space: nowrap;
+}
+
 /* No colour here, so the .text-danger error cell from planner.js stays red */
 .data-table td {
   padding: var(--sp-3);
