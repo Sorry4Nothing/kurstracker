@@ -29,6 +29,39 @@ export const COURSE_MAP_COORDS = {
   sec_winter: { x: 1740, y: 670 }
 };
 
+// Regionale Vorstufen-Knoten (id-Muster "<region>_s<stufe>" bzw. "<region>_s<stufe>_<parallel-index>",
+// siehe buildRegionNodes in courseTreeData.js) haben keine feste Koordinate. Reiht sie zwischen Vokus
+// und GLK 3s Position ein, parallele Module einer Stufe uebereinander. Ergaenzt COURSE_MAP_COORDS nur,
+// ueberschreibt nie eine feste Koordinate (Zuerich und alles ab GLK 3 bleiben unberuehrt).
+const REGION_STAGE_RE = /_s(\d+)(?:_(\d+))?$/;
+export function layoutRegionalCoords(nodeIds) {
+  const stageCounts = {};
+  let maxStage = -1;
+  nodeIds.forEach(id => {
+    const m = REGION_STAGE_RE.exec(id);
+    if (!m) return;
+    const stage = Number(m[1]);
+    stageCounts[stage] = (stageCounts[stage] || 0) + 1;
+    maxStage = Math.max(maxStage, stage);
+  });
+  if (maxStage < 0) return;
+  const stageCount = maxStage + 1;
+  const xStart = COURSE_MAP_COORDS.voku.x;
+  const xEnd = COURSE_MAP_COORDS.glk3.x;
+  const yCenter = COURSE_MAP_COORDS.voku.y;
+  nodeIds.forEach(id => {
+    if (COURSE_MAP_COORDS[id]) return;
+    const m = REGION_STAGE_RE.exec(id);
+    if (!m) return;
+    const stage = Number(m[1]);
+    const memberIndex = m[2] !== undefined ? Number(m[2]) : 0;
+    const memberCount = stageCounts[stage];
+    const x = Math.round(xStart + (stage / Math.max(stageCount - 1, 1)) * (xEnd - xStart));
+    const y = Math.round(yCenter + (memberIndex - (memberCount - 1) / 2) * (NODE_HEIGHT + 10));
+    COURSE_MAP_COORDS[id] = { x, y };
+  });
+}
+
 export const mapTransform = {
   x: -250,
   y: 0,

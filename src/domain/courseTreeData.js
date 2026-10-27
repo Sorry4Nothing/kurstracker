@@ -274,45 +274,49 @@ COURSE_NODES.hlk = COURSE_NODES.heku;
 COURSE_NODES.mf = COURSE_NODES.mf_lst;
 
 /**
- * Vorstufen (Level 0, vor der J+S-Zertifizierung via GLK 3) sind von Region zu Region
- * unterschiedlich benannt und unterschiedlich gestuft (Quelle: cevi.db, Veranstalter-Filter
- * "Alle Gruppen", Kurse vom 27.10.2026-27.10.2027, siehe Kursablauf-Editor-Recherche). Ab GLK 3
- * sind die Kurse national/sportartspezifisch gleich, deshalb bleibt dort nichts ueberschrieben.
+ * Vorstufen (vor der J+S-Zertifizierung via GLK 3) sind von Region zu Region unterschiedlich
+ * benannt UND unterschiedlich gestuft (Quelle: cevi.db, Veranstalter-Filter "Alle Gruppen",
+ * Kurse vom 27.10.2026-27.10.2027, siehe Kursablauf-Editor-Recherche). Ab GLK 3 sind die Kurse
+ * national/sportartspezifisch gleich, deshalb bleibt dort nichts ueberschrieben.
  *
- * Nicht jede Region hat exakt 4 Vorstufen wie Zuerich (Voku/Heku/GLK1/GLK2): Bern hat nur 3
- * echte Stufen (voku und heku zeigen hier beide auf den gleichen Grundkurs GK), AGSOLUZG hat
- * eigentlich 6 (GKu A/B, dann parallel Sanitaet/Pionier/Programmplanung, dann Gruppenleiterkurs
- * GLK 3.13) und wurde hier auf die 4 Plaetze zusammengequetscht, mit Pionier als Platzhalter fuer
- * die drei parallelen 2.x-Module. Das ist ein erster Entwurf zum Anschauen (Robin, 2026-10-27),
- * keine bestaetigte Vorgaenger-Kette: in den DB-Daten der einzelnen Kurse steht fast nur ein
- * Mindestalter, kein expliziter Kurs-Vorgaenger.
+ * Jede Region bekommt so viele Stufen, wie sie wirklich hat (keine Normierung auf 4 Plaetze mehr):
+ * Bern 3, Zuerich/Winterthur-Schaffhausen/Ostschweiz 4, AGSOLUZG 4 Stufen, davon eine mit drei
+ * parallelen Modulen (Sanitaet/Pionier/Programmplanung, alle drei noetig fuer den Gruppenleiterkurs
+ * danach - echte UND-Verzweigung, kein Platzhalter mehr). Eine Stufe ist entweder ein Kurs oder,
+ * als Array, mehrere parallele Kurse, die alle Vorgaenger der naechsten Stufe sind.
+ *
+ * Erster Entwurf zum Anschauen (Robin, 2026-10-27), keine bestaetigte Vorgaenger-Kette: in den
+ * DB-Daten der einzelnen Kurse steht fast nur ein Mindestalter, kein expliziter Kurs-Vorgaenger.
  */
-const PRESTAGE_OVERRIDES_BY_REGION = {
-  zuerich: null, // Standardbaum oben, keine Ueberschreibung noetig
-  'winterthur-schaffhausen': {
-    voku: { code: 'ELKU', title: 'Erlebniskurs (ELKU)', minAge: 11, recommendedAge: 11 },
-    heku: { code: 'HeKu', title: 'Helfer/-innen-Kurs (HeKu)', minAge: 12, recommendedAge: 12 },
-    glk1: { code: 'GLK 1', title: 'Gruppenleiter/-innen-Kurs 1 (GLK 1)', minAge: 13, recommendedAge: 13 },
-    glk2: { code: 'GLK 2', title: 'Gruppenleiter/-innen-Kurs 2 (GLK 2)', minAge: 15, recommendedAge: 15 }
-  },
-  bern: {
-    voku: { code: 'GK', title: 'Grundkurs (GK)', minAge: 14, recommendedAge: 14 },
-    heku: { code: 'GK', title: 'Grundkurs (GK)', minAge: 14, recommendedAge: 14 },
-    glk1: { code: 'GLK', title: 'Gruppenleitendenkurs (GLK)', minAge: 15, recommendedAge: 15 },
-    glk2: { code: 'LK', title: 'J+S-Leiter*innen-Kurs (LK)', minAge: 17, recommendedAge: 17 }
-  },
-  ostschweiz: {
-    voku: { code: 'GK/NH', title: 'Grundkurs / Nau Hau', minAge: 13, recommendedAge: 13 },
-    heku: { code: 'LT', title: 'Leiter*innentraining', minAge: 14, recommendedAge: 14 },
-    glk1: { code: 'GLK', title: 'Gruppenleiter*innenkurs', minAge: 16, recommendedAge: 16 },
-    glk2: { code: 'LK', title: 'J+S-Leiter*innenkurs', minAge: 17, recommendedAge: 17 }
-  },
-  agsoluzg: {
-    voku: { code: 'GKu A', title: 'Grundlagenkurs A (1.13)', minAge: 14, recommendedAge: 14 },
-    heku: { code: 'GKu B', title: 'Grundlagenkurs B (1.27)', minAge: 14, recommendedAge: 14 },
-    glk1: { code: 'Pionier', title: 'Modul Pionier (2.32)', minAge: 15, recommendedAge: 15 },
-    glk2: { code: 'GLK 3.13', title: 'Gruppenleiterkurs GLK (3.13)', minAge: 17, recommendedAge: 17 }
-  }
+const PRESTAGE_CHAINS_BY_REGION = {
+  zuerich: null, // Standardbaum oben (voku/heku/glk1/glk2), keine Ueberschreibung noetig
+  'winterthur-schaffhausen': [
+    { code: 'ELKU', title: 'Erlebniskurs (ELKU)', minAge: 11 },
+    { code: 'HeKu', title: 'Helfer/-innen-Kurs (HeKu)', minAge: 12 },
+    { code: 'GLK 1', title: 'Gruppenleiter/-innen-Kurs 1 (GLK 1)', minAge: 13 },
+    { code: 'GLK 2', title: 'Gruppenleiter/-innen-Kurs 2 (GLK 2)', minAge: 15 }
+  ],
+  bern: [
+    { code: 'GK', title: 'Grundkurs (GK)', minAge: 14 },
+    { code: 'GLK', title: 'Gruppenleitendenkurs (GLK)', minAge: 15 },
+    { code: 'LK', title: 'J+S-Leiter*innen-Kurs (LK)', minAge: 17 }
+  ],
+  ostschweiz: [
+    { code: 'GK/NH', title: 'Grundkurs / Nau Hau', minAge: 13 },
+    { code: 'LT', title: 'Leiter*innentraining', minAge: 14 },
+    { code: 'GLK', title: 'Gruppenleiter*innenkurs', minAge: 16 },
+    { code: 'LK', title: 'J+S-Leiter*innenkurs', minAge: 17 }
+  ],
+  agsoluzg: [
+    { code: 'GKu A', title: 'Grundlagenkurs A (1.13)', minAge: 14 },
+    { code: 'GKu B', title: 'Grundlagenkurs B (1.27)', minAge: 14 },
+    [
+      { code: 'Sanität', title: 'Modul Sanität (2.31)', minAge: 15 },
+      { code: 'Pionier', title: 'Modul Pionier (2.32)', minAge: 15 },
+      { code: 'Programmpl.', title: 'Modul Programmplanung und Rollenspiel (2.33)', minAge: 15 }
+    ],
+    { code: 'GLK 3.13', title: 'Gruppenleiterkurs GLK (3.13)', minAge: 17 }
+  ]
 };
 
 /**
@@ -327,19 +331,38 @@ export const REGIONS = [
   { key: 'agsoluzg', label: 'Cevi Regionalverband AGSOLUZG' }
 ];
 
-function buildRegionNodes(overrides) {
-  if (!overrides) return COURSE_NODES;
-  const nodes = JSON.parse(JSON.stringify(COURSE_NODES));
-  for (const [id, fields] of Object.entries(overrides)) {
-    Object.assign(nodes[id], fields);
-    delete nodes[id].titles; // regionaler Titel ersetzt die m/w-Form aus dem Zuercher Standardbaum
+// Baut die Vorstufen-Knoten einer Region aus ihrer Stufenkette: jede Stufe verlangt alle Knoten
+// der vorherigen Stufe (UND, parallele Module zaehlen als eigene Vorgaenger), die letzte Stufe
+// wird GLK 3s empfohlene Vorstufe. glk3 und alles danach bleibt die geteilte, ungeaenderte Referenz.
+function buildRegionNodes(regionKey, chain) {
+  if (!chain) return COURSE_NODES;
+  const nodes = {};
+  for (const [id, node] of Object.entries(COURSE_NODES)) {
+    if (!['voku', 'heku', 'glk1', 'glk2', 'hlk'].includes(id)) nodes[id] = JSON.parse(JSON.stringify(node));
   }
+  let previousIds = [];
+  chain.forEach((stage, stageIndex) => {
+    const stageIds = [];
+    const members = Array.isArray(stage) ? stage : [stage];
+    members.forEach((course, memberIndex) => {
+      const id = members.length > 1 ? `${regionKey}_s${stageIndex}_${memberIndex}` : `${regionKey}_s${stageIndex}`;
+      nodes[id] = {
+        id, org: 'Cevi', category: 'Jungschar',
+        code: course.code, title: course.title,
+        minAge: course.minAge, recommendedAge: course.minAge,
+        prerequisites: [...previousIds], requiredQualifications: [], grantsQualifications: []
+      };
+      stageIds.push(id);
+    });
+    previousIds = stageIds;
+  });
+  nodes.glk3.recommendedPrerequisites = previousIds;
   return nodes;
 }
 
 /** COURSE_NODES pro Region; 'zuerich' ist dieselbe Referenz wie der Standardbaum oben. */
 export const COURSE_NODES_BY_REGION = Object.fromEntries(
-  REGIONS.map(({ key }) => [key, buildRegionNodes(PRESTAGE_OVERRIDES_BY_REGION[key])])
+  REGIONS.map(({ key }) => [key, buildRegionNodes(key, PRESTAGE_CHAINS_BY_REGION[key])])
 );
 
 /**

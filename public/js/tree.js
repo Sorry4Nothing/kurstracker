@@ -3,7 +3,7 @@
  * Knoten-Rendering, Pfadberechnung, Onboarding-Checkliste und Interaktionen
  */
 
-import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines } from './tree-map.js';
+import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords } from './tree-map.js';
 import { esc } from './utils.js';
 import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
@@ -37,6 +37,7 @@ async function setupRegionSwitcher() {
       selectedRegion = select.value;
       const structRes = await fetch(`/api/tree/structure?region=${encodeURIComponent(selectedRegion)}`);
       treeStructure = await structRes.json();
+      layoutRegionalCoords(Object.keys(treeStructure.nodes));
       renderTree();
     });
   } catch (err) {

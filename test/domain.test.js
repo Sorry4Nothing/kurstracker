@@ -127,17 +127,32 @@ test('Alter: zählt nach Jahrgang (Kalenderjahr), nicht am exakten Geburtstag, f
   }
 });
 
-test('Regionen: jede hat Vorstufen bis GLK 3, Zürich bleibt der unveränderte Standardbaum, GLK 3 und alles danach ist überall gleich', () => {
+test('Regionen: jede hat eine eigene Vorstufenkette bis GLK 3, Zürich bleibt der unveränderte Standardbaum, ab GLK 3 ist der Pfad sonst überall gleich', () => {
   assert.deepEqual(REGIONS.map(r => r.key), ['zuerich', 'winterthur-schaffhausen', 'bern', 'ostschweiz', 'agsoluzg']);
   assert.equal(COURSE_NODES_BY_REGION.zuerich, COURSE_NODES);
   for (const { key } of REGIONS) {
     const nodes = COURSE_NODES_BY_REGION[key];
-    for (const id of ['voku', 'heku', 'glk1', 'glk2']) {
+    const prestageIds = nodes.glk3.recommendedPrerequisites;
+    assert.ok(prestageIds.length, `${key}: GLK 3 hat keine empfohlene Vorstufe`);
+
+    // jeder Knoten in der Vorstufenkette existiert, hat Titel/Mindestalter, Vorgänger existieren auch
+    const visited = new Set();
+    const toCheck = [...prestageIds];
+    while (toCheck.length) {
+      const id = toCheck.pop();
+      if (visited.has(id)) continue;
+      visited.add(id);
+      assert.ok(nodes[id], `${key}: Vorstufen-Knoten ${id} fehlt`);
       assert.ok(nodes[id].title, `${key}.${id} hat keinen Titel`);
       assert.ok(nodes[id].minAge > 0, `${key}.${id} hat kein Mindestalter`);
+      toCheck.push(...nodes[id].prerequisites);
     }
-    // ab GLK 3 (J+S-Zertifizierung) ist der Pfad national gleich, keine Region überschreibt ihn
-    for (const id of ['glk3', 'slk', 'mf_lst', 'llm', 'al_seminar', 'js_coach', 'experte']) {
+
+    // ab GLK 3 ist der Pfad national gleich; nur dessen empfohlene Vorstufe ist ja gerade regional
+    const { recommendedPrerequisites, ...glk3Rest } = nodes.glk3;
+    const { recommendedPrerequisites: _zuerich, ...zuerichGlk3Rest } = COURSE_NODES.glk3;
+    assert.deepEqual(glk3Rest, zuerichGlk3Rest, `${key}.glk3 weicht (ausser Vorstufe) vom Standardbaum ab`);
+    for (const id of ['slk', 'mf_lst', 'llm', 'al_seminar', 'js_coach', 'experte']) {
       assert.deepEqual(nodes[id], COURSE_NODES[id], `${key}.${id} weicht vom Standardbaum ab`);
     }
   }
