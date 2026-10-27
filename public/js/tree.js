@@ -385,7 +385,7 @@ export function updateTreeInspector(targetNode, pathResult) {
 
   let checksHtml = `
     <div class="checklist-progress-header">
-      <span style="font-size: 0.8rem; color: var(--text-muted);">Voraussetzungen:</span>
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Erfüllt:</span>
       <div class="progress-ring-badge">
         <svg class="progress-ring-svg" viewBox="0 0 24 24">
           <circle class="progress-ring-bg" cx="12" cy="12" r="9"/>
