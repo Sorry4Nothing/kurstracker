@@ -358,3 +358,18 @@ export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null,
 
   svg.innerHTML = paths.join('');
 }
+
+/**
+ * Hebt beim Hover einer Karte nur ihre eigenen Linien hervor, draengt den Rest zurueck.
+ * id=null (z.B. beim Verlassen der Karte) loescht die Hervorhebung wieder.
+ */
+export function highlightConnectedEdges(id) {
+  const svg = document.getElementById('treeSvgLines');
+  if (!svg) return;
+  svg.querySelectorAll('path[data-edge]').forEach(p => {
+    const edge = p.getAttribute('data-edge') || '';
+    const connected = !!id && (edge.startsWith(id + '->') || edge.endsWith('->' + id));
+    p.classList.toggle('is-hover-active', connected);
+    p.classList.toggle('is-hover-dimmed', !!id && !connected);
+  });
+}

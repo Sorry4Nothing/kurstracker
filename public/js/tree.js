@@ -3,7 +3,7 @@
  * Knoten-Rendering, Pfadberechnung, Onboarding-Checkliste und Interaktionen
  */
 
-import { COURSE_MAP_COORDS, mapTransform, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, setCanvasSize, resetMapTransform } from './tree-map.js';
+import { COURSE_MAP_COORDS, mapTransform, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, setCanvasSize, resetMapTransform, highlightConnectedEdges } from './tree-map.js';
 import { esc } from './utils.js';
 import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
@@ -247,6 +247,17 @@ function setupNodeDrag() {
   container.addEventListener('click', (e) => {
     if (dragJustHappened && e.target.closest('.tree-node-card')) e.stopPropagation();
   }, true);
+
+  // Hover hebt nur die Linien dieser Karte hervor - bei vielen kreuzenden Linien (z.B. rund um
+  // GLK 3) war sonst kaum zu erkennen, welche Linie zu welcher Karte gehoert
+  container.addEventListener('pointerover', (e) => {
+    const card = e.target.closest('.tree-node-card');
+    if (card) highlightConnectedEdges(card.id.replace('nodeCard-', ''));
+  });
+  container.addEventListener('pointerout', (e) => {
+    const card = e.target.closest('.tree-node-card');
+    if (card && !card.contains(e.relatedTarget)) highlightConnectedEdges(null);
+  });
 }
 
 export async function selectTargetCourse(courseId) {

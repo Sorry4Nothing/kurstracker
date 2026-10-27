@@ -170,6 +170,15 @@
   font-size: var(--fs-14);
 }
 
+/* #treeResetLayoutBtn sitzt in .tree-zoom-group wie die Zoom-Icons, ist aber Text+Icon statt nur
+   Icon - die quadratische 28px-Box und das 0-Padding von .tree-zoom-group .btn oben passen hier
+   nicht, sonst laeuft der Text aus der Box heraus in die Nachbargruppe */
+#treeResetLayoutBtn {
+  width: auto;
+  padding: 4px var(--sp-2);
+  white-space: nowrap;
+}
+
 #treeZoomLabel {
   min-width: 40px;
   font-size: var(--fs-12);
@@ -271,6 +280,18 @@
   stroke: var(--border-strong);
   stroke-width: 1.5px;
   stroke-linecap: round;
+  transition: opacity 0.1s ease, stroke-width 0.1s ease;
+}
+
+/* Beim Hover einer Karte (tree.js) nur ihre eigenen Linien betonen, den Rest zurueckdraengen -
+   bei vielen kreuzenden Linien (z.B. rund um GLK 3) war sonst kaum zu erkennen, was zu was gehoert */
+.tree-path-line.is-hover-active {
+  stroke: var(--route);
+  stroke-width: 2.5px;
+}
+
+.tree-path-line.is-hover-dimmed {
+  opacity: 0.2;
 }
 
 /* Route to the selected target course: a solid 2px line */
