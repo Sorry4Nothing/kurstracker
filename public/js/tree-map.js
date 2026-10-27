@@ -37,13 +37,39 @@ export const COURSE_MAP_COORDS = {
 // sprengen (Linien liefen dann ueber den Rand hinaus und wurden abgeschnitten) - deshalb bricht eine
 // Tiefe nach MAX_ROWS Kursen in weitere Unter-Spalten um. Gibt die noetige Leinwandgroesse zurueck
 // (oder null, wenn nichts zu platzieren war), die setCanvasSize() dann anwendet.
+//
+// Eigenstaendige Zusatzkurse (Kategorie "Optionale Sonderkurse" ohne jeden Vorgaenger, z.B. Froesch-Up,
+// Level Up, NOLK) haengen an keinem anderen Kurs und wuerden sonst wie ein Folgekurs von GLK 3 wirken.
+// Sie bekommen eine eigene Reihe ganz oben im selben Canvas, durch eine groessere Luecke optisch
+// abgesetzt - alles bleibt ein Fenster, nur raeumlich getrennt statt eine zweite Flaeche daneben.
 export function layoutRegionalCoords(nodeIds, nodesById) {
   const todo = nodeIds.filter(id => !COURSE_MAP_COORDS[id] && nodesById[id]);
   if (!todo.length) return null;
+
+  const isStandalone = id => {
+    const n = nodesById[id];
+    return n.category === 'Optionale Sonderkurse' && !(n.prerequisites?.length || n.recommendedPrerequisites?.length);
+  };
+  const standaloneIds = todo.filter(isStandalone);
+  const pipelineIds = todo.filter(id => !isStandalone(id));
+
+  const COL_W = 270, ROW_H = NODE_HEIGHT + 20, X0 = 60, MAX_ROWS = 7;
+  const STANDALONE_GAP = 50;
+  let maxWidth = 0;
+  let pipelineY0 = 40;
+
+  if (standaloneIds.length) {
+    standaloneIds.forEach((id, i) => {
+      COURSE_MAP_COORDS[id] = { x: X0 + i * COL_W, y: 40 };
+    });
+    maxWidth = Math.max(maxWidth, X0 + standaloneIds.length * COL_W + NODE_WIDTH + 40);
+    pipelineY0 = 40 + ROW_H + STANDALONE_GAP;
+  }
+
   const depth = {};
-  todo.forEach(id => { depth[id] = 0; });
+  pipelineIds.forEach(id => { depth[id] = 0; });
   for (let pass = 0; pass < 30; pass++) {
-    todo.forEach(id => {
+    pipelineIds.forEach(id => {
       const node = nodesById[id];
       const preds = [...(node.prerequisites || []), ...(node.recommendedPrerequisites || [])];
       preds.forEach(p => {
@@ -54,8 +80,7 @@ export function layoutRegionalCoords(nodeIds, nodesById) {
     });
   }
   const byDepth = {};
-  todo.forEach(id => { (byDepth[depth[id]] = byDepth[depth[id]] || []).push(id); });
-  const COL_W = 270, ROW_H = NODE_HEIGHT + 20, X0 = 60, Y0 = 40, MAX_ROWS = 7;
+  pipelineIds.forEach(id => { (byDepth[depth[id]] = byDepth[depth[id]] || []).push(id); });
 
   let colCursor = 0; // naechste freie Spalte ueber alle Tiefen hinweg
   let maxRowsUsed = 0;
@@ -65,15 +90,15 @@ export function layoutRegionalCoords(nodeIds, nodesById) {
     ids.forEach((id, i) => {
       const subCol = Math.floor(i / MAX_ROWS);
       const row = i % MAX_ROWS;
-      COURSE_MAP_COORDS[id] = { x: X0 + (colCursor + subCol) * COL_W, y: Y0 + row * ROW_H };
+      COURSE_MAP_COORDS[id] = { x: X0 + (colCursor + subCol) * COL_W, y: pipelineY0 + row * ROW_H };
       maxRowsUsed = Math.max(maxRowsUsed, row + 1);
     });
     colCursor += subCols;
   });
 
   return {
-    width: X0 + colCursor * COL_W + NODE_WIDTH + 40,
-    height: Y0 + maxRowsUsed * ROW_H + 40
+    width: Math.max(maxWidth, X0 + colCursor * COL_W + NODE_WIDTH + 40),
+    height: pipelineY0 + maxRowsUsed * ROW_H + 40
   };
 }
 

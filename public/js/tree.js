@@ -109,7 +109,7 @@ function pickStartCourse() {
   return ids.find(withStatus('IN_PROGRESS')) || ids.find(withStatus('AVAILABLE')) || ids.findLast(withStatus('COMPLETED')) || 'voku';
 }
 
-function nodeCardHtml(node, nodeStates, { positioned }) {
+function nodeCardHtml(node, nodeStates) {
   const state = nodeStates[node.id] || { status: 'LOCKED' };
   const statusLower = (state.status || 'locked').toLowerCase();
 
@@ -119,9 +119,8 @@ function nodeCardHtml(node, nodeStates, { positioned }) {
   else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open" aria-hidden="true"></i> Bereit';
 
   const isSelected = selectedTargetCourseId === node.id;
-  const coordStyle = positioned
-    ? (() => { const c = COURSE_MAP_COORDS[node.id] || { x: 100, y: 100 }; return `left: ${c.x}px; top: ${c.y}px;`; })()
-    : '';
+  const coord = COURSE_MAP_COORDS[node.id] || { x: 100, y: 100 };
+  const coordStyle = `left: ${coord.x}px; top: ${coord.y}px;`;
 
   // Kein aria-label: der Name kommt aus dem sichtbaren Text (Code, Status, Titel), WCAG 2.5.3
   const fullText = node.code && node.code !== node.title ? `${node.code} – ${node.title}` : node.title;
@@ -151,8 +150,6 @@ function nodeCardHtml(node, nodeStates, { positioned }) {
 
 export function renderTree() {
   const container = document.getElementById('treeLevelsContainer');
-  const rail = document.getElementById('treeStandaloneRail');
-  const railCards = document.getElementById('treeStandaloneRailCards');
   if (!container || !treeStructure || !currentTreeEvaluation) return;
 
   const nodeStates = currentTreeEvaluation?.evaluation?.nodes || currentTreeEvaluation?.evaluation?.nodeStates || {};
@@ -163,22 +160,10 @@ export function renderTree() {
     return true;
   });
 
-  // Eigenstaendige Zusatzkurse (kein Pflicht- oder empfohlener Vorgaenger) stehen in einer
-  // eigenen Leiste statt im Abhaengigkeitsgraph - sonst wirken sie wie ein Folgekurs von GLK 3
-  const standalone = nodes.filter(n => !(n.prerequisites?.length || n.recommendedPrerequisites?.length) && n.category === 'Optionale Sonderkurse');
-  const pipeline = nodes.filter(n => !standalone.includes(n));
-
-  container.innerHTML = pipeline.map(node => nodeCardHtml(node, nodeStates, { positioned: true })).join('');
-
-  if (rail && railCards) {
-    if (standalone.length) {
-      railCards.innerHTML = standalone.map(node => nodeCardHtml(node, nodeStates, { positioned: false })).join('');
-      rail.style.display = '';
-    } else {
-      railCards.innerHTML = '';
-      rail.style.display = 'none';
-    }
-  }
+  // Eigenstaendige Zusatzkurse (kein Pflicht- oder empfohlener Vorgaenger) bekommen in
+  // layoutRegionalCoords (tree-map.js) eine eigene Reihe ganz oben im selben Canvas, durch eine
+  // groessere Luecke abgesetzt - sonst wirken sie wie ein Folgekurs von GLK 3
+  container.innerHTML = nodes.map(node => nodeCardHtml(node, nodeStates)).join('');
 
   // Render SVG Verbindungen
   setTimeout(() => {
