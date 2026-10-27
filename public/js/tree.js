@@ -309,18 +309,31 @@ export function updateTreeInspector(targetNode, pathResult) {
   if (isDirectlyEligible) {
     summaryBox.textContent = summary;
   } else {
-    // Konkret statt nur gezaehlt: welche Kurse und Qualifikationen genau fehlen, als Chips
+    // Als Pfad statt als Aufzaehlung: Kurse in Reihenfolge mit Pfeil dazwischen (missingCourses
+    // steht schon vom Vorgaenger zum Nachfolger geordnet), Qualifikationen separat darunter
     const missingQuals = qualificationChecks.filter(q => !q.isFulfilled);
     const ageLine = !ageCheck.isFulfilled
       ? `<p class="path-summary-text">${esc(ageCheck.actual === null
           ? `Geburtsdatum fehlt, Mindestalter (${targetNode.minAge} Jahre) nicht pruefbar.`
           : `Mindestalter (${targetNode.minAge} Jahre) noch nicht erreicht (aktuell: ${ageCheck.actual} Jahre).`)}</p>`
       : '';
-    const chips = [
-      ...missingCourses.map(c => `<span class="path-chip path-chip-course">${esc(c.title)}</span>`),
-      ...missingQuals.map(q => `<span class="path-chip path-chip-qual">${esc(q.label || q.id)}</span>`)
-    ].join('');
-    summaryBox.innerHTML = ageLine + (chips ? `<div class="path-chip-row">${chips}</div>` : '');
+    const coursePath = missingCourses.length
+      ? `<div class="path-summary-group">
+           <span class="path-summary-group-label">Nächste Kurse</span>
+           <div class="path-chain">
+             ${missingCourses.map(c => `<span class="path-chip path-chip-course">${esc(c.title)}</span>`).join('<span class="path-chain-arrow" aria-hidden="true"></span>')}
+           </div>
+         </div>`
+      : '';
+    const qualList = missingQuals.length
+      ? `<div class="path-summary-group">
+           <span class="path-summary-group-label">Fehlende Qualifikationen</span>
+           <div class="path-chip-row">
+             ${missingQuals.map(q => `<span class="path-chip path-chip-qual">${esc(q.label || q.id)}</span>`).join('')}
+           </div>
+         </div>`
+      : '';
+    summaryBox.innerHTML = ageLine + coursePath + qualList;
   }
 
   // Kokonut Pro Onboarding Checklist Logik

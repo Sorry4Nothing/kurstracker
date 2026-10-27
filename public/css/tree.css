@@ -575,6 +575,39 @@
   margin-bottom: 0;
 }
 
+.path-summary-group + .path-summary-group {
+  margin-top: var(--sp-3);
+}
+
+.path-summary-group-label {
+  display: block;
+  margin-bottom: var(--sp-1);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+}
+
+/* Kursreihenfolge als Pfad: Kurs-Chips durch einen Pfeil verbunden, bricht bei Platzmangel
+   zeilenweise um (der Pfeil haengt dann am Zeilenende, das ist in Ordnung) */
+.path-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.path-chain-arrow {
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.path-chain-arrow::before {
+  content: '→';
+}
+
 /* Welche Kurse/Qualifikationen genau fehlen, als Chips statt als Fliesstext */
 .path-chip-row {
   display: flex;
@@ -582,8 +615,13 @@
   gap: var(--sp-2);
 }
 
+/* Heller Oberflaechen-Hintergrund statt eines zweiten Pastelltons: der sitzt in der blassblauen
+   Box darueber sonst zu nah an deren eigenem Hintergrund und wirkt wie reiner Text ohne Pille */
 .path-chip {
+  display: inline-block;
   padding: 2px var(--sp-2);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid currentColor;
   border-radius: var(--radius-full);
   font-size: var(--fs-12);
   line-height: var(--lh-12);
@@ -592,12 +630,10 @@
 }
 
 .path-chip-course {
-  background-color: var(--teal-soft);
   color: var(--teal-ink);
 }
 
 .path-chip-qual {
-  background-color: var(--warn-bg);
   color: var(--warn-ink);
 }
 
