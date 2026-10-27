@@ -349,7 +349,7 @@ export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null,
       const d = `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
 
       paths.push(`
-        <path d="${d}" 
+        <path d="${d}"
               class="tree-path-line ${isRecommended ? 'is-recommended' : ''} ${isPathActive ? 'active-path' : ''}"
               data-edge="${preId}->${targetNode.id}" />
       `);
@@ -360,15 +360,32 @@ export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null,
 }
 
 /**
- * Hebt beim Hover einer Karte nur ihre eigenen Linien hervor, draengt den Rest zurueck.
- * id=null (z.B. beim Verlassen der Karte) loescht die Hervorhebung wieder.
+ * Hebt beim Hover einer Karte die ganze Vorgaengerkette hervor (nicht nur die direkte Kante),
+ * draengt den Rest zurueck. id=null (z.B. beim Verlassen der Karte) loescht die Hervorhebung.
  */
-export function highlightConnectedEdges(id) {
+export function highlightConnectedEdges(id, treeStructure) {
   const svg = document.getElementById('treeSvgLines');
   if (!svg) return;
+
+  const activeEdges = new Set();
+  if (id && treeStructure?.nodes) {
+    const seen = new Set([id]);
+    const walk = nodeId => {
+      const node = treeStructure.nodes[nodeId];
+      if (!node) return;
+      [...(node.prerequisites || []), ...(node.recommendedPrerequisites || [])].forEach(preId => {
+        activeEdges.add(`${preId}->${nodeId}`);
+        if (seen.has(preId)) return;
+        seen.add(preId);
+        walk(preId);
+      });
+    };
+    walk(id);
+  }
+
   svg.querySelectorAll('path[data-edge]').forEach(p => {
     const edge = p.getAttribute('data-edge') || '';
-    const connected = !!id && (edge.startsWith(id + '->') || edge.endsWith('->' + id));
+    const connected = activeEdges.has(edge);
     p.classList.toggle('is-hover-active', connected);
     p.classList.toggle('is-hover-dimmed', !!id && !connected);
   });

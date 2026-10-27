@@ -248,15 +248,15 @@ function setupNodeDrag() {
     if (dragJustHappened && e.target.closest('.tree-node-card')) e.stopPropagation();
   }, true);
 
-  // Hover hebt nur die Linien dieser Karte hervor - bei vielen kreuzenden Linien (z.B. rund um
-  // GLK 3) war sonst kaum zu erkennen, welche Linie zu welcher Karte gehoert
+  // Hover hebt die ganze Vorgaengerkette dieser Karte hervor (nicht nur die direkte Kante) - bei
+  // vielen kreuzenden Linien (z.B. rund um GLK 3) war sonst kaum zu erkennen, was zu was gehoert
   container.addEventListener('pointerover', (e) => {
     const card = e.target.closest('.tree-node-card');
-    if (card) highlightConnectedEdges(card.id.replace('nodeCard-', ''));
+    if (card) highlightConnectedEdges(card.id.replace('nodeCard-', ''), treeStructure);
   });
   container.addEventListener('pointerout', (e) => {
     const card = e.target.closest('.tree-node-card');
-    if (card && !card.contains(e.relatedTarget)) highlightConnectedEdges(null);
+    if (card && !card.contains(e.relatedTarget)) highlightConnectedEdges(null, treeStructure);
   });
 }
 
