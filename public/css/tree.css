@@ -567,6 +567,40 @@
   color: var(--ok-ink);
 }
 
+.path-summary-text {
+  margin: 0 0 var(--sp-2);
+}
+
+.path-summary-text:last-child {
+  margin-bottom: 0;
+}
+
+/* Welche Kurse/Qualifikationen genau fehlen, als Chips statt als Fliesstext */
+.path-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.path-chip {
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-full);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+
+.path-chip-course {
+  background-color: var(--teal-soft);
+  color: var(--teal-ink);
+}
+
+.path-chip-qual {
+  background-color: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
 /* Checklist: a progress line, then flat rows separated by rules */
 .checklist-progress-header {
   display: flex;

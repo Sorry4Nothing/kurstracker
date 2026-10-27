@@ -305,8 +305,23 @@ export function updateTreeInspector(targetNode, pathResult) {
   titleEl.innerHTML = `<span class="node-org-pill org-${orgClass}" style="vertical-align: middle; margin-right: 0.4rem;">${org}</span> <span>${esc(targetNode.title)}</span>${targetNode.code ? ` <span style="font-size: 0.85em; opacity: 0.7; font-weight: normal;">(${targetNode.code})</span>` : ''}`;
   catEl.style.display = 'none';
 
-  summaryBox.textContent = summary;
   summaryBox.className = `path-summary-box ${isDirectlyEligible ? 'eligible' : ''}`;
+  if (isDirectlyEligible) {
+    summaryBox.textContent = summary;
+  } else {
+    // Konkret statt nur gezaehlt: welche Kurse und Qualifikationen genau fehlen, als Chips
+    const missingQuals = qualificationChecks.filter(q => !q.isFulfilled);
+    const ageLine = !ageCheck.isFulfilled
+      ? `<p class="path-summary-text">${esc(ageCheck.actual === null
+          ? `Geburtsdatum fehlt, Mindestalter (${targetNode.minAge} Jahre) nicht pruefbar.`
+          : `Mindestalter (${targetNode.minAge} Jahre) noch nicht erreicht (aktuell: ${ageCheck.actual} Jahre).`)}</p>`
+      : '';
+    const chips = [
+      ...missingCourses.map(c => `<span class="path-chip path-chip-course">${esc(c.title)}</span>`),
+      ...missingQuals.map(q => `<span class="path-chip path-chip-qual">${esc(q.label || q.id)}</span>`)
+    ].join('');
+    summaryBox.innerHTML = ageLine + (chips ? `<div class="path-chip-row">${chips}</div>` : '');
+  }
 
   // Kokonut Pro Onboarding Checklist Logik
   const checkItems = [];
