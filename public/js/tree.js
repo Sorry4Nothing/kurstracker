@@ -104,12 +104,10 @@ export function renderTree() {
     else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open" aria-hidden="true"></i> Bereit';
 
     const isSelected = selectedTargetCourseId === node.id;
-    const org = node.org;
-    const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
 
-    // Kein aria-label: der Name kommt aus dem sichtbaren Text (Organisation, Code, Status, Titel), WCAG 2.5.3
+    // Kein aria-label: der Name kommt aus dem sichtbaren Text (Code, Status, Titel), WCAG 2.5.3
     return `
-      <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''}" 
+      <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''}"
            id="nodeCard-${node.id}"
            style="left: ${coord.x}px; top: ${coord.y}px;"
            onclick="selectTargetCourse('${node.id}')"
@@ -118,7 +116,6 @@ export function renderTree() {
            aria-current="${isSelected}">
         <div class="node-header">
           <div class="node-header-left">
-            <span class="node-org-pill org-${orgClass}">${org}</span>
             <span class="node-code">${node.code || node.id.toUpperCase()}</span>
           </div>
           <span class="node-status-pill status-${statusLower}">${statusLabel}</span>
