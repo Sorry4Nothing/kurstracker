@@ -16,7 +16,7 @@ const loadCourses = () => fetchCourses().catch(() => []);
 // Namen der Abteilungen aus der Cevi-DB, gesetzt beim Laden des Planers
 let plannerDepartments = [];
 export const plannerSubtitle = () =>
-  `Ausbildungsreife der Abteilung ${plannerDepartments.join(', ') || '…'}`;
+  `Ausbildungsplaner der Abteilung ${plannerDepartments.join(', ') || '…'}`;
 
 export async function loadPlannerData() {
   const tableBody = document.getElementById('plannerTableBody');
