@@ -37,8 +37,10 @@ export function plannerScope(user) {
  */
 export function visibleTo(scope, members) {
   if (!scope) return [];
-  if (scope.all) return members;
-  const allowed = group => scope.groups.has(group.id) || scope.departments.has(group.departmentId);
+  // Region, Schweiz oder aufgelöste Vereine sind keine Stufen und gehören nie in den Planer
+  const isStufe = group => STUFE_TYPES.includes(group.type);
+  if (scope.all) return members.map(member => ({ ...member, groups: (member.groups || []).filter(isStufe) }));
+  const allowed = group => isStufe(group) && (scope.groups.has(group.id) || scope.departments.has(group.departmentId));
   return members
     .map(member => ({ ...member, groups: (member.groups || []).filter(allowed) }))
     .filter(member => member.groups.length);
