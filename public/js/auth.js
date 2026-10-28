@@ -26,6 +26,8 @@ function setText(id, text) {
 function setPhoto(id, url) {
   const img = document.getElementById(id);
   if (!img) return;
+  // Property statt onerror-Attribut: die CSP erlaubt keine Inline-Handler (#171). Ein kaputtes Bild bleibt verborgen
+  img.onerror = () => { img.style.display = 'none'; };
   img.src = url || '';
   img.style.display = url ? 'block' : 'none';
 }

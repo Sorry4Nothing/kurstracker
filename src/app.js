@@ -96,10 +96,11 @@ function sendError(res, err, context) {
 }
 
 // Security-Header für alle Antworten (Seiten, Statics und API)
-// Inline-Handler (onclick) und style="" im HTML brauchen 'unsafe-inline'; externe Quellen bleiben auf Fonts/Icons begrenzt
+// Skripte nur aus 'self': das Frontend hat keine Inline-Handler mehr (#171). style="" im HTML braucht in style-src noch
+// 'unsafe-inline'; externe Quellen bleiben auf Fonts/Icons begrenzt
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
   "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
   `img-src 'self' data: ${new URL(envConfig.ceviDb.baseUrl).origin}`,

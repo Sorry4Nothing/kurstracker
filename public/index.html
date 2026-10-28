@@ -53,23 +53,23 @@
       <nav class="sidebar-nav" role="navigation" aria-label="Hauptnavigation">
         <div class="sidebar-nav-group-title">Navigation</div>
         
-        <button class="sidebar-nav-item active" id="tabTree" onclick="switchTab('tree')">
+        <button class="sidebar-nav-item active" id="tabTree" data-click="switchTab" data-args='["tree"]'>
           <i class="fa-solid fa-sitemap nav-icon" aria-hidden="true"></i>
           <span class="nav-text">Ausbildungsbaum</span>
         </button>
 
-        <button class="sidebar-nav-item" id="tabPlanner" onclick="switchTab('planner')" style="display: none;">
+        <button class="sidebar-nav-item" id="tabPlanner" data-click="switchTab" data-args='["planner"]' style="display: none;">
           <i class="fa-solid fa-users-gear nav-icon" aria-hidden="true"></i>
           <span class="nav-text">Stufenleiter-Planer</span>
         </button>
 
         <!-- Nur für Abteilungsleitungen: auth.js blendet die Seiten ein, wenn der Server sie freigibt -->
-        <button class="sidebar-nav-item" id="tabProposals" onclick="switchTab('proposals')" hidden>
+        <button class="sidebar-nav-item" id="tabProposals" data-click="switchTab" data-args='["proposals"]' hidden>
           <i class="fa-solid fa-clipboard-check nav-icon" aria-hidden="true"></i>
           <span class="nav-text">Kursvorschläge</span>
         </button>
 
-        <button class="sidebar-nav-item" id="tabSettings" onclick="switchTab('settings')" hidden>
+        <button class="sidebar-nav-item" id="tabSettings" data-click="switchTab" data-args='["settings"]' hidden>
           <i class="fa-solid fa-gear nav-icon" aria-hidden="true"></i>
           <span class="nav-text">Umgebungseinstellungen</span>
         </button>
@@ -80,7 +80,7 @@
         </button>
 
         <!-- Nur zur Entwicklung: system.js blendet die Seite ausserhalb der Produktion ein -->
-        <button class="sidebar-nav-item" id="tabApiOutput" onclick="switchTab('api')" hidden>
+        <button class="sidebar-nav-item" id="tabApiOutput" data-click="switchTab" data-args='["api"]' hidden>
           <i class="fa-solid fa-code nav-icon" aria-hidden="true"></i>
           <span class="nav-text">API-Output</span>
         </button>
@@ -124,15 +124,14 @@
 
         <!-- Kokonut UI Pro Official Profile Card -->
         <!-- Klickfläche nur für die Maus; Tastatur und Screenreader nutzen den Knopf «Profil & Cockpit» (keine verschachtelten Bedienelemente) -->
-        <div class="kokonut-pro-card" id="userNavActions" onclick="switchTab('profile')" title="Mein Profil &amp; Qualifikationen öffnen">
+        <div class="kokonut-pro-card" id="userNavActions" data-click="switchTab" data-args='["profile"]' title="Mein Profil &amp; Qualifikationen öffnen">
           <div class="koko-photo-container">
             <span class="koko-initials-fallback" id="navUserInitials">RN</span>
             <img src="" 
                  alt="Profilfoto" 
                  class="koko-photo-img" 
                  id="navUserPhoto"
-                 style="display: none;"
-                 onerror="this.style.display='none'">
+                 style="display: none;">
             <div class="koko-photo-ring"></div>
             <span class="koko-online-badge" title="Cevi-DB Synchronisiert"></span>
           </div>
@@ -162,7 +161,7 @@
               </div>
             </div>
 
-            <button type="button" class="koko-action-btn" onclick="switchTab('profile'); event.stopPropagation();">
+            <button type="button" class="koko-action-btn" data-click="switchTab" data-args='["profile"]'>
               <span>Profil &amp; Cockpit</span>
             </button>
           </div>
@@ -177,7 +176,7 @@
       <!-- Topbar Header mit Hamburger Toggle & Seitentitel -->
       <header class="app-topbar">
         <div class="topbar-left">
-          <button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()" aria-label="Menü ein-/ausblenden">
+          <button class="sidebar-toggle-btn" id="sidebarToggleBtn" data-click="toggleSidebar" aria-label="Menü ein-/ausblenden">
             <i class="fa-solid fa-bars" aria-hidden="true"></i>
           </button>
           <div class="topbar-titles">
@@ -214,14 +213,14 @@
             </div>
             <div class="tree-zoom-group">
               <span class="tree-zoom-caption">Ansicht:</span>
-              <button class="btn btn-secondary btn-sm" onclick="zoomMap(-0.15)" title="Verkleinern" aria-label="Baum verkleinern">
+              <button class="btn btn-secondary btn-sm" data-click="zoomMap" data-args='[-0.15]' title="Verkleinern" aria-label="Baum verkleinern">
                 <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
               </button>
               <span id="treeZoomLabel">100%</span>
-              <button class="btn btn-secondary btn-sm" onclick="zoomMap(0.15)" title="Vergrössern" aria-label="Baum vergrössern">
+              <button class="btn btn-secondary btn-sm" data-click="zoomMap" data-args='[0.15]' title="Vergrössern" aria-label="Baum vergrössern">
                 <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
               </button>
-              <button class="btn btn-secondary btn-sm" onclick="resetMapTransform()" title="Standardgrösse" aria-label="Zoom zurücksetzen">
+              <button class="btn btn-secondary btn-sm" data-click="resetMapTransform" title="Standardgrösse" aria-label="Zoom zurücksetzen">
                 <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
               </button>
             </div>
@@ -291,7 +290,7 @@
               Echte Daten der Cevi-DB, angezeigt mit einem Mock-Login, weil der Cevi-DB-Login noch nicht angebunden ist. Das geht nur lokal auf localhost.
             </p>
             <div class="planner-actions">
-              <button class="btn btn-secondary" onclick="loadPlannerData(true)">
+              <button class="btn btn-secondary" data-click="loadPlannerData" data-args='[true]'>
                 <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Aktualisieren
               </button>
             </div>
@@ -377,8 +376,7 @@
                      alt="Profilfoto" 
                      class="profile-hero-avatar-img"
                      id="profileHeroPhoto"
-                     style="display: none;"
-                     onerror="this.style.display='none'">
+                     style="display: none;">
               </div>
               <div class="profile-hero-titles">
                 <h2>
@@ -516,7 +514,7 @@
               <div class="filter-bar">
                 <div class="search-input-wrapper">
                   <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
-                  <input type="text" id="courseSearchInput" class="search-input" placeholder="Kurs suchen (z.B. GLK, SLK, Berg)..." oninput="filterCourses()">
+                  <input type="text" id="courseSearchInput" class="search-input" placeholder="Kurs suchen (z.B. GLK, SLK, Berg)..." data-input="filterCourses">
                 </div>
                 <div class="custom-dropdown" id="categoryDropdown">
                   <button type="button" class="custom-dropdown-trigger" id="categoryDropdownTrigger" aria-haspopup="listbox" aria-expanded="false" title="Kategorie filtern">
@@ -567,7 +565,7 @@
              =================================================================== -->
         <section class="tab-panel" id="panel-api" role="tabpanel">
           <div class="panel-header">
-            <button class="btn btn-secondary" onclick="loadApiOutput()">
+            <button class="btn btn-secondary" data-click="loadApiOutput">
               <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Aktualisieren
             </button>
           </div>
@@ -663,11 +661,11 @@
           <h3 id="modalTitle">Kurs vorschlagen</h3>
           <p class="modal-subtitle">Der Vorschlag landet in der Liste der Stufe.</p>
         </div>
-        <button class="modal-close" onclick="closeNominationModal()" aria-label="Schliessen">
+        <button class="modal-close" data-click="closeNominationModal" aria-label="Schliessen">
           <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
       </div>
-      <form id="nominationForm" onsubmit="submitNomination(event)">
+      <form id="nominationForm" data-submit="submitNomination">
         <input type="hidden" id="modalPersonId">
         <input type="hidden" id="modalGroupId">
         <div class="form-group" id="modalPersonNameGroup">
@@ -714,7 +712,7 @@
           <textarea id="modalNotes" class="form-input" rows="2" aria-describedby="modalManualHint" maxlength="500" placeholder="z.B. Ist sehr engagiert in der Stufe und bereit für mehr Verantwortung."></textarea>
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeNominationModal()">Abbrechen</button>
+          <button type="button" class="btn btn-secondary" data-click="closeNominationModal">Abbrechen</button>
           <button type="submit" class="btn btn-primary">Vorschlag übernehmen</button>
         </div>
       </form>

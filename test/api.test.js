@@ -1113,7 +1113,9 @@ test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-O
 test('Security-Header stehen auf Seiten und API, personenbezogene JSON-Antworten sind no-store', async () => {
   for (const path of ['/', '/api/system/status']) {
     const res = await request(path);
-    assert.ok(res.headers.get('content-security-policy').includes("default-src 'self'"), path);
+    const csp = res.headers.get('content-security-policy');
+    assert.ok(csp.includes("default-src 'self'"), path);
+    assert.ok(/script-src 'self'(;|$)/.test(csp), `${path}: script-src ohne unsafe-inline (#171)`);
     assert.equal(res.headers.get('x-content-type-options'), 'nosniff', path);
     assert.equal(res.headers.get('x-frame-options'), 'DENY', path);
     assert.equal(res.headers.get('referrer-policy'), 'strict-origin-when-cross-origin', path);

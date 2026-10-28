@@ -10,6 +10,14 @@ export function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/**
+ * Attribute für ein Element in einem Template, das beim Klick die Aktion `name` mit `args` ruft (siehe actions.js).
+ * Ersetzt Inline-Handler, die die CSP nicht erlaubt.
+ */
+export function clickAction(name, ...args) {
+  return `data-click="${esc(name)}"${args.length ? ` data-args="${esc(JSON.stringify(args))}"` : ''}`;
+}
+
 // Kurze Bestätigung unten in der Mitte; die Region steht fest in index.html, damit Screenreader sie ansagen
 export function showToast(text) {
   const region = document.getElementById('toastRegion');
