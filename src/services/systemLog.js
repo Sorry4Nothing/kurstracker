@@ -100,7 +100,7 @@ export function requestLogger(actorOf) {
 }
 
 // Stacks verraten Pfade und Aufbau des Servers: an die Anzeige geht nur die Meldung bis zum ersten Stack-Frame
-const withoutStack = message => message.split(/\s+at\s+\S+\s*\(/)[0].trim();
+const withoutStack = message => message.split(/ at \S+ \(/)[0].trim();
 
 export function snapshot(limit = 500) {
   sampleMemory();

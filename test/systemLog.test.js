@@ -23,3 +23,13 @@ test('Systemlog: der Puffer behält höchstens 1000 Einträge', () => {
   assert.equal(entries.length, capacity);
   assert.equal(entries[0].message, '1199');
 });
+
+test('Systemlog: Stack-Frames werden aus der Anzeige entfernt, lange Leerzeichenfolgen bleiben schnell', () => {
+  resetSystemLog();
+  console.error(new Error('kaputt').stack.replace(/\n\s+at /, ' at ').split(' at ')[0] + '    at fn (/srv/app.js:1:1)');
+  console.error(' '.repeat(500) + 'x');
+  const start = Date.now();
+  const { entries } = snapshot();
+  assert.ok(Date.now() - start < 200);
+  assert.equal(entries[1].message, 'Error: kaputt');
+});
