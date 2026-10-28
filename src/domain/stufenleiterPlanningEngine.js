@@ -75,11 +75,13 @@ export class StufenleiterPlanningEngine {
   analyzeParticipant(participant) {
     // Kurstitel in der Form fur das Geschlecht der jeweiligen Person
     const tree = this.treeEngine.forGender(participant.gender);
-    // Vorschläge gelten fürs nächste Kursjahr: Alter (Jahrgang) und Gültigkeit der Anerkennung ab dem 1. Januar
+    // Vorschläge gelten fürs nächste Kursjahr: Alter (Jahrgang) und Gültigkeit der Anerkennung ab dem 1. Januar.
+    // Angezeigt wird das heutige Alter (`age`); `planAge` rechnet nur die Empfehlungen.
     const now = new Date();
     const planYear = now.getFullYear() + 1;
     const planStart = new Date(planYear, 0, 1);
-    const age = tree.calculateAge(participant.birthdate, planStart);
+    const planAge = tree.calculateAge(participant.birthdate, planStart);
+    const age = tree.calculateExactAge(participant.birthdate, now);
     const treeState = tree.evaluatePersonInTree(participant);
     const recommendedCourses = [];
 
@@ -94,35 +96,35 @@ export class StufenleiterPlanningEngine {
     const hasSlk = completed.has('slk');
 
     // 1. Empfehlung: Helferkurs (Heku)
-    if (!hasHlk && !hasGlk && age >= tree.nodes.heku.minAge && age <= 16) {
+    if (!hasHlk && !hasGlk && planAge >= tree.nodes.heku.minAge && planAge <= 16) {
       const courseTitle = tree.nodes.heku.title;
       recommendedCourses.push({
         courseId: 'heku',
         title: courseTitle,
         courseTitle: courseTitle,
-        priority: age >= 15 ? 'HOCH' : 'NORMAL',
-        reason: age >= 15
-          ? `Ideales Einstiegsalter (${age} Jahre) für den ${courseTitle}.`
+        priority: planAge >= 15 ? 'HOCH' : 'NORMAL',
+        reason: planAge >= 15
+          ? `Ideales Einstiegsalter (${planAge} Jahre) für den ${courseTitle}.`
           : `Berechtigt für Heku (ab ${tree.nodes.heku.minAge} Jahren, Jahrgang).`
       });
     }
 
     // 2. Empfehlung: Gruppenleiterkurs 3 (GLK 3 / J+S Leiter)
-    if (!hasGlk && age >= tree.nodes.glk3.minAge) {
+    if (!hasGlk && planAge >= tree.nodes.glk3.minAge) {
       const courseTitle = tree.nodes.glk3.title;
       recommendedCourses.push({
         courseId: 'glk3',
         title: courseTitle,
         courseTitle: courseTitle,
-        priority: age >= 18 ? 'SEHR HOCH' : 'HOCH',
-        reason: age >= 18
-          ? `Erreicht Volljährigkeit (${age} Jahre) - GLK für vollen J+S-Leiterstatus dringend empfohlen.`
+        priority: planAge >= 18 ? 'SEHR HOCH' : 'HOCH',
+        reason: planAge >= 18
+          ? `Erreicht Volljährigkeit (${planAge} Jahre) - GLK für vollen J+S-Leiterstatus dringend empfohlen.`
           : `Berechtigt für GLK ${planYear} (17 Jahre, J+S-Einstieg).`
       });
     }
 
     // 3. Empfehlung: Scharleiterkurs (SLK)
-    if (hasGlk && !hasSlk && age >= 18) {
+    if (hasGlk && !hasSlk && planAge >= 18) {
       const leaderRole = (participant.currentRole || '').toLowerCase();
       const isLeader = leaderRole.includes('leiter') || leaderRole.includes('kader');
       if (isLeader) {
@@ -131,7 +133,7 @@ export class StufenleiterPlanningEngine {
           courseId: 'slk',
           title: courseTitle,
           courseTitle: courseTitle,
-          priority: age >= 19 ? 'HOCH' : 'NORMAL',
+          priority: planAge >= 19 ? 'HOCH' : 'NORMAL',
           reason: `Hat GLK abgeschlossen. Bereit für Kader- und Scharleiterverantwortung.`
         });
       }

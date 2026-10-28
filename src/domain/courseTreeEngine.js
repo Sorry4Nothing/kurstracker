@@ -82,6 +82,26 @@ export class CourseTreeEngine {
    * @returns {number|null} null, wenn das Geburtsdatum fehlt oder ungultig ist
    */
   calculateAge(birthdate, referenceDate = new Date()) {
+    const birth = this.parseBirthdate(birthdate);
+    return birth ? referenceDate.getFullYear() - birth.getFullYear() : null;
+  }
+
+  /**
+   * Tatsächliches Alter an einem Stichtag (Monat und Tag zählen), für die Anzeige.
+   * Zulassung und Planung rechnen dagegen mit calculateAge (Jahrgang).
+   * @param {string|Date} birthdate
+   * @param {Date} [referenceDate]
+   * @returns {number|null} null, wenn das Geburtsdatum fehlt oder ungultig ist
+   */
+  calculateExactAge(birthdate, referenceDate = new Date()) {
+    const birth = this.parseBirthdate(birthdate);
+    if (!birth) return null;
+    const birthdayPassed = referenceDate.getMonth() > birth.getMonth()
+      || (referenceDate.getMonth() === birth.getMonth() && referenceDate.getDate() >= birth.getDate());
+    return referenceDate.getFullYear() - birth.getFullYear() - (birthdayPassed ? 0 : 1);
+  }
+
+  parseBirthdate(birthdate) {
     if (!birthdate) return null;
     let birth;
     if (typeof birthdate === 'string' && /^\d{2}\.\d{2}\.\d{4}/.test(birthdate.trim())) {
@@ -90,9 +110,7 @@ export class CourseTreeEngine {
     } else {
       birth = new Date(birthdate);
     }
-    if (isNaN(birth.getTime())) return null;
-
-    return referenceDate.getFullYear() - birth.getFullYear();
+    return isNaN(birth.getTime()) ? null : birth;
   }
 
   /**

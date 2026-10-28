@@ -332,6 +332,26 @@ test('Planer: Heku von 13 bis 16 (ab 15 hohe Priorität), GLK 3 nach GLK 2 ab 17
   assert.deepEqual(recs(18, ['glk3']), []);
 });
 
+test('Planer: angezeigtes Alter ist das heutige, die Empfehlung rechnet mit dem Jahrgang des nächsten Jahres (#143)', () => {
+  const engine = new StufenleiterPlanningEngine();
+  const person = { id: 'tn', birthdate: birthdateForAge(17), completedCourses: ['glk2'] };
+  const analysis = engine.analyzeParticipant(person);
+  assert.equal(analysis.age, 17);
+  // Im Planjahr 18: Volljährigkeit, GLK 3 sehr hoch, obwohl die Person heute 17 ist
+  assert.deepEqual(analysis.recommendedCourses.map(r => `${r.courseId}:${r.priority}`), ['glk3:SEHR HOCH']);
+  assert.equal(engine.analyzeGroup([person]).candidatesByCourse.glk3[0].age, 17);
+});
+
+test('Alter: exakt mit Geburtstag, Jahrgang nur nach Geburtsjahr', () => {
+  const at = new Date(2026, 9, 28);
+  assert.equal(courseTreeEngine.calculateExactAge('2001-10-28', at), 25);
+  assert.equal(courseTreeEngine.calculateExactAge('2001-10-29', at), 24);
+  assert.equal(courseTreeEngine.calculateExactAge('29.12.2001', at), 24);
+  assert.equal(courseTreeEngine.calculateExactAge(null, at), null);
+  assert.equal(courseTreeEngine.calculateExactAge('kein Datum', at), null);
+  assert.equal(courseTreeEngine.calculateAge('2001-12-31', at), 25);
+});
+
 test('Planer: abgeschlossene Kurse erscheinen mit dem Kürzel aus den Kursdaten, Aliase ohne Doppel', () => {
   const engine = new StufenleiterPlanningEngine();
   const codes = completedCourses => engine.analyzeParticipant({ id: 'tn', completedCourses }).completedCourseCodes;
