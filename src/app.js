@@ -583,7 +583,8 @@ const defaultDemoGroup = [
 // shortcut: ohne Login nur lokal, nach dem OAuth-Login (#4) auch Leitenden dieser Gruppe zeigen
 function plannerGroup(fresh = false) {
   const localOnly = envConfig.app.isLocal && ['localhost', '127.0.0.1', '::1'].includes(envConfig.server.host);
-  return ceviDbService.serviceToken && localOnly ? ceviDbService.getGroupMembers({ fresh }) : defaultDemoGroup;
+  if (ceviDbService.serviceToken && localOnly) return ceviDbService.getGroupMembers({ fresh });
+  return ceviDbService.usesDemoGroup() ? defaultDemoGroup : [];
 }
 
 // Gesamtübersicht und Analyse für Stufenleiter
