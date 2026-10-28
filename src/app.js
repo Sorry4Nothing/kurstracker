@@ -11,7 +11,7 @@ import { ceviDbService } from './services/ceviDbService.js';
 import { courseTreeEngine, CourseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
 import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, toRegionCourseIds, standardCourseId } from './domain/courseTreeData.js';
-import { plannerScope, visibleTo, groupsOf, isAbteilungsleitung, isStufenleitung, leadDepartments, canEditGroup, canReopenGroup } from './domain/plannerAccess.js';
+import { plannerScope, visibleTo, groupsOf, isAbteilungsleitung, isStufenleitung, isFroeschliLeitung, leadDepartments, canEditGroup, canReopenGroup } from './domain/plannerAccess.js';
 import { normalizeEntries, MAX_NOTE, STATUS_OPEN, STATUS_SUBMITTED } from './domain/proposals.js';
 import { credentialStore } from './services/credentialStore.js';
 import { proposalStore } from './services/proposalStore.js';
@@ -427,10 +427,11 @@ app.get('/api/tree/structure', (req, res) => {
   const scope = plannerScope(user);
   const canSeeNolk = isAbteilungsleitung(scope);
   const canSeeSlk = isStufenleitung(scope);
-  // NOLK (Abteilungsleitung) und SLK (Stufenleitung) sind Funktionskurse, kein Teil des
-  // allgemeinen Ausbildungswegs - nur zeigen, wer die entsprechende Rolle traegt
+  const canSeeFroeschUp = isFroeschliLeitung(user);
+  // NOLK (Abteilungsleitung), SLK (Stufenleitung) und Froesch-Up (Froeschli-Leitende) sind Funktionskurse, kein Teil
+  // des allgemeinen Ausbildungswegs - nur zeigen, wer die entsprechende Rolle traegt
   const visibleNodes = Object.fromEntries(Object.entries(nodes).filter(([, n]) =>
-    (n.code !== 'NOLK' || canSeeNolk) && (n.code !== 'SLK' || canSeeSlk)
+    (n.code !== 'NOLK' || canSeeNolk) && (n.code !== 'SLK' || canSeeSlk) && (n.code !== 'Frösch-Up' || canSeeFroeschUp)
   ).map(([id, n]) => [id, nodes === COURSE_NODES ? n : { ...n, courseNodeId: standardCourseId(n) }]));
   res.json({
     nodes: withGenderTitles(visibleNodes, user?.gender)

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { plannerScope, visibleTo, groupsOf, isAbteilungsleitung, isStufenleitung, canEditGroup } from '../src/domain/plannerAccess.js';
+import { plannerScope, visibleTo, groupsOf, isAbteilungsleitung, isStufenleitung, isFroeschliLeitung, canEditGroup } from '../src/domain/plannerAccess.js';
 
 const role = (role_class, group_id) => ({ role_class, group_id });
 const stufe = (id, departmentId = '1') => ({ id, name: `Stufe ${id}`, type: 'Group::Stufe', departmentId, departmentName: 'JS Stäfa-Hombrechtikon' });
@@ -42,6 +42,17 @@ test('Planner-Zugriff: NOLK braucht Abteilungsleitung, SLK reicht Stufenleitung 
   const alScope = plannerScope({ roles: [role('Group::Jungschar::Abteilungsleiter', '1')] });
   assert.equal(isAbteilungsleitung(alScope), true);
   assert.equal(isStufenleitung(alScope), true);
+});
+
+test('Planner-Zugriff: Frösch-Up sehen nur Fröschli-Leitende', () => {
+  assert.equal(isFroeschliLeitung(null), false);
+  assert.equal(isFroeschliLeitung({ roles: [role('Group::Froeschli::Froeschlileiter', 30)] }), true);
+  assert.equal(isFroeschliLeitung({ roles: [role('Group::Froeschli::Froeschlihauptleiter', 30)] }), true);
+  assert.equal(isFroeschliLeitung({ roles: ['Fröschlileiterin'] }), true);
+  for (const cls of ['Group::Froeschli::Teilnehmer', 'Group::Stufe::Stufenleiter', 'Group::Jungschar::Abteilungsleiter']) {
+    assert.equal(isFroeschliLeitung({ roles: [role(cls, 30)] }), false, cls);
+  }
+  assert.equal(isFroeschliLeitung({ roles: ['Abteilungsleiter', 'Kursleiter'] }), false);
 });
 
 test('Planner-Zugriff: ohne Scope bleibt die Liste leer, Gruppen und Abteilungen kommen aus den sichtbaren Mitgliedern (#106)', () => {

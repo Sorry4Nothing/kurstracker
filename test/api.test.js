@@ -15,7 +15,7 @@ process.env.RATE_LIMIT_AUTH_MAX = '200';
 const { app, logSafe } = await import('../src/app.js');
 const { ceviDbService } = await import('../src/services/ceviDbService.js');
 const { envConfig } = await import('../src/config/env.js');
-const { COURSE_NODES } = await import('../src/domain/courseTreeData.js');
+const { COURSE_NODES, COURSE_NODES_BY_REGION } = await import('../src/domain/courseTreeData.js');
 
 const projectRoot = fileURLToPath(new URL('..', import.meta.url));
 // Eigene Referenz: einzelne Tests ersetzen globalThis.fetch, um die Cevi-DB zu simulieren
@@ -168,6 +168,14 @@ test('API: Region der Person (Mock = Zürich) bestimmt den Baum, Status kommt au
   const { evaluation } = await (await request('/api/tree/evaluation?region=zuerich')).json();
   assert.equal(evaluation.nodes.zuerich_voku_2026.status, 'COMPLETED');
   assert.ok(!('voku' in evaluation.nodes), 'nur Kurse der Region');
+});
+
+test('API: Frösch-Up fehlt im Baum ohne Fröschli-Leitungsrolle, NOLK und SLK zeigt die Abteilungsleitung', async () => {
+  const { nodes } = await (await request('/api/tree/structure?region=zuerich')).json();
+  const codes = Object.values(nodes).map(node => node.code);
+  assert.ok(!codes.includes('Frösch-Up'));
+  assert.ok(codes.includes('NOLK') && codes.includes('SLK'));
+  assert.ok(Object.hasOwn(COURSE_NODES_BY_REGION.zuerich, 'zuerich_frosch_up_2027'), 'der Kurs existiert, wird nur ausgeblendet');
 });
 
 test('API: nicht bestandener Kurs zählt nicht als absolviert', {
