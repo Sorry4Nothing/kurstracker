@@ -920,7 +920,7 @@ function sendErrorPage(res, code) {
   const loginUrl = ceviDbService.isPreparationMode() ? '/api/auth/mock-login' : '/api/auth/login';
   // Nur den Abschnitt des Codes ausliefern, damit vor dem CSS nicht alle drei kurz sichtbar sind
   res.status(code).type('html').send(errorTemplate
-    .replace(/ *<section data-error="(\d+)"[\s\S]*?<\/section>\n\n?/g, (section, sectionCode) => (Number(sectionCode) === code ? section : ''))
+    .replace(/ *<section class="error-card" data-error="(\d+)"[\s\S]*?<\/section>\s*/g, (section, sectionCode) => (Number(sectionCode) === code ? section : ''))
     .replaceAll('{{CODE}}', String(code))
     .replaceAll('{{TITLE}}', ERROR_PAGES[code])
     .replaceAll('{{LOGIN_URL}}', loginUrl));
