@@ -204,6 +204,49 @@ test.describe('Profil', () => {
     await expect(page.locator('#coursesContainer')).not.toContainText('undefined');
   });
 
+  test('Kursangebot: alle Kacheln zeigen fünf gleich hohe Angaben ohne Anmeldeknopf, Fehlendes als «Nicht bekannt»', async ({ page }) => {
+    // Eine Durchführung ohne Veranstalter und Anmeldeschluss, eine mit überlangen Angaben
+    await page.route('**/api/courses', async route => {
+      const courses = await (await route.fetch()).json();
+      Object.assign(courses[0], { organizer: '', registration_deadline: null });
+      Object.assign(courses[1], { location: 'Lagerhaus-'.repeat(20), status: 'Offen für Anmeldung '.repeat(8) });
+      await route.fulfill({ json: courses });
+    });
+    await page.reload();
+    await page.locator('#userNavActions').click();
+    await expect(page.locator('#coursesContainer > .card').first()).toBeVisible();
+
+    const first = page.locator('#coursesContainer > .card').first();
+    await expect(first.locator('.meta-item').filter({ hasText: 'Veranstalter' })).toContainText('Nicht bekannt');
+    await expect(first.locator('.meta-item').filter({ hasText: 'Anmeldeschluss' })).toContainText('Nicht bekannt');
+    await expect(page.locator('#coursesContainer a')).toHaveCount(0);
+
+    const { rows, heights, overflow } = await page.locator('#coursesContainer > .card').evaluateAll(cards => ({
+      rows: [...new Set(cards.map(c => c.querySelectorAll('.meta-item').length))],
+      heights: [...new Set(cards.map(c => Math.round(c.querySelector('.meta-list').getBoundingClientRect().height)))],
+      overflow: cards.flatMap(c => [...c.querySelectorAll('*')].filter(e => e.getBoundingClientRect().right > c.getBoundingClientRect().right + 1).map(e => e.className))
+    }));
+    expect(rows).toEqual([5]);
+    expect(heights).toHaveLength(1);
+    expect(overflow).toEqual([]);
+  });
+
+  test('Anerkennungen ohne Empfehlung, Werdegang ohne Ergebnis als «Besucht»', async ({ page }) => {
+    await expect(page.locator('#qualsContainer')).not.toContainText('Empfehlung');
+    await page.route('**/api/user/history', async route => {
+      const history = await (await route.fetch()).json();
+      delete history[0].result;
+      history[1].result = 'Nicht bestanden';
+      await route.fulfill({ json: history });
+    });
+    await page.reload();
+    await page.locator('#userNavActions').click();
+    const badges = page.locator('#historyContainer .timeline-header .badge');
+    await expect(badges.nth(0)).toHaveText('Besucht');
+    await expect(badges.nth(1)).toHaveText('Nicht bestanden');
+    await expect(badges.nth(2)).toContainText('Erfolgreich bestanden');
+  });
+
   test('Kurssuche und Kategoriefilter grenzen das Kursangebot ein', async ({ page, request }) => {
     const courses = await (await request.get('/api/courses')).json();
     const cards = page.locator('#coursesContainer > .card');

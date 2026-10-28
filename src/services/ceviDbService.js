@@ -867,7 +867,6 @@ export class CeviDbService {
         valid_until: '2026-12-31',
         days_remaining: 438,
         renewal_needed: false,
-        renewal_recommended: 'Im Herbst 2026 Fortbildungsmodul besuchen',
         requirements_fulfilled: true
       },
       {
@@ -895,19 +894,6 @@ export class CeviDbService {
         days_remaining: 938,
         renewal_needed: false,
         requirements_fulfilled: true
-      },
-      {
-        id: 'qual-js-berg-pending',
-        key: 'js_sec_berg',
-        title: 'J+S Sicherheitsbereich Berg',
-        sub_title: 'Zusatzqualifikation T3/T4',
-        type: 'Jugend+Sport',
-        status: 'In Ausbildung',
-        status_code: 'pending',
-        valid_until: 'Kursbesuch Juli 2026',
-        days_remaining: null,
-        renewal_needed: false,
-        requirements_fulfilled: false
       }
     ];
   }

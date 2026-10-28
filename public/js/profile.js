@@ -34,7 +34,6 @@ export function renderQualifications(quals) {
   const html = list.map(q => {
     let badgeClass = 'badge-success';
     const status = q.status || 'Gültig';
-    if (status.includes('Fortbildung') || status.includes('In Ausbildung')) badgeClass = 'badge-warning';
     if (status.includes('Verfallen') || status.includes('Gesperrt')) badgeClass = 'badge-danger';
 
     const category = q.type || q.category || 'Jugend+Sport';
@@ -56,11 +55,6 @@ export function renderQualifications(quals) {
             <span>Gültig bis:</span>
             <strong>${esc(validUntil)}</strong>
           </div>
-          ${q.renewal_recommended ? `
-          <div class="meta-item text-accent">
-            <span>Empfehlung:</span>
-            <strong>${esc(q.renewal_recommended)}</strong>
-          </div>` : ''}
           <div class="meta-item">
             <span>Cevi-DB / BASPO:</span>
             <strong class="text-success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Bestätigt</strong>
@@ -97,14 +91,19 @@ export function renderHistory(history) {
     const dateFormatted = h.date ? formatEuropeanDate(h.date) : (h.year ? formatEuropeanDate(h.year) : '');
     const role = h.role || 'Teilnehmer';
     const organizer = h.organizer || (h.category ? `${h.category} Kurs` : 'Cevi Region Zürich');
-    const result = h.result || 'Erfolgreich bestanden';
+    // Ohne Angabe in der Cevi-DB wissen wir nicht, ob der Kurs bestanden ist
+    const result = h.result || 'Besucht';
+    const resultBadge = !h.result ? 'badge'
+      : /nicht bestanden/i.test(result) ? 'badge badge-danger' : 'badge badge-success';
+    const resultIcon = !h.result ? '' : /nicht bestanden/i.test(result)
+      ? '<i class="fa-solid fa-xmark" aria-hidden="true"></i> ' : '<i class="fa-solid fa-check" aria-hidden="true"></i> ';
 
     // Kurshistorie inkl. Notizen kommt im Live-Betrieb aus der Cevi-DB (fremde Eingaben): alles escapen
     return `
       <div class="timeline-item">
         <div class="timeline-header">
           <span class="timeline-year">${esc(dateFormatted)}</span>
-          <span class="badge badge-success"><i class="fa-solid fa-check" aria-hidden="true"></i> ${esc(result)}</span>
+          <span class="${resultBadge}">${resultIcon}${esc(result)}</span>
         </div>
         <h4>${esc(courseTitle)}</h4>
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">

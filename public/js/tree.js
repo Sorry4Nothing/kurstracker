@@ -156,7 +156,7 @@ async function showUpcomingDates(courseId) {
   try {
     const dates = upcomingDates(await fetchCourses(), courseId).slice(0, 3);
     if (courseId !== selectedTargetCourseId) return; // inzwischen ist ein anderer Kurs gewählt
-    container.innerHTML = dates.map(courseMetaHtml).join('') || 'Keine kommenden Termine in der Cevi-DB.';
+    container.innerHTML = dates.map(c => courseMetaHtml(c)).join('') || 'Keine kommenden Termine in der Cevi-DB.';
   } catch (err) {
     container.textContent = `Termine nicht abrufbar: ${err.message}`;
   }

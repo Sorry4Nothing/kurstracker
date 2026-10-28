@@ -31,12 +31,19 @@ export function upcomingDates(courses, courseNodeId) {
     .sort((a, b) => a.start_date.localeCompare(b.start_date));
 }
 
-// Angaben einer Durchführung mit Anmeldelink; leere Angaben (z. B. Veranstalter aus der Cevi-DB) fallen weg
-export function courseMetaHtml(c) {
-  const row = (label, value, style = '') => (value === '' || value == null ? '' : `
+// Angaben einer Durchführung. Im Baum fallen leere Angaben weg und der Anmeldelink steht dabei; im Kursangebot
+// (catalog) zeigt jede Kachel alle fünf Zeilen, Fehlendes als «Nicht bekannt», damit alle gleich hoch bleiben
+export function courseMetaHtml(c, { catalog = false } = {}) {
+  const row = (label, value, style = '') => (value === '' || value == null
+    ? (catalog ? `
     <div class="meta-item">
       <span>${label}:</span>
-      <strong${style}>${esc(value)}</strong>
+      <strong class="text-dim">Nicht bekannt</strong>
+    </div>` : '')
+    : `
+    <div class="meta-item">
+      <span>${label}:</span>
+      <strong${style}${catalog ? ` title="${esc(value)}"` : ''}>${esc(value)}</strong>
     </div>`);
   return `
     <div class="meta-list">
@@ -45,7 +52,7 @@ export function courseMetaHtml(c) {
       ${row('Kursdatum', formatEuropeanDateRange(c.start_date, c.end_date))}
       ${row('Anmeldeschluss', formatEuropeanDate(c.registration_deadline), ' style="color: var(--cevi-gold);"')}
       ${row('Freie Plätze', c.free_places)}
-      ${c.registration_url ? `
+      ${!catalog && c.registration_url ? `
         <a class="btn btn-secondary btn-sm" href="${esc(c.registration_url)}" target="_blank" rel="noopener noreferrer" aria-label="Zur Anmeldung in der Cevi-DB (öffnet in neuem Tab)">
           <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
           <span>Zur Anmeldung in der Cevi-DB</span>
@@ -79,7 +86,7 @@ export function renderCourses(courses) {
       </div>
       <h3 class="card-title">${esc(c.title)}</h3>
       <p class="card-subtitle">${esc(c.description)}</p>
-      ${courseMetaHtml(c)}
+      ${courseMetaHtml(c, { catalog: true })}
     </div>
   `).join('');
 
