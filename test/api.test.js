@@ -291,6 +291,34 @@ test('Cevi-DB-Mitglieder: Cache teilt gleichzeitige Abfragen, «Aktualisieren» 
   assert.equal(loads, 7, 'ein Fehler bleibt nicht im Cache');
 });
 
+test('Cevi-DB-Kurse: mit Service-Token fünf Minuten zwischengespeichert, mit Personen-Token nie, Fehler werden nicht gemerkt (#27)', async (t) => {
+  setFor(t, ceviDbService, { serviceToken: 'svc_test', coursesCache: undefined });
+  let loads = 0;
+  let fail = false;
+  t.mock.method(ceviDbService, 'fetchList', async () => { loads++; if (fail) throw new Error('down'); return []; });
+
+  await Promise.all([ceviDbService.getCourses(), ceviDbService.getCourses()]);
+  await ceviDbService.getCourses();
+  assert.equal(loads, 1, 'gleichzeitige und folgende Aufrufe teilen eine Abfrage');
+
+  ceviDbService.coursesCache.at -= 301_000;
+  await ceviDbService.getCourses();
+  assert.equal(loads, 2, 'nach fünf Minuten wird neu geladen');
+
+  ceviDbService.coursesCache.at -= 301_000;
+  fail = true;
+  await assert.rejects(ceviDbService.getCourses(), /down/);
+  fail = false;
+  await ceviDbService.getCourses();
+  assert.equal(loads, 4, 'ein Fehler bleibt nicht im Cache');
+
+  ceviDbService.serviceToken = '';
+  t.mock.method(ceviDbService, 'isPreparationMode', () => false);
+  await ceviDbService.getCourses('user_token');
+  await ceviDbService.getCourses('user_token');
+  assert.equal(loads, 6, 'mit dem Token einer Person fragt jeder Aufruf die Cevi-DB');
+});
+
 test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötigen Feldern (#26)', async (t) => {
   setFor(t, ceviDbService, { serviceToken: 'svc_test', membersCache: undefined });
   setFor(t, envConfig.app, { isLocal: true });
@@ -874,8 +902,7 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
 });
 
 test('Service-Token: Kurse kommen live per X-Token, auch im Vorbereitungsmodus, Seite für Seite und dem Baum zugeordnet (#11)', async (t) => {
-  ceviDbService.serviceToken = 'svc_test';
-  t.after(() => { ceviDbService.serviceToken = ''; });
+  setFor(t, ceviDbService, { serviceToken: 'svc_test', coursesCache: undefined });
   const event = (id, kind, dates = []) => ({
     id: String(id),
     type: 'courses',
@@ -961,7 +988,7 @@ test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-O
   }
 
   // Mit Service-Token kommen Kurse und lokal die Mitglieder live; fällt die Cevi-DB aus, nennt auch der 502 sie
-  setFor(t, ceviDbService, { serviceToken: 'svc_test', membersCache: undefined });
+  setFor(t, ceviDbService, { serviceToken: 'svc_test', membersCache: undefined, coursesCache: undefined });
   setFor(t, envConfig.app, { isLocal: true });
   setFor(t, envConfig.server, { host: 'localhost' });
   t.mock.method(globalThis, 'fetch', async () => new Response('Fehler', { status: 500 }));

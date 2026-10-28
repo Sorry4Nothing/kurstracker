@@ -29,6 +29,8 @@ const MEMBERS_TTL_MS = 60_000;
 const MEMBERS_MIN_AGE_MS = 10_000;
 // So lange dürfen abgelaufene Daten ausgeliefert werden, während im Hintergrund neu geladen wird
 const MEMBERS_STALE_MS = 600_000;
+// Die Kursliste ist für alle gleich; ein paar Minuten alt schadet nicht, freie Plätze ändern sich langsam
+const COURSES_TTL_MS = 300_000;
 
 /**
  * Cevi-DB (Hitobito) API & OAuth2 Service
@@ -259,12 +261,24 @@ export class CeviDbService {
       return this.getMockCourses();
     }
     const today = new Date().toISOString().slice(0, 10);
-    // shortcut: kein Cache, jeder Seitenaufruf fragt die Cevi-DB ab; bei vielen Nutzenden die Kursliste serverseitig zwischenspeichern
-    const events = await this.fetchList(
-      `/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind`,
-      this.serviceToken ? undefined : accessToken
-    );
-    return events.map(event => this.toCourse(event, today));
+    const load = async () => {
+      const events = await this.fetchList(
+        `/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind`,
+        this.serviceToken ? undefined : accessToken
+      );
+      return events.map(event => this.toCourse(event, today));
+    };
+    // Mit dem Token einer Person kann die Sichtbarkeit je Person abweichen: nur die Liste des Service-Tokens ist für alle gleich
+    if (!this.serviceToken) return load();
+    const cache = this.coursesCache;
+    if (cache?.day === today && Date.now() - cache.at < COURSES_TTL_MS) return cache.promise;
+    // shortcut: Cache nur im Arbeitsspeicher dieses Prozesses, wie bei den Mitgliedern; ein Fehler wird nicht gemerkt
+    const promise = load().catch(err => {
+      if (this.coursesCache?.promise === promise) this.coursesCache = undefined;
+      throw err;
+    });
+    this.coursesCache = { at: Date.now(), day: today, promise };
+    return promise;
   }
 
   /**
