@@ -184,6 +184,19 @@ test.describe('Ausbildungsbaum', () => {
     await expect(dates).toHaveText('Keine kommenden Termine in der Cevi-DB.');
   });
 
+  test('Kursdetail zeigt höchstens die nächsten drei Termine', async ({ page, request }) => {
+    const glk3 = (await (await request.get('/api/courses')).json()).find(c => c.course_node_id === 'glk3');
+    const five = Array.from({ length: 5 }, (_, i) => ({ ...glk3, id: `glk3-${i}`, start_date: `2099-0${i + 1}-10`, end_date: `2099-0${i + 1}-12` }));
+    await page.route('**/api/courses', route => route.fulfill({ json: five }));
+    await openApp(page);
+    await zoomOutFully(page);
+
+    await page.getByRole('button', { name: /GLK 3/ }).click();
+    await expect(page.locator('#inspectorDates').getByRole('link', { name: /Zur Anmeldung/ })).toHaveCount(3);
+    await expect(page.locator('#inspectorDates')).toContainText('10.01.2099');
+    await expect(page.locator('#inspectorDates')).not.toContainText('10.04.2099');
+  });
+
   test('Enter auf einem fokussierten Kurs wählt ihn aus', async ({ page }) => {
     const node = page.getByRole('button', { name: /Vorkurs/ });
 

@@ -3,7 +3,7 @@
  * Ausbildungsreife-Uebersicht, Empfehlungen und Kursvorschlaege
  */
 
-import { formatEuropeanDate, formatEuropeanDateRange, esc, showToast } from './utils.js';
+import { formatEuropeanDate, formatEuropeanDateRange, esc, showToast, errorText, responseError } from './utils.js';
 import { fetchCourses, upcomingDates } from './courses.js';
 import { getStandardStructure } from './tree.js';
 import { enhanceSelect, refreshSelect } from './select.js';
@@ -289,7 +289,7 @@ function renderProposals(groups = overview?.groups || []) {
 export async function loadProposals() {
   try {
     const res = await fetch('/api/planner/proposals');
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+    if (!res.ok) throw await responseError(res);
     const { groups, user } = await res.json();
     proposer = user;
     const next = {};
@@ -302,7 +302,7 @@ export async function loadProposals() {
     proposalsError = '';
   } catch (err) {
     proposals = {};
-    proposalsError = `Vorschläge konnten nicht geladen werden: ${err.message}`;
+    proposalsError = `Vorschläge konnten nicht geladen werden: ${errorText(err)}`;
   }
   renderProposals();
 }
@@ -340,7 +340,7 @@ async function sendProposals(groupId, action, note = '') {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(action === 'reopen' ? { note } : { entries: state.entries.map(({ personId, courseId, season, note }) => ({ personId, courseId, season, note })) })
     });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+    if (!res.ok) throw await responseError(res);
     state.dirty = false;
     await loadProposals();
     await minimum;
@@ -354,7 +354,7 @@ async function sendProposals(groupId, action, note = '') {
     setBusy(false);
     // Der Status kann anderswo gewechselt haben (z. B. Zurückgeben unter «Kursvorschläge»): neu laden, damit die Knöpfe stimmen
     await loadProposals();
-    proposalsError = `Speichern fehlgeschlagen: ${err.message}`;
+    proposalsError = `Speichern fehlgeschlagen: ${errorText(err)}`;
     renderProposals();
   }
 }
@@ -426,7 +426,7 @@ export async function loadPlannerData(fresh = false) {
 
   try {
     const res = await fetch(fresh ? '/api/planner/overview?refresh=1' : '/api/planner/overview');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw await responseError(res);
     overview = await res.json();
     await loadProposals();
     document.getElementById('plannerMockHint')?.toggleAttribute('hidden', !overview.realDataViaMockLogin);
@@ -436,7 +436,7 @@ export async function loadPlannerData(fresh = false) {
     renderPlanner();
   } catch (err) {
     console.error('Fehler beim Laden der Planungsdaten:', err);
-    tableBody.innerHTML = `<tr><td colspan="7" class="text-danger">Fehler: ${esc(err.message)}</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="7" class="text-danger">Fehler: ${esc(errorText(err))}</td></tr>`;
   }
 }
 

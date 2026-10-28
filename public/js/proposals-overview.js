@@ -4,7 +4,7 @@
  * Die Stufenleiste zeigt den Stand jeder Stufe und erlaubt «Zurückgeben» und «Bearbeiten».
  */
 
-import { esc, showToast } from './utils.js';
+import { esc, showToast, errorText, responseError } from './utils.js';
 import { courseTitle, showStufe, loadProposals } from './planner.js';
 import { getStandardStructure } from './tree.js';
 import { askReturn } from './confirm.js';
@@ -106,11 +106,11 @@ async function reopen(groupId, name, button) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ note: answer.note })
     });
-    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `HTTP ${response.status}`);
+    if (!response.ok) throw await responseError(response);
     showToast(`Vorschläge «${name}» zurückgegeben`);
     await loadProposals();
   } catch (err) {
-    showToast(`Zurückgeben fehlgeschlagen: ${err.message}`);
+    showToast(`Zurückgeben fehlgeschlagen: ${errorText(err)}`);
   }
   loadProposalsOverview();
 }

@@ -3,7 +3,7 @@
  * Hitobito Stammdaten, Anerkennungen, Kurshistorie und Subtab-Navigation
  */
 
-import { esc, formatEuropeanDate } from './utils.js';
+import { esc, errorText, responseError, formatEuropeanDate } from './utils.js';
 
 export async function loadUserProfile() {
   await Promise.all([
@@ -18,12 +18,12 @@ export async function loadUserQualifications() {
 
   try {
     const res = await fetch('/api/user/qualifications');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw await responseError(res);
     const quals = await res.json();
     renderQualifications(quals);
   } catch (err) {
     console.error('Fehler beim Laden der Qualifikationen:', err);
-    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Qualifikationen: ${esc(err.message)}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Qualifikationen: ${esc(errorText(err))}</div>`;
   }
 }
 
@@ -73,12 +73,12 @@ export async function loadUserHistory() {
 
   try {
     const res = await fetch('/api/user/history');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw await responseError(res);
     const history = await res.json();
     renderHistory(history);
   } catch (err) {
     console.error('Fehler beim Laden der Historie:', err);
-    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Historie: ${esc(err.message)}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden der Historie: ${esc(errorText(err))}</div>`;
   }
 }
 

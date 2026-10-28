@@ -4,7 +4,7 @@
  */
 
 import { COURSE_MAP_COORDS, mapTransform, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, pickStartCourseId, setCanvasSize, growCanvasToFit, resetMapTransform, highlightConnectedEdges } from './tree-map.js';
-import { esc } from './utils.js';
+import { esc, errorText, responseError } from './utils.js';
 import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
 let treeStructure = null;
@@ -99,7 +99,7 @@ export async function loadCourseTree() {
     setupNodeDrag();
   } catch (err) {
     console.error('Fehler beim Laden des Kursbaums:', err);
-    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursbaums: ${esc(err.message)}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursbaums: ${esc(errorText(err))}</div>`;
   }
 }
 
@@ -274,9 +274,9 @@ export async function selectTargetCourse(courseId) {
   try {
     const res = await fetch(`/api/tree/path/${courseId}${selectedRegion ? `?region=${encodeURIComponent(selectedRegion)}` : ''}`);
     const pathResult = await res.json();
-    if (!res.ok) throw new Error(pathResult.error || 'Pfadberechnung fehlgeschlagen');
 
     const targetNode = treeStructure.nodes[courseId];
+    if (!res.ok) throw await responseError(res);
     if (targetNode) {
       updateTreeInspector(targetNode, pathResult);
       showUpcomingDates(courseId);
@@ -303,11 +303,12 @@ export async function selectTargetCourse(courseId) {
 async function showUpcomingDates(courseId) {
   const container = document.getElementById('inspectorDates');
   try {
-    const dates = upcomingDates(await fetchCourses(), treeStructure.nodes[courseId]?.courseNodeId || courseId) // Regionskurse: die Durchfuehrungen tragen die Standard-ID.slice(0, 3);
+    // Regionskurse: die Durchführungen tragen die Standard-ID
+    const dates = upcomingDates(await fetchCourses(), treeStructure.nodes[courseId]?.courseNodeId || courseId).slice(0, 3);
     if (courseId !== selectedTargetCourseId) return; // inzwischen ist ein anderer Kurs gewählt
     container.innerHTML = dates.map(c => courseMetaHtml(c)).join('') || 'Keine kommenden Termine in der Cevi-DB.';
   } catch (err) {
-    container.textContent = `Termine nicht abrufbar: ${err.message}`;
+    container.textContent = `Termine nicht abrufbar: ${errorText(err)}`;
   }
 }
 

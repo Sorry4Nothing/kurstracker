@@ -81,3 +81,31 @@ export function formatEuropeanDateRange(startDate, endDate) {
   if (!startDate && endDate) return `Bis ${formatEuropeanDate(endDate)}`;
   return `${formatEuropeanDate(startDate)} bis ${formatEuropeanDate(endDate)}`;
 }
+
+const STATUS_MESSAGES = {
+  401: 'Deine Sitzung ist abgelaufen. Bitte melde dich neu an.',
+  403: 'Dafür fehlt dir die Berechtigung.',
+  404: 'Das gibt es nicht (mehr).',
+  429: 'Zu viele Anfragen. Bitte warte einen Moment.',
+  502: 'Die Cevi-DB antwortet nicht. Bitte versuche es später erneut.',
+  503: 'Der Kurstracker ist gerade nicht erreichbar. Bitte versuche es später erneut.'
+};
+
+/**
+ * Fehler zu einer nicht erfolgreichen Antwort, mit einer Meldung, die Leitende verstehen.
+ * Bei 4xx gilt die Meldung des Servers (z.B. «braucht es eine Bemerkung»), bei 5xx nie: sie nennt Pfade der Cevi-DB.
+ * @param {Response} res
+ * @returns {Promise<Error>}
+ */
+export async function responseError(res) {
+  const body = res.status < 500 ? await res.json().catch(() => ({})) : {};
+  return new Error(body.error || STATUS_MESSAGES[res.status] || `Der Server meldet einen Fehler (${res.status}). Bitte versuche es später erneut.`);
+}
+
+/**
+ * Text für eine Fehlermeldung in der Ansicht: ein abgebrochener Abruf (TypeError von fetch) heisst «keine Verbindung»,
+ * nicht «Failed to fetch».
+ */
+export function errorText(err) {
+  return err instanceof TypeError ? 'Keine Verbindung zum Kurstracker. Bitte prüfe deine Internetverbindung.' : err.message;
+}

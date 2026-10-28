@@ -3,7 +3,7 @@
  * Kursdaten-Laden, Suche und Filterung nach Kategorien
  */
 
-import { esc, formatEuropeanDate, formatEuropeanDateRange } from './utils.js';
+import { esc, errorText, responseError, formatEuropeanDate, formatEuropeanDateRange } from './utils.js';
 
 let allCourses = [];
 let coursesRequest = null;
@@ -11,8 +11,8 @@ let coursesRequest = null;
 // Kursanlässe einmal pro Seitenaufruf laden: Kursangebot, Baum und Planer teilen sie
 export function fetchCourses() {
   coursesRequest ??= fetch('/api/courses')
-    .then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    .then(async res => {
+      if (!res.ok) throw await responseError(res);
       return res.json();
     })
     .then(data => (Array.isArray(data) ? data : (data.courses || [])))
@@ -69,7 +69,7 @@ export async function loadAllCourses() {
     renderCourses(allCourses);
   } catch (err) {
     console.error('Fehler beim Laden des Kursangebots:', err);
-    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursangebots: ${esc(err.message)}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursangebots: ${esc(errorText(err))}</div>`;
   }
 }
 
