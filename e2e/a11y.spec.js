@@ -51,8 +51,8 @@ const SCENARIOS = [
   }],
   ['Kurs im Baum gewählt', async page => {
     // Nach dem Wegfall von «angemeldet» zentriert die Startansicht einen anderen Kurs: Karte per Tastatur wählen
-    await page.getByRole('button', { name: /Gruppenleiterkurs 3/ }).press('Enter');
-    await expect(page.locator('#inspectorTitle')).toContainText('Gruppenleiterkurs 3');
+    await page.getByRole('button', { name: /GLK 3/ }).press('Enter');
+    await expect(page.locator('#inspectorTitle')).toContainText('Leiter*innenkurs');
   }],
   ['Profil mit Foto', async page => {
     // Der Mock-Benutzer hat kein Foto (picture_url null): ohne Foto bleiben beide <img> verborgen und ungeprüft

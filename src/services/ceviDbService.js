@@ -508,6 +508,7 @@ export class CeviDbService {
       last_name: 'Notter',
       nickname: 'Siro', // Ceviname / Pfadiname
       gender: 'm',
+      region: 'zuerich', // Das Mock-Profil gilt als Region Zürich (Ausbildungsbaum)
       birthday: '2001-08-14',
       picture_url: null, // Dynamisch aus Cevi-DB / Hitobito beziehbar
       groups: [

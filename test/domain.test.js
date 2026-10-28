@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, applyKindLabels } from '../src/domain/courseTreeData.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, applyKindLabels, toRegionCourseIds } from '../src/domain/courseTreeData.js';
 import { courseTreeEngine, CourseTreeEngine } from '../src/domain/courseTreeEngine.js';
 import { StufenleiterPlanningEngine } from '../src/domain/stufenleiterPlanningEngine.js';
 import { COURSE_MAP_COORDS } from '../public/js/tree-map.js';
@@ -535,4 +535,10 @@ test('Kursart-Titel aus der Cevi-DB ersetzen bei J+S und SLRG die Titel der Date
   assert.equal(nodes.mf_lst.title, COURSE_NODES.mf_lst.title);
   assert.deepEqual(nodes.slk, COURSE_NODES.slk);
   assert.equal(COURSE_NODES.glk3.title, 'Gruppenleiter/-innen-Kurs 3 (GLK 3)');
+});
+
+test('Regionsbaum: Standard-Kurs-IDs werden ueber das Kuerzel zu Regions-IDs, Unbekanntes faellt weg', () => {
+  const zh = COURSE_NODES_BY_REGION.zuerich;
+  assert.deepEqual(toRegionCourseIds(['voku', 'glk1', 'glk3', 'unbekannt'], zh), ['zuerich_voku_2026', 'zuerich_glk1_f_2027', 'zuerich_glk3_fa_2027']);
+  assert.deepEqual(toRegionCourseIds(['voku', 'glk1'], COURSE_NODES_BY_REGION.bern), []);
 });

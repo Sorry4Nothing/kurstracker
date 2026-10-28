@@ -6,7 +6,7 @@
 
 import { esc, showToast } from './utils.js';
 import { courseTitle, showStufe, loadProposals } from './planner.js';
-import { getTreeStructure } from './tree.js';
+import { getStandardStructure } from './tree.js';
 import { askReturn } from './confirm.js';
 
 const dateTime = iso => new Date(iso).toLocaleString('de-CH', { dateStyle: 'short', timeStyle: 'short' });
@@ -14,7 +14,7 @@ const LOADING = '<div class="loading-placeholder" role="status">Lade Kursvorschl
 
 // Kurse in der Reihenfolge des Ausbildungsbaums, unbekannte zuletzt
 function byCourse(submitted) {
-  const order = Object.keys(getTreeStructure()?.nodes || {});
+  const order = Object.keys(getStandardStructure()?.nodes || {});
   const courses = new Map();
   for (const group of submitted) {
     for (const entry of group.entries) {

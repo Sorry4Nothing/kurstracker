@@ -1,20 +1,26 @@
 import { test, expect, openApp } from './fixtures.js';
-import { COURSE_MAP_COORDS } from '../public/js/tree-map.js';
+import { layoutRegionalCoords, pickStartCourseId } from '../public/js/tree-map.js';
 
-const fetchStructure = async request => (await (await request.get('/api/tree/structure')).json()).nodes;
+// Das Mock-Profil gilt als Region Zürich: der Baum zeigt deren Kurse mit eigenen IDs
+const REGION = 'zuerich';
+const ID = {
+  voku: 'zuerich_voku_2026', heku: 'zuerich_heku_m_2027', glk1: 'zuerich_glk1_f_2027', glk2: 'zuerich_glk2_2027',
+  glk3: 'zuerich_glk3_fa_2027'
+};
+
+const fetchStructure = async request => (await (await request.get(`/api/tree/structure?region=${REGION}`)).json()).nodes;
 const zoomPercent = async page => parseInt(await page.locator('#treeZoomLabel').textContent(), 10);
 // Tatsächlicher Massstab der Karte: gerenderte Breite eines Knotens durch seine Layout-Breite
-const renderedScale = page => page.locator('#nodeCard-voku').evaluate(el => el.getBoundingClientRect().width / el.offsetWidth);
+const renderedScale = page => page.locator(`#nodeCard-${ID.voku}`).evaluate(el => el.getBoundingClientRect().width / el.offsetWidth);
 const ids = locator => locator.evaluateAll(els => els.map(el => el.id).sort());
 const edges = locator => locator.evaluateAll(paths => [...new Set(paths.map(p => p.dataset.edge))].sort());
 
 // Kurs der Startansicht, Regel wie in tree.js: erster bereiter Kurs in Kartenreihenfolge, sonst zuletzt absolvierter
 async function startCourse(request) {
-  const { evaluation } = await (await request.get('/api/tree/evaluation')).json();
-  const courseIds = Object.keys(COURSE_MAP_COORDS);
-  const withStatus = status => id => evaluation.nodes[id]?.status === status;
-  return courseIds.find(withStatus('AVAILABLE'))
-    || courseIds.findLast(withStatus('COMPLETED')) || 'voku';
+  const { evaluation } = await (await request.get(`/api/tree/evaluation?region=${REGION}`)).json();
+  const nodes = await fetchStructure(request);
+  layoutRegionalCoords(Object.keys(nodes), nodes); // dieselbe Anordnung wie im Browser, damit die Reihenfolge stimmt
+  return pickStartCourseId(nodes, evaluation.nodes);
 }
 
 // Knoten, die nicht ganz im sichtbaren Ausschnitt der Karte liegen
@@ -74,7 +80,7 @@ test.describe('Ausbildungsbaum', () => {
   });
 
   test('jeder Kurs zeigt den Status aus der Baumbewertung des Profils', async ({ page, request }) => {
-    const { evaluation } = await (await request.get('/api/tree/evaluation')).json();
+    const { evaluation } = await (await request.get(`/api/tree/evaluation?region=${REGION}`)).json();
     const shown = Object.fromEntries(await page.locator('.tree-node-card').evaluateAll(cards =>
       cards.map(card => [card.id.replace('nodeCard-', ''), /\bstatus-(\w+)/.exec(card.className)?.[1]])));
     expect(shown).toEqual(Object.fromEntries(Object.keys(shown).map(id => [id, evaluation.nodes[id].status.toLowerCase()])));
@@ -90,7 +96,7 @@ test.describe('Ausbildungsbaum', () => {
     const lines = page.locator('#treeSvgLines path');
     await expect.poll(() => edges(lines)).toEqual([...required, ...recommended].sort());
     // Pflicht durchgezogen, empfohlene Vorstufe (Voku -> Heku -> GLK 1 -> GLK 2 -> GLK 3) gestrichelt
-    expect(recommended).toContain('glk2->glk3');
+    expect(recommended).toContain(`${ID.glk2}->${ID.glk3}`);
     await expect.poll(() => edges(page.locator('#treeSvgLines path.is-recommended'))).toEqual(recommended);
 
     // Bei 100 % ist ein Bildschirmpixel ein Kartenpixel, sonst verschwinden kleine Versätze unter der Toleranz
@@ -119,28 +125,29 @@ test.describe('Ausbildungsbaum', () => {
   });
 
   test('Klick auf einen Kurs füllt den Inspektor und hebt den Pfad dorthin hervor', async ({ page, request }) => {
-    const path = await (await request.get('/api/tree/path/glk3')).json();
+    const path = await (await request.get(`/api/tree/path/${ID.glk3}?region=${REGION}`)).json();
     const highlighted = page.locator('.tree-node-card.is-path-highlight');
     const activeLines = page.locator('#treeSvgLines path.active-path');
     // Die Startansicht (100 %) zeigt nur einen Ausschnitt, die Übersicht alle Kurse
     await zoomOutFully(page);
 
-    await page.getByRole('button', { name: /Gruppenleiterkurs 3/ }).click();
-    await expect(page.locator('#inspectorTitle')).toContainText('Gruppenleiterkurs 3');
+    await page.getByRole('button', { name: /GLK 3/ }).click();
+    await expect(page.locator('#inspectorTitle')).toContainText('Leiter*innenkurs');
     await expect(page.locator('#inspectorPathSummary')).toHaveText(path.summary);
     await expect(page.locator('#inspectorChecks .check-item').first()).toBeVisible();
-    await expect(page.locator('#nodeCard-glk3')).toHaveClass(/is-selected/);
+    await expect(page.locator(`#nodeCard-${ID.glk3}`)).toHaveClass(/is-selected/);
     // Das Demo-Profil hat die empfohlenen Vorstufen absolviert, sie gehören zur Route
-    await expect.poll(() => ids(highlighted)).toEqual(['nodeCard-glk1', 'nodeCard-glk2', 'nodeCard-heku', 'nodeCard-voku']);
-    await expect.poll(() => edges(activeLines)).toEqual(['glk1->glk2', 'glk2->glk3', 'heku->glk1', 'voku->heku']);
+    await expect.poll(() => ids(highlighted)).toEqual([ID.glk1, ID.glk2, ID.heku, ID.voku].map(id => `nodeCard-${id}`).sort());
+    await expect.poll(() => edges(activeLines)).toEqual([[ID.glk1, ID.glk2], [ID.glk2, ID.glk3], [ID.heku, ID.glk1], [ID.voku, ID.heku]].map(([a, b]) => `${a}->${b}`).sort());
 
     // Neuer Zielkurs: alte Auswahl und alter Pfad verschwinden
-    await page.getByRole('button', { name: /Pioniertechnik/ }).click();
-    await expect(page.locator('#inspectorTitle')).toContainText('Pioniertechnik');
-    await expect(page.locator('#nodeCard-glk3')).not.toHaveClass(/is-selected/);
-    await expect(page.locator('#nodeCard-pionier')).toHaveClass(/is-selected/);
-    await expect.poll(() => ids(highlighted)).toEqual(['nodeCard-glk1', 'nodeCard-heku', 'nodeCard-voku']);
-    await expect.poll(() => edges(activeLines)).toEqual(['glk1->pionier', 'heku->glk1', 'voku->heku']);
+    const pionier = 'zuerich_pioniertechnik_modul_2027';
+    await page.getByRole('button', { name: /Pioniertechnik-Mo/ }).click();
+    await expect(page.locator('#inspectorTitle')).toContainText('Fortbildung Leiter*in');
+    await expect(page.locator(`#nodeCard-${ID.glk3}`)).not.toHaveClass(/is-selected/);
+    await expect(page.locator(`#nodeCard-${pionier}`)).toHaveClass(/is-selected/);
+    await expect.poll(() => ids(highlighted)).toEqual([ID.glk1, ID.glk2, ID.glk3, ID.heku, ID.voku].map(id => `nodeCard-${id}`).sort());
+    await expect.poll(() => edges(activeLines)).toEqual([[ID.glk1, ID.glk2], [ID.glk2, ID.glk3], [ID.glk3, pionier], [ID.heku, ID.glk1], [ID.voku, ID.heku]].map(([x, y]) => `${x}->${y}`).sort());
   });
 
   test('Kursdetail zeigt die nächsten Termine aus der Cevi-DB mit freien Plätzen und Anmeldelink', async ({ page, request }) => {
@@ -151,13 +158,13 @@ test.describe('Ausbildungsbaum', () => {
     const dates = page.locator('#inspectorDates');
     await zoomOutFully(page);
 
-    await page.getByRole('button', { name: /Gruppenleiterkurs 3/ }).click();
+    await page.getByRole('button', { name: /GLK 3/ }).click();
     await expect(dates).toContainText('10.10.2026 bis 17.10.2026');
     await expect(dates.locator('.meta-item', { hasText: 'Freie Plätze' })).toContainText(String(glk3.free_places));
     await expect(dates.getByRole('link', { name: /Zur Anmeldung in der Cevi-DB/ })).toHaveAttribute('href', glk3.registration_url);
 
     // Das Pioniertechnik-Modul der Testdaten liegt vor dem 1.9.2026
-    await page.getByRole('button', { name: /Pioniertechnik/ }).click();
+    await page.getByRole('button', { name: /Pioniertechnik-Mo/ }).click();
     await expect(dates).toHaveText('Keine kommenden Termine in der Cevi-DB.');
   });
 
@@ -167,17 +174,17 @@ test.describe('Ausbildungsbaum', () => {
     await node.press('Enter');
     await expect(node).toBeFocused();
     await expect(node).toHaveClass(/is-selected/);
-    await expect(page.locator('#inspectorTitle')).toContainText('Vorkurs (Voku)');
+    await expect(page.locator('#inspectorTitle')).toContainText('Vorkurs');
   });
 
   test('Tab auf einen Kurs ausserhalb des Ausschnitts schiebt ihn ganz ins Bild', async ({ page }) => {
     // Voku ist der erste Kurs in der Tab-Reihenfolge und liegt links ausserhalb der Startansicht
-    expect(await outsideMap(page)).toContain('nodeCard-voku');
+    expect(await outsideMap(page)).toContain(`nodeCard-${ID.voku}`);
     await page.getByRole('button', { name: 'Zoom zurücksetzen' }).focus();
     await page.keyboard.press('Tab');
 
-    await expect(page.locator('#nodeCard-voku')).toBeFocused();
-    expect(await outsideMap(page)).not.toContain('nodeCard-voku');
+    await expect(page.locator(`#nodeCard-${ID.voku}`)).toBeFocused();
+    expect(await outsideMap(page)).not.toContain(`nodeCard-${ID.voku}`);
   });
 
   test('Zoom-Knöpfe ändern Massstab und Anzeige: verkleinern bis zur Übersicht über den ganzen Baum, vergrössern bis 160 %', async ({ page }) => {
@@ -214,7 +221,7 @@ test.describe('Ausbildungsbaum', () => {
   });
 
   test('Ziehen auf der freien Fläche verschiebt die Karte', async ({ page }) => {
-    const node = page.locator('#nodeCard-voku');
+    const node = page.locator(`#nodeCard-${ID.voku}`);
     const before = await node.boundingBox();
     const viewport = await page.locator('#treeMapViewport').boundingBox();
 
@@ -276,7 +283,7 @@ test.describe('Ausbildungsbaum', () => {
     const inspector = page.locator('#treeInspector');
     const title = page.locator('#inspectorTitle');
     // Bei 1280 x 720 sind Wasser und Experte länger als der Inspektor
-    await page.getByRole('button', { name: /Sicherheitsbereich Wasser/ }).press('Enter');
+    await page.getByRole('button', { name: /Sicherheitsmodul Wasser/ }).press('Enter');
     await expect(title).toContainText('Wasser');
 
     const box = await inspector.boundingBox();
@@ -287,8 +294,8 @@ test.describe('Ausbildungsbaum', () => {
       return last.y + last.height <= box.y + box.height;
     }, { message: 'letzter Punkt der Checkliste ins Bild gescrollt' }).toBe(true);
 
-    await page.getByRole('button', { name: /Expertenkurs/ }).press('Enter');
-    await expect(title).toContainText('Expertenkurs');
+    await page.getByRole('button', { name: /Expert[*]innenkurs/ }).press('Enter');
+    await expect(title).toContainText('Expert*innenkurs');
     expect(await inspector.evaluate(el => el.scrollTop)).toBe(0);
   });
 });
@@ -361,7 +368,7 @@ for (const [width, height] of [[1440, 900], [1280, 720], [1920, 1080]]) {
     test('Baumfläche und Inspektor schliessen bündig ab, mit gleichen Abständen untereinander und zur Fusszeile', async ({ page }) => {
       await openApp(page);
       // Ein Kurs mit langer Checkliste: bei 720 px Höhe scrollt sie im Inspektor, der Inspektor wächst nicht
-      await page.getByRole('button', { name: /Sicherheitsbereich Wasser/ }).press('Enter');
+      await page.getByRole('button', { name: /Sicherheitsmodul Wasser/ }).press('Enter');
       await expect(page.locator('#inspectorTitle')).toContainText('Wasser');
 
       const [canvas, inspector, footer] = await Promise.all(

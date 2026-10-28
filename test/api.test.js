@@ -160,6 +160,16 @@ test('API: Baumbewertung übernimmt absolvierte und angemeldete Kurse sowie Qual
   assert.equal(typeof evaluation.personAge, 'number');
 });
 
+test('API: Region der Person (Mock = Zürich) bestimmt den Baum, Status kommt aus den übersetzten Kursen', async () => {
+  const { own, regions } = await (await request('/api/tree/regions')).json();
+  assert.equal(own, 'zuerich');
+  assert.ok(regions.some(region => region.key === own));
+
+  const { evaluation } = await (await request('/api/tree/evaluation?region=zuerich')).json();
+  assert.equal(evaluation.nodes.zuerich_voku_2026.status, 'COMPLETED');
+  assert.ok(!('voku' in evaluation.nodes), 'nur Kurse der Region');
+});
+
 test('API: nicht bestandener Kurs zählt nicht als absolviert', {
   todo: 'Bug #52: resolveActivePerson zählt result "Nicht bestanden" als bestanden, weil nur auf includes("bestanden") geprüft wird (src/app.js:240)'
 }, async (t) => {

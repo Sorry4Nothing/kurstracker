@@ -351,3 +351,21 @@ export function applyKindLabels(labels, nodes = COURSE_NODES) {
   }
   return count;
 }
+
+/**
+ * Absolvierte Kurse mit Standard-IDs (voku, glk3, ...) als IDs eines Regionsbaums, zugeordnet ueber das Kuerzel
+ * (Leerzeichen und Bindestriche egal: "GLK 1" = "GLK1"). Kurse ohne Gegenstueck in der Region fallen weg.
+ */
+export function toRegionCourseIds(ids, regionNodes) {
+  const byCode = new Map(Object.values(regionNodes).map(node => [normCode(node.code), node.id]));
+  const mapped = ids.map(id => (COURSE_NODES[id] ? byCode.get(normCode(COURSE_NODES[id].code)) : undefined));
+  return [...new Set(mapped.filter(Boolean))];
+}
+
+const normCode = code => String(code ?? '').toLowerCase().replace(/[\s-]/g, '');
+
+/** Standard-ID des Kurses mit demselben Kuerzel (Kursdurchfuehrungen der Cevi-DB tragen Standard-IDs), sonst null */
+export function standardCourseId(regionNode) {
+  const code = normCode(regionNode.code);
+  return Object.values(COURSE_NODES).find(node => normCode(node.code) === code)?.id ?? null;
+}
