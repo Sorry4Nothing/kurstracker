@@ -201,6 +201,13 @@
 
           <!-- Tree Toolbar: Canvas Zoom & Ansicht -->
           <div class="tree-toolbar">
+            <div class="tree-zoom-group" id="treeRegionGroup" style="display:none">
+              <span class="tree-zoom-caption">Region (Vorschau):</span>
+              <select id="treeRegionSelect" class="form-select form-select-sm" style="width:auto;display:inline-block"></select>
+              <button class="btn btn-secondary btn-sm" id="treeResetLayoutBtn" title="Verschobene Karten dieser Region verwerfen, Auto-Anordnung neu berechnen">
+                <i class="fa-solid fa-broom" aria-hidden="true"></i> Anordnung zurücksetzen
+              </button>
+            </div>
             <div class="tree-zoom-group">
               <span class="tree-zoom-caption">Ansicht:</span>
               <button class="btn btn-secondary btn-sm" onclick="zoomMap(-0.15)" title="Verkleinern" aria-label="Baum verkleinern">
@@ -239,7 +246,7 @@
 
               <!-- Pathfinding Summary -->
               <div class="inspector-section">
-                <h4 class="inspector-section-title">Pfad & Voraussetzungen</h4>
+                <h4 class="inspector-section-title">Status</h4>
                 <div class="inspector-path-summary" id="inspectorPathSummary" role="status">
                   Wähle einen Zielkurs aus, um den nächsten Ausbildungsschritt zu berechnen.
                 </div>
@@ -247,7 +254,7 @@
 
               <!-- Voraussetzungen & Checklist -->
               <div class="inspector-section">
-                <h4 class="inspector-section-title">Voraussetzungen im Detail</h4>
+                <h4 class="inspector-section-title">Voraussetzungen</h4>
                 <div class="inspector-checks" id="inspectorChecks">
                   <div class="check-item"><span class="check-icon">--</span><span>Kein Kurs gewählt</span></div>
                 </div>

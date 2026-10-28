@@ -34,6 +34,16 @@ export function plannerScope(user) {
   return scope.departments.size || scope.groups.size ? scope : null;
 }
 
+/** NOLK (Nationaler Ortsgruppenleitenden-Kurs) ist Abteilungsleitungs-Sache - AL sieht auch, was SL sieht. */
+export function isAbteilungsleitung(scope) {
+  return !!scope && (scope.all || scope.departments.size > 0);
+}
+
+/** SLK (Stufenleiter*innen-Kurs) braucht mindestens Stufenleitung, AL eingeschlossen. */
+export function isStufenleitung(scope) {
+  return !!scope && (scope.all || scope.departments.size > 0 || scope.groups.size > 0);
+}
+
 /**
  * Nur die Mitglieder und Gruppen, die der Scope zeigt. Mitglieder ohne sichtbare Gruppe fallen weg,
  * und jede Person trägt nur die sichtbaren Gruppen (Mitgliedschaften in anderen Abteilungen bleiben verborgen).

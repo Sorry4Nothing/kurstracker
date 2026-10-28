@@ -3,13 +3,36 @@
  * Knoten-Rendering, Pfadberechnung, Onboarding-Checkliste und Interaktionen
  */
 
-import { COURSE_MAP_COORDS, setupInteractiveMap, renderTreeSvgLines } from './tree-map.js';
+import { COURSE_MAP_COORDS, mapTransform, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, setCanvasSize, growCanvasToFit, resetMapTransform, highlightConnectedEdges } from './tree-map.js';
 import { esc } from './utils.js';
 import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
 let treeStructure = null;
 let currentTreeEvaluation = null;
 let selectedTargetCourseId = null;
+let selectedRegion = '';
+
+// Freies Verschieben der Kurskarten (nur Vorschau, nicht der echte Pflichtpfad): Position pro
+// Region im Browser gemerkt, damit ein Reload die eigene Anordnung behaelt
+function dragStorageKey(region) {
+  return `kurstracker.tree.dragPositions.${region || 'default'}`;
+}
+function loadDragPositions(region) {
+  try {
+    return JSON.parse(localStorage.getItem(dragStorageKey(region))) || {};
+  } catch {
+    return {};
+  }
+}
+function saveDragPosition(region, nodeId, coord) {
+  try {
+    const all = loadDragPositions(region);
+    all[nodeId] = coord;
+    localStorage.setItem(dragStorageKey(region), JSON.stringify(all));
+  } catch {
+    // Privater Modus o.ae.: Verschieben bleibt dann nur bis zum Reload erhalten
+  }
+}
 
 export function getTreeStructure() {
   return treeStructure;
@@ -17,6 +40,53 @@ export function getTreeStructure() {
 
 export function getSelectedTargetCourseId() {
   return selectedTargetCourseId;
+}
+
+// Temporaere Vorschau: Pfad einer anderen Region laden, ohne Status/Evaluation neu zu holen
+// (die bleibt auf der eigenen Person, nur die Baumstruktur/Beschriftung wechselt)
+async function applyRegion(regionKey) {
+  selectedRegion = regionKey;
+  const structRes = await fetch(`/api/tree/structure?region=${encodeURIComponent(regionKey)}`);
+  treeStructure = await structRes.json();
+  const extent = layoutRegionalCoords(Object.keys(treeStructure.nodes), treeStructure.nodes);
+  if (extent) setCanvasSize(extent.width, extent.height); // sonst schneidet die feste 2360x840-Leinwand Karten/Linien ab
+  const dragged = loadDragPositions(regionKey);
+  Object.entries(dragged).forEach(([id, coord]) => {
+    if (treeStructure.nodes[id]) COURSE_MAP_COORDS[id] = coord;
+  });
+  renderTree();
+  resetMapTransform(); // neu einpassen, die Leinwand kann jetzt groesser sein als beim letzten Zoom
+}
+
+// Verworfene Handplatzierung: Koordinaten dieser Region vergessen (auch im Speicher, sonst haelt
+// layoutRegionalCoords sie fuer schon platziert und rechnet nichts neu) und neu laden
+function resetRegionLayout(regionKey) {
+  Object.keys(treeStructure?.nodes || {}).forEach(id => { delete COURSE_MAP_COORDS[id]; });
+  try { localStorage.removeItem(dragStorageKey(regionKey)); } catch { /* z.B. privater Modus */ }
+}
+
+async function setupRegionSwitcher() {
+  const group = document.getElementById('treeRegionGroup');
+  const select = document.getElementById('treeRegionSelect');
+  const resetBtn = document.getElementById('treeResetLayoutBtn');
+  if (!group || !select) return;
+  try {
+    const res = await fetch('/api/tree/regions');
+    const { regions } = await res.json();
+    if (!regions?.length) return;
+    select.innerHTML = regions.map(r => `<option value="${esc(r.key)}">${esc(r.label)}</option>`).join('');
+    const initialRegion = selectedRegion || regions[0].key;
+    select.value = initialRegion;
+    group.style.display = '';
+    select.addEventListener('change', () => applyRegion(select.value));
+    resetBtn?.addEventListener('click', () => {
+      resetRegionLayout(selectedRegion);
+      applyRegion(selectedRegion);
+    });
+    await applyRegion(initialRegion); // Dropdown zeigt sonst eine Region, laedt aber noch den Standardbaum
+  } catch (err) {
+    console.error('Regionen fuer Baum-Vorschau nicht geladen:', err);
+  }
 }
 
 export async function loadCourseTree() {
@@ -34,6 +104,10 @@ export async function loadCourseTree() {
 
     renderTree();
     setupInteractiveMap(pickStartCourse());
+    setupNodeDrag();
+    // Regionen-Umschalter (setupRegionSwitcher) war nur zum Durchklicken der Regionen beim Review -
+    // bis die Region automatisch aus primary_group/layer_group der eingeloggten Person kommt (Folge-Issue),
+    // bleibt der Baum beim Standardpfad. Funktion/Daten bleiben fuer dieses Issue bestehen.
   } catch (err) {
     console.error('Fehler beim Laden des Kursbaums:', err);
     container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursbaums: ${esc(err.message)}</div>`;
@@ -49,6 +123,44 @@ function pickStartCourse() {
   return ids.find(withStatus('AVAILABLE')) || ids.findLast(withStatus('COMPLETED')) || 'voku';
 }
 
+function nodeCardHtml(node, nodeStates) {
+  const state = nodeStates[node.id] || { status: 'LOCKED' };
+  const statusLower = (state.status || 'locked').toLowerCase();
+
+  let statusLabel = 'Gesperrt';
+  if (statusLower === 'completed') statusLabel = '<i class="fa-solid fa-check" aria-hidden="true"></i> Absolviert';
+  else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open" aria-hidden="true"></i> Bereit';
+
+  const isSelected = selectedTargetCourseId === node.id;
+  const coord = COURSE_MAP_COORDS[node.id] || { x: 100, y: 100 };
+  const coordStyle = `left: ${coord.x}px; top: ${coord.y}px;`;
+
+  // Kein aria-label: der Name kommt aus dem sichtbaren Text (Code, Status, Titel), WCAG 2.5.3
+  const fullText = node.code && node.code !== node.title ? `${node.code} – ${node.title}` : node.title;
+  return `
+    <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''}"
+         id="nodeCard-${node.id}"
+         style="${coordStyle}"
+         onclick="selectTargetCourse('${node.id}')"
+         tabindex="0"
+         role="button"
+         title="${esc(fullText)}"
+         aria-current="${isSelected}">
+      <div class="node-header">
+        <div class="node-header-left">
+          <span class="node-code">${node.code || node.id.toUpperCase()}</span>
+        </div>
+        <span class="node-status-pill status-${statusLower}">${statusLabel}</span>
+      </div>
+      <div class="node-title">${esc(node.title)}</div>
+      <div class="node-meta">
+        <span>${node.category}</span>
+        <span>${node.js_type ? node.js_type : ''}</span>
+      </div>
+    </div>
+  `;
+}
+
 export function renderTree() {
   const container = document.getElementById('treeLevelsContainer');
   if (!container || !treeStructure || !currentTreeEvaluation) return;
@@ -61,51 +173,95 @@ export function renderTree() {
     return true;
   });
 
-  // Node Cards (Absolute Koordinaten-Positionierung)
-  const cardsHtml = nodes.map(node => {
-    const coord = COURSE_MAP_COORDS[node.id] || { x: 100, y: 100 };
-    const state = nodeStates[node.id] || { status: 'LOCKED' };
-    const statusLower = (state.status || 'locked').toLowerCase();
-
-    let statusLabel = 'Gesperrt';
-    if (statusLower === 'completed') statusLabel = '<i class="fa-solid fa-check" aria-hidden="true"></i> Absolviert';
-    else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open" aria-hidden="true"></i> Bereit';
-
-    const isSelected = selectedTargetCourseId === node.id;
-    const org = node.org;
-    const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
-
-    // Kein aria-label: der Name kommt aus dem sichtbaren Text (Organisation, Code, Status, Titel), WCAG 2.5.3
-    return `
-      <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''}" 
-           id="nodeCard-${node.id}"
-           style="left: ${coord.x}px; top: ${coord.y}px;"
-           onclick="selectTargetCourse('${node.id}')"
-           tabindex="0"
-           role="button"
-           aria-current="${isSelected}">
-        <div class="node-header">
-          <div class="node-header-left">
-            <span class="node-org-pill org-${orgClass}">${org}</span>
-            <span class="node-code">${node.code || node.id.toUpperCase()}</span>
-          </div>
-          <span class="node-status-pill status-${statusLower}">${statusLabel}</span>
-        </div>
-        <div class="node-title">${esc(node.title)}</div>
-        <div class="node-meta">
-          <span>${node.category}</span>
-          <span>${node.js_type ? node.js_type : ''}</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  container.innerHTML = cardsHtml;
+  // Eigenstaendige Zusatzkurse (kein Pflicht- oder empfohlener Vorgaenger) bekommen in
+  // layoutRegionalCoords (tree-map.js) eine eigene Reihe ganz oben im selben Canvas, durch eine
+  // groessere Luecke abgesetzt - sonst wirken sie wie ein Folgekurs von GLK 3
+  container.innerHTML = nodes.map(node => nodeCardHtml(node, nodeStates)).join('');
 
   // Render SVG Verbindungen
   setTimeout(() => {
     renderTreeSvgLines(treeStructure, selectedTargetCourseId);
   }, 40);
+}
+
+// Kurskarte frei verschieben (nur Vorschau): Pointer-Events auf dem Container, damit sie auch
+// nach jedem renderTree() (innerHTML-Ersatz) noch funktionieren. Ein Ziehen waehlt den Kurs
+// nicht aus - derselbe Trick wie beim Verschieben der ganzen Karte in tree-map.js
+let dragState = null;
+let dragJustHappened = false;
+
+function setupNodeDrag() {
+  const container = document.getElementById('treeLevelsContainer');
+  if (!container || container._dragInitialized) return;
+  container._dragInitialized = true;
+
+  container.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button !== 0) return;
+    const card = e.target.closest('.tree-node-card');
+    if (!card || !COURSE_MAP_COORDS[card.id.replace('nodeCard-', '')]) return;
+    e.stopPropagation(); // nicht gleichzeitig die ganze Karte verschieben (tree-map.js)
+    const id = card.id.replace('nodeCard-', '');
+    dragState = {
+      id, card, pointerId: e.pointerId,
+      startClientX: e.clientX, startClientY: e.clientY,
+      origX: COURSE_MAP_COORDS[id].x, origY: COURSE_MAP_COORDS[id].y,
+      moved: false
+    };
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    const dx = (e.clientX - dragState.startClientX) / mapTransform.zoom;
+    const dy = (e.clientY - dragState.startClientY) / mapTransform.zoom;
+    if (!dragState.moved) {
+      // Toleranz wie beim Verschieben der ganzen Karte (tree-map.js): ein Tipp mit dem Finger
+      // wandert mehr als ein Mausklick, ohne schon als Ziehen zu gelten
+      if (Math.hypot(dx, dy) <= (e.pointerType === 'mouse' ? 4 : 15)) return;
+      dragState.moved = true;
+      dragState.card.classList.add('is-dragging');
+      // Capture kann vereinzelt NotFoundError werfen (Pointer gilt in dem Moment als nicht aktiv) -
+      // ohne try/catch bricht das hier die ganze Verschiebung ab, bevor die Position unten
+      // ueberhaupt aktualisiert wird. Die Karte bleibt auch ohne Capture verschiebbar.
+      try { dragState.card.setPointerCapture(dragState.pointerId); } catch { /* siehe oben */ }
+    }
+    const x = Math.max(0, dragState.origX + dx);
+    const y = Math.max(0, dragState.origY + dy);
+    COURSE_MAP_COORDS[dragState.id] = { x, y };
+    dragState.card.style.left = `${x}px`;
+    dragState.card.style.top = `${y}px`;
+    growCanvasToFit(x, y);
+    renderTreeSvgLines(treeStructure, selectedTargetCourseId);
+  });
+
+  const endDrag = (e) => {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    dragState.card.classList.remove('is-dragging');
+    if (dragState.moved) {
+      saveDragPosition(selectedRegion, dragState.id, COURSE_MAP_COORDS[dragState.id]);
+      dragJustHappened = true;
+      setTimeout(() => { dragJustHappened = false; });
+    }
+    dragState = null;
+  };
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+
+  // Der Klick nach dem Verschieben waehlt den Kurs nicht aus (Capture-Phase, wie beim
+  // Verschieben der ganzen Karte in tree-map.js)
+  container.addEventListener('click', (e) => {
+    if (dragJustHappened && e.target.closest('.tree-node-card')) e.stopPropagation();
+  }, true);
+
+  // Hover hebt die ganze Vorgaengerkette dieser Karte hervor (nicht nur die direkte Kante) - bei
+  // vielen kreuzenden Linien (z.B. rund um GLK 3) war sonst kaum zu erkennen, was zu was gehoert
+  container.addEventListener('pointerover', (e) => {
+    const card = e.target.closest('.tree-node-card');
+    if (card) highlightConnectedEdges(card.id.replace('nodeCard-', ''), treeStructure);
+  });
+  container.addEventListener('pointerout', (e) => {
+    const card = e.target.closest('.tree-node-card');
+    if (card && !card.contains(e.relatedTarget)) highlightConnectedEdges(null, treeStructure);
+  });
 }
 
 export async function selectTargetCourse(courseId) {
@@ -124,8 +280,9 @@ export async function selectTargetCourse(courseId) {
 
   // Pfadberechnung ueber Backend API
   try {
-    const res = await fetch(`/api/tree/path/${courseId}`);
+    const res = await fetch(`/api/tree/path/${courseId}${selectedRegion ? `?region=${encodeURIComponent(selectedRegion)}` : ''}`);
     const pathResult = await res.json();
+    if (!res.ok) throw new Error(pathResult.error || 'Pfadberechnung fehlgeschlagen');
 
     const targetNode = treeStructure.nodes[courseId];
     if (targetNode) {
@@ -163,7 +320,8 @@ async function showUpcomingDates(courseId) {
 }
 
 export function updateTreeInspector(targetNode, pathResult) {
-  const { isDirectlyEligible, missingCourses, ageCheck, summary } = pathResult;
+  const { isDirectlyEligible, ageCheck, summary } = pathResult;
+  const pathSteps = pathResult.pathSteps || [];
   const qualificationChecks = pathResult.targetQualCheck || pathResult.qualificationChecks || [];
 
   const titleEl = document.getElementById('inspectorTitle');
@@ -176,50 +334,61 @@ export function updateTreeInspector(targetNode, pathResult) {
   const orgClass = org.toLowerCase().replace('+', '').replace(/[^a-z0-9]/g, '');
 
   titleEl.innerHTML = `<span class="node-org-pill org-${orgClass}" style="vertical-align: middle; margin-right: 0.4rem;">${org}</span> <span>${esc(targetNode.title)}</span>${targetNode.code ? ` <span style="font-size: 0.85em; opacity: 0.7; font-weight: normal;">(${targetNode.code})</span>` : ''}`;
-  catEl.textContent = `Kategorie: ${targetNode.category}${targetNode.js_type ? ` • ${targetNode.js_type}` : ''}`;
+  catEl.style.display = 'none';
 
-  summaryBox.textContent = summary;
+  // Kurzer Status-Satz hier, jedes einzelne Kurs/Qualifikation steht unten in der Checkliste -
+  // nicht beides an zwei Orten in zwei verschiedenen Stilen zeigen
   summaryBox.className = `path-summary-box ${isDirectlyEligible ? 'eligible' : ''}`;
+  summaryBox.textContent = summary;
 
   // Kokonut Pro Onboarding Checklist Logik
   const checkItems = [];
 
-  // Schritt 1: Alterspruefung
-  checkItems.push({
-    title: `Mindestalter (${targetNode.minAge} Jahre)`,
-    desc: ageCheck.actual === null
-      ? 'Geburtsdatum fehlt in der Cevi-DB, Alter nicht pruefbar.'
-      : ageCheck.isFulfilled
-        ? `Erfuellt! Du bist aktuell ${ageCheck.actual} Jahre alt.`
-        : `Fehlt noch: Du bist ${ageCheck.actual} Jahre alt (benoetigt: ${targetNode.minAge}).`,
-    isFulfilled: ageCheck.isFulfilled
+  // Schritt 1: Alterspruefung (nur wenn der Kurs ueberhaupt ein Mindestalter verlangt)
+  if (targetNode.minAge) {
+    checkItems.push({
+      title: `Mindestalter (${targetNode.minAge} Jahre)`,
+      desc: ageCheck.actual === null
+        ? 'Geburtsdatum fehlt in der Cevi-DB, Alter nicht pruefbar.'
+        : ageCheck.isFulfilled
+          ? `Erfuellt! Du bist aktuell ${ageCheck.actual} Jahre alt.`
+          : `Fehlt noch: Du bist ${ageCheck.actual} Jahre alt (benoetigt: ${targetNode.minAge}).`,
+      isFulfilled: ageCheck.isFulfilled
+    });
+  }
+
+  // Schritt 2: Vorbereitende Cevi-Kurse - eine Zeile pro Kurs auf dem Pfad (wie bei den
+  // Qualifikationen unten), nicht mehr als eine Zeile mit allen Namen aufgezaehlt. Noch offene
+  // Kurse sind anklickbar und springen dorthin, zeigen so den Pfad selbst
+  pathSteps.forEach(step => {
+    const stepInTree = treeStructure?.nodes[step.id];
+    checkItems.push({
+      title: step.title,
+      desc: step.isCompleted ? 'Abgeschlossen.' : 'Noch zu absolvieren - anklicken fuer den Weg dahin.',
+      isFulfilled: step.isCompleted,
+      onClickCourseId: !step.isCompleted && stepInTree ? step.id : null
+    });
   });
 
-  // Schritt 2: Vorbereitende Cevi-Kurse
-  if (targetNode.prerequisites && targetNode.prerequisites.length > 0) {
-    const isFulfilled = missingCourses.length === 0;
-    const missingNames = missingCourses.map(m => m.title).join(', ');
+  // Schritt 3: Qualifikationen / Brevets - eine Zeile pro Qualifikation (wie eine eigene
+  // Mini-Checkliste); fehlt eine und ist ihr vergebender Kurs im aktuellen Baum bekannt, ist die
+  // Zeile anklickbar und springt dorthin - zeigt so den Weg dahin, auch rekursiv weiter.
+  // Eine Qualifikation, deren vergebender Kurs schon oben als Kurs-Schritt steht, nicht nochmal
+  // unter demselben Namen zeigen
+  const coursePathTitles = new Set(pathSteps.map(s => s.title));
+  qualificationChecks.filter(q => !coursePathTitles.has(q.label || q.id)).forEach(q => {
+    const granterInTree = q.grantedByCourseId && treeStructure?.nodes[q.grantedByCourseId];
     checkItems.push({
-      title: 'Ausbildungsstufen & Kurse',
-      desc: isFulfilled
-        ? 'Alle vorherigen Kursstufen erfolgreich abgeschlossen.'
-        : `Noch zu absolvieren: ${missingNames}.`,
-      isFulfilled: isFulfilled
-    });
-  }
-
-  // Schritt 3: Qualifikationen / Brevets
-  if (qualificationChecks && qualificationChecks.length > 0) {
-    qualificationChecks.forEach(q => {
-      checkItems.push({
-        title: `Zertifikat: ${q.id.toUpperCase()}`,
-        desc: q.isFulfilled
-          ? 'Qualifikation in der Cevi-DB bestaetigt.'
+      title: q.label || q.id,
+      desc: q.isFulfilled
+        ? 'Qualifikation in der Cevi-DB bestaetigt.'
+        : granterInTree
+          ? 'Noch nicht erreicht - anklicken fuer den Weg dahin.'
           : 'Anerkennung fehlt noch im Profil.',
-        isFulfilled: q.isFulfilled
-      });
+      isFulfilled: q.isFulfilled,
+      onClickCourseId: !q.isFulfilled && granterInTree ? q.grantedByCourseId : null
     });
-  }
+  });
 
   // Zuletzt: empfohlene Vorstufen (z.B. Heku, GLK 1, GLK 2 vor GLK 3), nur ein Hinweis
   // ohne Schrittnummer, zaehlt nicht zum Fortschritt
@@ -246,7 +415,7 @@ export function updateTreeInspector(targetNode, pathResult) {
 
   let checksHtml = `
     <div class="checklist-progress-header">
-      <span style="font-size: 0.8rem; color: var(--text-muted);">Voraussetzungen:</span>
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Erfüllt:</span>
       <div class="progress-ring-badge">
         <svg class="progress-ring-svg" viewBox="0 0 24 24">
           <circle class="progress-ring-bg" cx="12" cy="12" r="9"/>
@@ -266,7 +435,8 @@ export function updateTreeInspector(targetNode, pathResult) {
       ? '<i class="fa-solid fa-check"></i>'
       : item.isOptional ? '<i class="fa-regular fa-lightbulb" aria-hidden="true"></i>' : stepNumber;
     checksHtml += `
-      <div class="check-item ${item.isFulfilled ? 'check-fulfilled' : 'check-unfulfilled'}${item.isOptional ? ' check-optional' : ''}">
+      <div class="check-item ${item.isFulfilled ? 'check-fulfilled' : 'check-unfulfilled'}${item.isOptional ? ' check-optional' : ''}${item.onClickCourseId ? ' check-clickable' : ''}"
+           ${item.onClickCourseId ? `onclick="selectTargetCourse('${item.onClickCourseId}')" role="button" tabindex="0"` : ''}>
         <div class="check-step-badge">${badge}</div>
         <div class="check-text-content">
           <div class="check-title">${esc(item.title)}</div>

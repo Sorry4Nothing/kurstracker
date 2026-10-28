@@ -788,6 +788,7 @@ const RIGHTS = {
   'GET /api/auth/me': 'public',
   'POST /api/auth/logout': 'public',
   'GET /api/tree/structure': 'public',
+  'GET /api/tree/regions': 'public',
   'GET /api/system/status': 'public',
   'GET /api/courses': 'session',
   'GET /api/user/history': 'session',
@@ -981,6 +982,7 @@ test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-O
     '/api/user/history': 'testdaten',
     '/api/user/qualifications': 'testdaten',
     '/api/tree/structure': 'kurstracker',
+    '/api/tree/regions': 'kurstracker',
     '/api/tree/evaluation': 'testdaten',
     '/api/tree/path/glk1': 'testdaten',
     '/api/planner/overview': 'testdaten'

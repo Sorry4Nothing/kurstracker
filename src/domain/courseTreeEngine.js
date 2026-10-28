@@ -1,4 +1,18 @@
-import { COURSE_NODES, withGenderTitles } from './courseTreeData.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION, withGenderTitles } from './courseTreeData.js';
+
+// Qualifikations-Herkunft uber alle Baeume hinweg (Standardbaum + jede Region): manche
+// Qualifikationen (z.B. SLRG-Module) werden nur in einer einzelnen Region vergeben - eine Engine,
+// die nur auf der eigenen Region rechnet, faende den vergebenden Kurs sonst nicht und zeigte den
+// rohen Key an, ohne Hinweis, wie man an die Qualifikation kommt.
+const GLOBAL_QUAL_GRANTERS = (() => {
+  const map = {};
+  const scan = (nodes) => Object.values(nodes).forEach(n => (n.grantsQualifications || []).forEach(q => {
+    if (!map[q]) map[q] = { id: n.id, title: n.title };
+  }));
+  scan(COURSE_NODES);
+  Object.values(COURSE_NODES_BY_REGION).forEach(scan);
+  return map;
+})();
 
 // Kurzbezeichnungen aus Altdaten und Tests auf die Baum-IDs abbilden
 const COURSE_ALIASES = { glk: 'glk3', hlk: 'heku', mf: 'mf_lst' };
@@ -58,6 +72,45 @@ export class CourseTreeEngine {
       if (set.has(id)) set.add(alias);
     }
     return set;
+  }
+
+  /**
+   * Ein Kurs gilt auch als absolviert, wenn completedCourses ihn nicht listet, aber die Person
+   * bereits alle Qualifikationen hat, die der Kurs vergibt (z.B. ein Brevet aus der Cevi-DB ohne
+   * passenden Kurs-Teilnahme-Datensatz) - sonst widersprechen sich Kurs-Pfad und Qualifikations-
+   * Checkliste: derselbe Kurs steht als "noch offen" und seine Qualifikation gleichzeitig als
+   * "bestaetigt".
+   * @param {string} id
+   * @param {Set<string>} completed
+   * @param {Set<string>} quals
+   * @returns {boolean}
+   */
+  isEffectivelyCompleted(id, completed, quals) {
+    if (completed.has(id)) return true;
+    const grants = this.nodes[id]?.grantsQualifications || [];
+    return grants.length > 0 && grants.every(q => quals.has(q));
+  }
+
+  /**
+   * Kurs, der eine Qualifikation vergibt (z.B. "js_sec_wasser" -> der Kurs "J+S-Modul
+   * Sicherheitsbereich Wasser"): zeigt, wie man an die Qualifikation kommt. Erst im eigenen
+   * Baum gesucht, sonst ueber alle Regionen; ohne Treffer null, nie erfunden.
+   * @param {string} qualKey
+   * @returns {{id: string, title: string}|null}
+   */
+  qualGranter(qualKey) {
+    const local = Object.values(this.nodes).find(n => (n.grantsQualifications || []).includes(qualKey));
+    if (local) return { id: local.id, title: local.title };
+    return GLOBAL_QUAL_GRANTERS[qualKey] || null;
+  }
+
+  /**
+   * Lesbarer Name einer Qualifikation, siehe {@link qualGranter}. Ohne Treffer der rohe Key.
+   * @param {string} qualKey
+   * @returns {string}
+   */
+  qualLabel(qualKey) {
+    return this.qualGranter(qualKey)?.title || qualKey;
   }
 
   /**
@@ -164,7 +217,7 @@ export class CourseTreeEngine {
           blockers.push(`Fehlende Vorgangerkurse: ${titles}`);
         }
         if (missingQuals.length > 0) {
-          blockers.push(`Fehlende Qualifikationen: ${missingQuals.join(', ')}`);
+          blockers.push(`Fehlende Qualifikationen: ${missingQuals.map(q => this.qualLabel(q)).join(', ')}`);
         }
 
         if (blockers.length === 0) {
@@ -250,11 +303,11 @@ export class CourseTreeEngine {
     const fitsAge = (id) => personAge === null ||
       personAge <= (this.nodes[id].recommendedAge ?? Infinity) + RECOMMENDED_AGE_TOLERANCE_YEARS;
     const recommendedIds = collect(true, new Set(requiredIds))
-      .filter(id => completed.has(id) || fitsAge(id));
+      .filter(id => this.isEffectivelyCompleted(id, completed, quals) || fitsAge(id));
 
     const toStep = (id, openStatus) => {
       const node = this.nodes[id];
-      const done = completed.has(id);
+      const done = this.isEffectivelyCompleted(id, completed, quals);
       return {
         id,
         title: node.title,
@@ -274,13 +327,18 @@ export class CourseTreeEngine {
     const targetDirectPrereqs = (targetNode.prerequisites || []).map(id => ({
       id,
       title: this.nodes[id]?.title || id,
-      isFulfilled: completed.has(id)
+      isFulfilled: this.isEffectivelyCompleted(id, completed, quals)
     }));
 
-    const targetQualCheck = (targetNode.requiredQualifications || []).map(q => ({
-      id: q,
-      isFulfilled: quals.has(q)
-    }));
+    const targetQualCheck = (targetNode.requiredQualifications || []).map(q => {
+      const granter = this.qualGranter(q);
+      return {
+        id: q,
+        label: granter?.title || q,
+        grantedByCourseId: granter?.id || null,
+        isFulfilled: quals.has(q)
+      };
+    });
 
     const ageCheck = {
       required: targetNode.minAge || 0,
@@ -325,10 +383,11 @@ export class CourseTreeEngine {
       return recommendation ? `${eligible} ${recommendation}` : eligible;
     }
 
+    // Kurz halten: die genauen Titel/Namen stehen schon einzeln in der Checkliste darunter,
+    // hier nur die Kernaussage - sonst wird daraus bei mehreren offenen Punkten ein Fliesstext-Block
     const messages = [];
     if (missingCourses.length > 0) {
-      const titles = missingCourses.map(c => c.title).join(' -> ');
-      messages.push(`Noch ${missingCourses.length} Kurs(e) notwendig: ${titles}`);
+      messages.push(`Noch ${missingCourses.length} Kurs${missingCourses.length === 1 ? '' : 'e'} offen.`);
     }
     if (!ageCheck.isFulfilled) {
       messages.push(ageCheck.actual === null
@@ -337,11 +396,11 @@ export class CourseTreeEngine {
     }
     const missingQuals = qualChecks.filter(q => !q.isFulfilled);
     if (missingQuals.length > 0) {
-      messages.push(`Fehlende Qualifikation: ${missingQuals.map(q => q.id).join(', ')}.`);
+      messages.push(`Noch ${missingQuals.length} Qualifikation${missingQuals.length === 1 ? '' : 'en'} offen.`);
     }
     if (recommendation) messages.push(recommendation);
 
-    return messages.join(' | ');
+    return messages.join(' ');
   }
 }
 

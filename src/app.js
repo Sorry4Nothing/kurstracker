@@ -8,10 +8,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { envConfig, validateEnv } from './config/env.js';
 import { ceviDbService } from './services/ceviDbService.js';
-import { courseTreeEngine } from './domain/courseTreeEngine.js';
+import { courseTreeEngine, CourseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
-import { COURSE_NODES, withGenderTitles } from './domain/courseTreeData.js';
-import { plannerScope, visibleTo, groupsOf, leadDepartments, canEditGroup, canReopenGroup } from './domain/plannerAccess.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles } from './domain/courseTreeData.js';
+import { plannerScope, visibleTo, groupsOf, isAbteilungsleitung, isStufenleitung, leadDepartments, canEditGroup, canReopenGroup } from './domain/plannerAccess.js';
 import { normalizeEntries, MAX_NOTE, STATUS_OPEN, STATUS_SUBMITTED } from './domain/proposals.js';
 import { credentialStore } from './services/credentialStore.js';
 import { proposalStore } from './services/proposalStore.js';
@@ -400,11 +400,28 @@ app.get('/api/user/qualifications', requireAuth, async (req, res) => {
 // AUSBIILUNGSBAUM & PATHFINDING API
 // -----------------------------------------------------------------------------
 
-// Liefert die vollständige Baumstruktur
+// Liefert die Liste der Regionen mit eigenem Ausbildungspfad (fuer den Regionen-Umschalter)
+app.get('/api/tree/regions', (req, res) => {
+  setSource(res, 'kurstracker');
+  res.json({ regions: REGIONS });
+});
+
+// Liefert die vollständige Baumstruktur; ?region=<key> zeigt probeweise den Pfad dieser
+// Region (siehe REGIONS/COURSE_NODES_BY_REGION in courseTreeData.js), sonst Zuerich/Standard
 app.get('/api/tree/structure', (req, res) => {
   setSource(res, 'kurstracker');
+  const nodes = COURSE_NODES_BY_REGION[req.query.region] || COURSE_NODES;
+  const user = getSession(req)?.user;
+  const scope = plannerScope(user);
+  const canSeeNolk = isAbteilungsleitung(scope);
+  const canSeeSlk = isStufenleitung(scope);
+  // NOLK (Abteilungsleitung) und SLK (Stufenleitung) sind Funktionskurse, kein Teil des
+  // allgemeinen Ausbildungswegs - nur zeigen, wer die entsprechende Rolle traegt
+  const visibleNodes = Object.fromEntries(Object.entries(nodes).filter(([, n]) =>
+    (n.code !== 'NOLK' || canSeeNolk) && (n.code !== 'SLK' || canSeeSlk)
+  ));
   res.json({
-    nodes: withGenderTitles(COURSE_NODES, getSession(req)?.user?.gender)
+    nodes: withGenderTitles(visibleNodes, user?.gender)
   });
 });
 
@@ -449,18 +466,23 @@ app.get('/api/tree/evaluation', requireAuth, async (req, res) => {
   }
 });
 
-// Berechnet den Pfad zu einem Zielkurs via GET
+// Berechnet den Pfad zu einem Zielkurs via GET. ?region= rechnet auf der Baum-Vorschau einer
+// Region statt des Standardbaums (siehe /api/tree/structure) - die Kurs-IDs dort sind
+// regionsspezifisch (z.B. "zuerich_glk3_fa_2027") und stehen nicht in COURSE_NODES.
 app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
   try {
     const { courseId } = req.params;
+    const region = req.query.region;
+    const nodes = region && COURSE_NODES_BY_REGION[region] ? COURSE_NODES_BY_REGION[region] : COURSE_NODES;
+    const engine = nodes === COURSE_NODES ? courseTreeEngine : new CourseTreeEngine(nodes);
     // Unbekannter Zielkurs ist ein Client-Fehler (404), kein Serverfehler (Bug #53)
-    const resolved = courseTreeEngine.resolveCourseId(courseId);
-    if (!Object.hasOwn(COURSE_NODES, resolved)) {
+    const resolved = engine.resolveCourseId(courseId);
+    if (!Object.hasOwn(nodes, resolved)) {
       return res.status(404).json({ error: `Zielkurs '${String(courseId).slice(0, 40)}' existiert nicht im Ausbildungsbaum.` });
     }
     setPersonSource(req, res);
     const person = await resolveActivePerson(req);
-    const pathResult = courseTreeEngine.forGender(person.gender).findPathToTarget(person, courseId);
+    const pathResult = engine.forGender(person.gender).findPathToTarget(person, courseId);
     res.json(pathResult);
   } catch (err) {
     sendError(res, err, 'Pfadberechnung');

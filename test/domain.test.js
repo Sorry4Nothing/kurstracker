@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COURSE_NODES, withGenderTitles, applyKindLabels } from '../src/domain/courseTreeData.js';
-import { courseTreeEngine } from '../src/domain/courseTreeEngine.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, applyKindLabels } from '../src/domain/courseTreeData.js';
+import { courseTreeEngine, CourseTreeEngine } from '../src/domain/courseTreeEngine.js';
 import { StufenleiterPlanningEngine } from '../src/domain/stufenleiterPlanningEngine.js';
 import { COURSE_MAP_COORDS } from '../public/js/tree-map.js';
 
@@ -130,6 +130,30 @@ test('Alter: zählt nach Jahrgang (Kalenderjahr), nicht am exakten Geburtstag, f
   }
 });
 
+test('Regionen (Baum-Vorschau aus dem Kursablauf-Editor-Artefakt): jeder Kurs hat Titel/Mindestalter, keine hängenden Vorgänger-Referenzen, nationale Kurse laufen in jeder Region mit', () => {
+  assert.deepEqual(REGIONS.map(r => r.key), ['zuerich', 'winterthur-schaffhausen', 'bern', 'ostschweiz', 'agsoluzg']);
+  // COURSE_NODES (Zürich, handgepflegt) bleibt unberührt - die Vorschau ist eine separate, aus dem Artefakt gebaute Datenquelle
+  assert.ok(COURSE_NODES.voku, 'Standardbaum unverändert');
+  assert.notEqual(COURSE_NODES_BY_REGION.zuerich, COURSE_NODES);
+
+  for (const { key } of REGIONS) {
+    const nodes = COURSE_NODES_BY_REGION[key];
+    assert.ok(Object.keys(nodes).length > 0, `${key}: keine Kurse`);
+    for (const [id, node] of Object.entries(nodes)) {
+      assert.ok(node.title, `${key}.${id} hat keinen Titel`);
+      assert.ok(typeof node.minAge === 'number', `${key}.${id} hat kein Mindestalter-Feld`); // 0 = DB nennt keins (z.B. Kaderkurse)
+      for (const prereqId of [...node.prerequisites, ...node.recommendedPrerequisites]) {
+        assert.ok(nodes[prereqId], `${key}.${id}: Vorgänger ${prereqId} fehlt in derselben Region`);
+      }
+    }
+  }
+
+  // nationale Kurse (Cevi Schweiz, Externe Kurse, wassermodul.ch) laufen in jeder Region mit (eigene id-Vorsilbe pro Region)
+  for (const { key } of REGIONS) {
+    assert.ok(Object.keys(COURSE_NODES_BY_REGION[key]).includes(`${key}_j_s_coachkurs_2027`), `${key} hat den nationalen J+S-Coachkurs nicht`);
+  }
+});
+
 test('Mindestalter: wie im Kursreglement, jeder Kurs wird genau ab seinem Mindestalter frei', () => {
   // Kursreglement im Kopf von courseTreeData.js: Voku ab 12, Heku ab 13, GLK 1 ab 14, GLK 2 ab 15, GLK 3 (J+S-Leiterkurs) ab 17
   assert.deepEqual(['voku', 'heku', 'glk1', 'glk2', 'glk3'].map(id => COURSE_NODES[id].minAge), [12, 13, 14, 15, 17]);
@@ -227,10 +251,27 @@ test('Pfad: Sicherheit Wasser scheitert nur an der fehlenden SLRG-Qualifikation'
   assert.equal(result.stepsRemainingCount, 0);
   assert.equal(result.isDirectlyEligible, false);
   assert.deepEqual(result.targetQualCheck, [
-    { id: 'js_leiter_lst', isFulfilled: true },
-    { id: 'slrg_basis_pool', isFulfilled: false }
+    { id: 'js_leiter_lst', label: 'Gruppenleiter/-innen-Kurs 3 (GLK 3)', grantedByCourseId: 'glk3', isFulfilled: true },
+    { id: 'slrg_basis_pool', label: 'SLRG Brevet Basis Pool + BLS-AED', grantedByCourseId: 'slrg_pool', isFulfilled: false }
   ]);
-  assert.equal(result.summary, 'Fehlende Qualifikation: slrg_basis_pool.');
+  assert.equal(result.summary, 'Noch 1 Qualifikation offen.');
+});
+
+test('qualLabel: findet den Titel auch ueber eine fremde Region hinweg, sonst den rohen Key', () => {
+  // slrg_modul_see wird in der Zuerich-Baumvorschau von keinem Kurs vergeben, nur in Bern -
+  // qualLabel() muss trotzdem einen lesbaren Namen finden, keinen rohen Key anzeigen (#128 Folgefehler)
+  const zuerichEngine = new CourseTreeEngine(COURSE_NODES_BY_REGION.zuerich);
+  assert.notEqual(zuerichEngine.qualLabel('slrg_modul_see'), 'slrg_modul_see');
+  assert.equal(zuerichEngine.qualLabel('nicht_vergebene_qualifikation'), 'nicht_vergebene_qualifikation');
+});
+
+test('isEffectivelyCompleted: ein Kurs gilt auch erledigt, wenn seine Qualifikation schon bestaetigt ist, auch ohne passenden Kurs-Teilnahme-Datensatz', () => {
+  // Cevi-DB fuehrt Brevets/Qualifikationen und Kursteilnahmen getrennt - sonst widerspricht sich
+  // der Kurs-Pfad ("noch offen") der Qualifikations-Checkliste ("bestaetigt") fuer denselben Kurs
+  assert.equal(courseTreeEngine.isEffectivelyCompleted('sec_wasser', new Set(), new Set(['js_sec_wasser'])), true);
+  assert.equal(courseTreeEngine.isEffectivelyCompleted('sec_berg', new Set(), new Set(['js_sec_wasser'])), false);
+  assert.equal(courseTreeEngine.isEffectivelyCompleted('voku', new Set(), new Set()), false);
+  assert.equal(courseTreeEngine.isEffectivelyCompleted('voku', new Set(['voku']), new Set()), true);
 });
 
 test('Pfad: mit 11 zu jung für den Vorkurs, mit 12 direkt anmeldbar', () => {

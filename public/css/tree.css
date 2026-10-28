@@ -162,6 +162,15 @@
   font-size: var(--fs-14);
 }
 
+/* #treeResetLayoutBtn sitzt in .tree-zoom-group wie die Zoom-Icons, ist aber Text+Icon statt nur
+   Icon - die quadratische 28px-Box und das 0-Padding von .tree-zoom-group .btn oben passen hier
+   nicht, sonst laeuft der Text aus der Box heraus in die Nachbargruppe */
+#treeResetLayoutBtn {
+  width: auto;
+  padding: 4px var(--sp-2);
+  white-space: nowrap;
+}
+
 #treeZoomLabel {
   min-width: 40px;
   font-size: var(--fs-12);
@@ -180,6 +189,15 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-4);
+}
+
+/* Kurs-Karte wird gerade frei verschoben (tree.js): angehoben, kein Uebergang, damit sie dem
+   Zeiger 1:1 folgt */
+.tree-node-card.is-dragging {
+  z-index: 5;
+  cursor: grabbing;
+  transition: none;
+  box-shadow: var(--shadow-float);
 }
 
 /* ------------------------------------------------------------------------------
@@ -249,17 +267,32 @@
   pointer-events: none;
 }
 
+/* stroke-width durch --map-zoom geteilt (wie der Fokus-Ring oben): die Leinwand wird per
+   CSS-transform skaliert, ein fester px-Wert wuerde beim Rauszoomen unter 1px schrumpfen und auf
+   dunklem Grund praktisch verschwinden - bei vielen Kursen sieht man den Baum oft nur verkleinert */
 .tree-path-line {
   fill: none;
   stroke: var(--border-strong);
-  stroke-width: 1.5px;
+  stroke-width: calc(1.5px / var(--map-zoom));
   stroke-linecap: round;
+  transition: opacity 0.1s ease, stroke-width 0.1s ease;
+}
+
+/* Beim Hover einer Karte (tree.js) nur ihre eigenen Linien betonen, den Rest zurueckdraengen -
+   bei vielen kreuzenden Linien (z.B. rund um GLK 3) war sonst kaum zu erkennen, was zu was gehoert */
+.tree-path-line.is-hover-active {
+  stroke: var(--route);
+  stroke-width: calc(2.5px / var(--map-zoom));
+}
+
+.tree-path-line.is-hover-dimmed {
+  opacity: 0.2;
 }
 
 /* Route to the selected target course: a solid 2px line */
 .tree-path-line.active-path {
   stroke: var(--route);
-  stroke-width: 2px;
+  stroke-width: calc(2px / var(--map-zoom));
 }
 
 /* Recommended preparation (Heku -> GLK 1 -> GLK 2 -> GLK 3): dashed, also
@@ -327,6 +360,14 @@
   border-top-color: var(--route);
   border-right-color: var(--route);
   border-bottom-color: var(--route);
+}
+
+/* Verleiht eine Qualifikation, die irgendwo in der gehoverten Kette benoetigt wird - auch ohne
+   direkte Vorgaengerkante (z.B. ein SLRG-Brevet). Gestrichelter Ring statt durchgezogenem Rand,
+   damit er sich von is-path-highlight/is-selected unterscheidet. */
+.tree-node-card.is-hover-qual-source {
+  outline: calc(2px / var(--map-zoom)) dashed var(--route);
+  outline-offset: calc(2px / var(--map-zoom));
 }
 
 /* Selected target: route-coloured border plus a 2px ring. The outline adds
@@ -604,6 +645,18 @@
 
 .check-item:last-child {
   padding-bottom: 0;
+}
+
+/* Fehlende Qualifikation mit bekanntem vergebenden Kurs: anklickbar, springt zu dessen
+   eigenen Voraussetzungen (siehe selectTargetCourse in tree.js) */
+.check-item.check-clickable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.check-item.check-clickable:hover,
+.check-item.check-clickable:focus-visible {
+  background-color: var(--blue-soft);
 }
 
 /* Connector from this circle to the next one, 4px clear of both. It fills
