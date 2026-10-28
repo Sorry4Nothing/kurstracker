@@ -843,6 +843,12 @@ test('Session: ein neuer Login beendet die alte Session serverseitig (SR-02)', a
 });
 
 // Rechtematrix (SR-12): jede /api-Route braucht hier eine Zeile, sonst schlägt der Test fehl (deny by default)
+test('API: Health-Check ist öffentlich, meldet ok und enthält nur Status und Datenbank', async () => {
+  const res = await request('/api/health');
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { status: 'ok', database: 'nicht konfiguriert' });
+});
+
 const RIGHTS = {
   'GET /api/auth/login': 'public',
   'GET /api/auth/mock-login': 'public',
@@ -852,6 +858,7 @@ const RIGHTS = {
   'GET /api/tree/structure': 'public',
   'GET /api/tree/regions': 'public',
   'GET /api/system/status': 'public',
+  'GET /api/health': 'public',
   'GET /api/courses': 'session',
   'GET /api/user/history': 'session',
   'GET /api/user/qualifications': 'session',
@@ -1045,6 +1052,7 @@ test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-O
   for (const [path, source] of Object.entries({
     '/api/auth/me': 'testdaten',
     '/api/system/status': 'kurstracker',
+    '/api/health': 'kurstracker',
     '/api/courses': 'testdaten',
     '/api/user/history': 'testdaten',
     '/api/user/qualifications': 'testdaten',

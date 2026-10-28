@@ -899,6 +899,31 @@ app.get('/api/system/status', (req, res) => {
   res.json(status);
 });
 
+// Erreichbarkeits-Check für Uptime-Monitoring: ohne Login, ohne Personen- und Konfigurationsdaten.
+// 503 nur, wenn die Datenbank konfiguriert, aber nicht erreichbar ist; die Cevi-DB zählt nicht dazu (fällt sie aus, läuft der Rest weiter).
+const HEALTH_DB_TIMEOUT_MS = 5000; // Neon schläft ein und braucht beim Aufwecken einige Sekunden
+app.get('/api/health', async (req, res) => {
+  setSource(res, 'kurstracker');
+  let database = 'nicht konfiguriert';
+  if (databaseQuery) {
+    let timer;
+    try {
+      await Promise.race([
+        databaseQuery('SELECT 1'),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Zeitüberschreitung')), HEALTH_DB_TIMEOUT_MS); })
+      ]);
+      database = 'ok';
+    } catch (err) {
+      console.error(logSafe(`[Health] Datenbank nicht erreichbar: ${err.code || err.message}`));
+      database = 'fehler';
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  const healthy = database !== 'fehler';
+  res.status(healthy ? 200 : 503).json({ status: healthy ? 'ok' : 'degraded', database });
+});
+
 // Unbekannte API-Routen: JSON-Fehler statt index.html
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'API-Route nicht gefunden' });
