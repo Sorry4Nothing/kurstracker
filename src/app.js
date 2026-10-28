@@ -17,6 +17,7 @@ import { normalizeEntries, MAX_NOTE, STATUS_OPEN, STATUS_SUBMITTED } from './dom
 import { credentialStore } from './services/credentialStore.js';
 import { proposalStore } from './services/proposalStore.js';
 import { query as databaseQuery } from './services/database.js';
+import { installConsoleCapture, requestLogger, snapshot as systemLogSnapshot } from './services/systemLog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,7 @@ function readReleaseVersion() {
   }
 }
 const releaseVersion = readReleaseVersion();
+installConsoleCapture();
 
 export const app = express();
 
@@ -105,6 +107,8 @@ app.use((req, res, next) => {
 app.use(compression());
 app.use(express.json({ limit: '50kb' }));
 app.use(cookieParser(envConfig.auth.sessionSecret));
+// Nach dem Cookie-Parser, damit der Akteur aus der Session lesbar ist (getSession ist hochgezogen)
+app.use(requestLogger(req => getSession(req)?.user?.id ?? 'anonym'));
 
 // CSRF-Schutz: Schreibende API-Aufrufe nur von der eigenen Seite (Browser senden Origin bei POST immer mit).
 // Clients ohne Origin/Referer (curl, Tests) tragen keine fremden Cookies und bleiben erlaubt.
@@ -341,6 +345,7 @@ app.get('/api/auth/me', (req, res) => {
     isMock: session.isMock,
     canUsePlanner: canUsePlanner(session.user),
     canManageSettings: leadDepartments(session.user).length > 0,
+    canViewSystemLog: leadDepartments(session.user).length > 0,
     canReviewProposals: leadDepartments(session.user).length > 0
   });
 });
@@ -897,6 +902,51 @@ app.get('/api/system/status', (req, res) => {
     status.configValidation = validateEnv();
   }
   res.json(status);
+});
+
+// Erreichbarkeits-Check für Uptime-Monitoring: ohne Login, ohne Personen- und Konfigurationsdaten.
+// 503 nur, wenn die Datenbank konfiguriert, aber nicht erreichbar ist; die Cevi-DB zählt nicht dazu (fällt sie aus, läuft der Rest weiter).
+const HEALTH_DB_TIMEOUT_MS = 5000; // Neon schläft ein und braucht beim Aufwecken einige Sekunden
+async function checkDatabase() {
+  if (!databaseQuery) return 'nicht konfiguriert';
+  let timer;
+  try {
+    await Promise.race([
+      databaseQuery('SELECT 1'),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Zeitüberschreitung')), HEALTH_DB_TIMEOUT_MS); })
+    ]);
+    return 'ok';
+  } catch (err) {
+    console.error(logSafe(`[Health] Datenbank nicht erreichbar: ${err.code || err.message}`));
+    return 'fehler';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+app.get('/api/health', async (req, res) => {
+  setSource(res, 'kurstracker');
+  const database = await checkDatabase();
+  const healthy = database !== 'fehler';
+  res.status(healthy ? 200 : 503).json({ status: healthy ? 'ok' : 'degraded', database });
+});
+
+// Technisches Log und Systemzustand für Abteilungsleitungen: Konsolenmeldungen, API-Anfragen, Kennzahlen.
+// Gilt für den ganzen Server, nicht nur die eigene Abteilung; Einträge tragen nur pseudonyme Personen-IDs und keine Stacks (SR-50, SR-51).
+app.get('/api/system/logs', requireDepartmentLead, async (req, res) => {
+  setSource(res, 'kurstracker');
+  const database = await checkDatabase();
+  res.json({
+    ...systemLogSnapshot(),
+    system: {
+      version: releaseVersion,
+      env: envConfig.app.env,
+      preparationMode: ceviDbService.isPreparationMode(),
+      database,
+      activeSessions: activeSessions.size
+    },
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Unbekannte API-Routen: JSON-Fehler statt index.html

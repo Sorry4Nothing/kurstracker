@@ -64,6 +64,8 @@ export async function checkAuth() {
     if (tabProposals) tabProposals.hidden = !data.canReviewProposals;
     const tabSettings = document.getElementById('tabSettings');
     if (tabSettings) tabSettings.hidden = !data.canManageSettings;
+    const tabSystemLog = document.getElementById('tabSystemLog');
+    if (tabSystemLog) tabSystemLog.hidden = !data.canViewSystemLog;
 
     // Stammdaten im Profil-Cockpit aktualisieren (europaeisches Format)
     setText('profileDbBirthdate', user.birthday

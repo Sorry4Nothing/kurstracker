@@ -9,6 +9,7 @@ import { loadApiOutput } from './api-output.js';
 import { plannerSubtitle } from './planner.js';
 import { loadSettings } from './settings.js';
 import { loadProposalsOverview } from './proposals-overview.js';
+import { startSystemLogRefresh, stopSystemLogRefresh } from './system-log.js';
 
 export function switchTab(tabId) {
   // Navigation Buttons & Cards
@@ -17,6 +18,7 @@ export function switchTab(tabId) {
   const navApi = document.getElementById('tabApiOutput');
   const navSettings = document.getElementById('tabSettings');
   const navProposals = document.getElementById('tabProposals');
+  const navSystemLog = document.getElementById('tabSystemLog');
   const navUserCard = document.getElementById('userNavActions');
 
   // Panels
@@ -26,15 +28,18 @@ export function switchTab(tabId) {
   const panelApi = document.getElementById('panel-api');
   const panelSettings = document.getElementById('panel-settings');
   const panelProposals = document.getElementById('panel-proposals');
+  const panelSystemLog = document.getElementById('panel-systemlog');
 
   // Topbar Titles
   const pageTitle = document.getElementById('topbarPageTitle');
   const pageSubtitle = document.getElementById('topbarPageSubtitle');
 
   // Alles zuruecksetzen
-  [navTree, navPlanner, navApi, navSettings, navProposals].forEach(btn => btn?.classList.remove('active'));
+  [navTree, navPlanner, navApi, navSettings, navProposals, navSystemLog].forEach(btn => btn?.classList.remove('active'));
   navUserCard?.classList.remove('active');
-  [panelTree, panelProfile, panelPlanner, panelApi, panelSettings, panelProposals].forEach(panel => panel?.classList.remove('active'));
+  [panelTree, panelProfile, panelPlanner, panelApi, panelSettings, panelProposals, panelSystemLog].forEach(panel => panel?.classList.remove('active'));
+  // Die Aktualisierung des Systemlogs läuft nur, solange sein Tab offen ist
+  stopSystemLogRefresh();
 
   if (tabId === 'tree') {
     navTree?.classList.add('active');
@@ -65,6 +70,12 @@ export function switchTab(tabId) {
     if (pageSubtitle) pageSubtitle.textContent = 'Cevi-DB-Zugang der Abteilung';
     // Bei jedem Öffnen frisch laden, damit der Status stimmt
     loadSettings();
+  } else if (tabId === 'systemlog') {
+    navSystemLog?.classList.add('active');
+    panelSystemLog?.classList.add('active');
+    if (pageTitle) pageTitle.textContent = 'Systemlog';
+    if (pageSubtitle) pageSubtitle.textContent = 'Zustand des Servers, API-Anfragen und technische Ereignisse';
+    startSystemLogRefresh();
   } else if (tabId === 'api') {
     navApi?.classList.add('active');
     panelApi?.classList.add('active');

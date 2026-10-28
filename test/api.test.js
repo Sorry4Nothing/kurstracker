@@ -98,6 +98,7 @@ test('API: ohne Session ist das Demo-Profil mit Planerzugriff aktiv', async () =
     isMock: true,
     canUsePlanner: true,
     canManageSettings: true,
+    canViewSystemLog: true,
     canReviewProposals: true
   });
 });
@@ -798,7 +799,7 @@ test('Live-Login: Session-Cookie ist signiert, httpOnly, 7 Tage gültig und trä
   assert.equal(ceviDbService.getUserInfo.mock.calls[0].arguments[0], 'live_abc');
 
   const me = await (await request('/api/auth/me', { cookie: cookiePair(line) })).json();
-  assert.deepEqual(me, { authenticated: true, user, isMock: false, canUsePlanner: false, canManageSettings: false, canReviewProposals: false });
+  assert.deepEqual(me, { authenticated: true, user, isMock: false, canUsePlanner: false, canManageSettings: false, canViewSystemLog: false, canReviewProposals: false });
 });
 
 test('Live-Login: Planer ist ohne Leitungsrolle gesperrt, Stufenleiterin hat Zugriff', async (t) => {
@@ -843,6 +844,29 @@ test('Session: ein neuer Login beendet die alte Session serverseitig (SR-02)', a
 });
 
 // Rechtematrix (SR-12): jede /api-Route braucht hier eine Zeile, sonst schlägt der Test fehl (deny by default)
+test('API: Health-Check ist öffentlich, meldet ok und enthält nur Status und Datenbank', async () => {
+  const res = await request('/api/health');
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { status: 'ok', database: 'nicht konfiguriert' });
+});
+
+test('API: Systemlog zeigt Kennzahlen und Anfragen, aber weder Query-Strings noch Stacks (SR-50, SR-51)', async () => {
+  await request('/api/courses?token=geheim');
+  console.error(new Error('Beispielfehler').stack);
+  const res = await request('/api/system/logs');
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.system.database, 'nicht konfiguriert');
+  assert.equal(body.system.preparationMode, true);
+  assert.ok(body.requests.total >= 1);
+  assert.ok(body.entries.some(e => e.source === 'Anfrage' && /^200 GET \/api\/courses \d+ ms akteur=/.test(e.message)));
+  const text = JSON.stringify(body);
+  assert.ok(!text.includes('geheim'), 'Query-String im Log');
+  assert.ok(!/\bat \S+ \(/.test(text), 'Stack im Log');
+  assert.ok(body.entries.some(e => e.level === 'error' && e.message.startsWith('Error: Beispielfehler')));
+  assert.ok(!body.entries.some(e => e.message.includes('/api/system/logs')), 'Log-Seite loggt sich nicht selbst');
+});
+
 const RIGHTS = {
   'GET /api/auth/login': 'public',
   'GET /api/auth/mock-login': 'public',
@@ -852,6 +876,8 @@ const RIGHTS = {
   'GET /api/tree/structure': 'public',
   'GET /api/tree/regions': 'public',
   'GET /api/system/status': 'public',
+  'GET /api/health': 'public',
+  'GET /api/system/logs': 'lead',
   'GET /api/courses': 'session',
   'GET /api/user/history': 'session',
   'GET /api/user/qualifications': 'session',
@@ -1045,6 +1071,8 @@ test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-O
   for (const [path, source] of Object.entries({
     '/api/auth/me': 'testdaten',
     '/api/system/status': 'kurstracker',
+    '/api/health': 'kurstracker',
+    '/api/system/logs': 'kurstracker',
     '/api/courses': 'testdaten',
     '/api/user/history': 'testdaten',
     '/api/user/qualifications': 'testdaten',
