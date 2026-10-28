@@ -39,12 +39,33 @@ const releaseVersion = readReleaseVersion();
 installConsoleCapture();
 
 export const app = express();
+// Der Framework-Name hilft nur Angreifenden bei der Suche nach passenden Lücken (#173)
+app.disable('x-powered-by');
 
 // Hinter einem Reverse Proxy die echte Client-IP und das Protokoll aus X-Forwarded-* übernehmen (nur wenn konfiguriert)
 if (envConfig.server.trustProxy) {
   const hops = envConfig.server.trustProxy;
   app.set('trust proxy', /^\d+$/.test(hops) ? Number(hops) : hops);
 }
+
+// Host-Allowlist gegen DNS-Rebinding (#169): eine fremde Seite kann ihren Namen auf 127.0.0.1 umbiegen und so lokale Daten
+// lesen, weil der Browser sie dann als gleiche Herkunft behandelt. Erlaubt sind localhost, der Host aus APP_URL und die Namen
+// in ALLOWED_HOSTS (kommagetrennt, z.B. eine LAN-Adresse zum Testen mit dem Handy).
+const ALLOWED_HOSTNAMES = new Set([
+  'localhost', '127.0.0.1', '[::1]',
+  new URL(envConfig.server.url).hostname.toLowerCase(),
+  ...(process.env.ALLOWED_HOSTS || '').split(',').map(host => host.trim().toLowerCase()).filter(Boolean)
+]);
+app.use((req, res, next) => {
+  let hostname = '';
+  try {
+    hostname = new URL(`http://${req.headers.host}`).hostname.toLowerCase();
+  } catch {
+    // unlesbarer Host-Header zählt als fremd
+  }
+  if (ALLOWED_HOSTNAMES.has(hostname)) return next();
+  res.status(421).type('text/plain').send('Unbekannter Host');
+});
 
 // Nur HTTPS: In Produktion hinter einem Proxy jede HTTP-Anfrage auf die HTTPS-Adresse aus APP_URL umleiten.
 // Ziel ist APP_URL, nie der Host-Header der Anfrage, damit niemand die Umleitung auf eine fremde Seite lenken kann.
@@ -170,7 +191,8 @@ function getSession(req) {
   }
   // Nur der Vorbereitungsmodus arbeitet ohne Login mit dem Demo-Profil.
   // Im Live-Betrieb gibt es ohne gültige Session keinen Zugriff (null → 401 in requireAuth/requirePlanner).
-  if (!ceviDbService.isPreparationMode()) return null;
+  // In Produktion nie, auch nicht bei falscher Konfiguration (validateEnv lässt den Start dort ohnehin nicht zu)
+  if (!ceviDbService.isPreparationMode() || envConfig.app.isProduction) return null;
   return {
     user: ceviDbService.getMockUser(),
     accessToken: 'mock_token_cevi_auto',
@@ -317,7 +339,8 @@ app.get('/api/auth/callback', async (req, res) => {
     // Eine mitgesendete alte Session endet mit dem neuen Login (SR-02)
     activeSessions.delete(req.signedCookies?.cevi_session_id);
     setSession(res, {
-      user: userInfo,
+      // Live zählen nur Rollenobjekte der Cevi-DB: Rollen als Text sind für das Demo-Profil und öffneten alle Gruppen (#170)
+      user: { ...userInfo, roles: (Array.isArray(userInfo?.roles) ? userInfo.roles : []).filter(role => typeof role === 'object' && role !== null) },
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
       isMock: false

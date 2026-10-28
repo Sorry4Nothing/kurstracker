@@ -788,7 +788,7 @@ test('OAuth-Callback: fehlgeschlagener Token-Tausch legt keine Session an', asyn
 
 test('Live-Login: Session-Cookie ist signiert, httpOnly, 7 Tage gültig und trägt das Cevi-DB-Profil', async (t) => {
   const login = useLiveCeviDb(t);
-  const user = { id: 'p_1', first_name: 'Mia', last_name: 'Muster', roles: ['Mitglied'] };
+  const user = { id: 'p_1', first_name: 'Mia', last_name: 'Muster', roles: [{ role_class: 'Group::Stufe::Teilnehmer', group_id: 10, role_name: 'Mitglied' }] };
   const line = await login(user);
   assert.match(line, /Max-Age=604800(;|$)/);
   assert.match(line, /HttpOnly/);
@@ -804,7 +804,7 @@ test('Live-Login: Session-Cookie ist signiert, httpOnly, 7 Tage gültig und trä
 
 test('Live-Login: Planer ist ohne Leitungsrolle gesperrt, Stufenleiterin hat Zugriff', async (t) => {
   const login = useLiveCeviDb(t);
-  const member = cookiePair(await login({ id: 'p_2', first_name: 'Tim', roles: ['Mitglied', 'J+S Leiter LS/T'] }));
+  const member = cookiePair(await login({ id: 'p_2', first_name: 'Tim', roles: [roleOf('Group::Stufe::Teilnehmer', 10), roleOf('Group::Gruppe::Gruppenleiter', 10)] }));
   for (const [path, method, body] of [
     ['/api/planner/overview', 'GET'],
     ['/api/planner/propose', 'POST', { personId: 'tn_1', targetCourseId: 'heku' }]
@@ -814,8 +814,17 @@ test('Live-Login: Planer ist ohne Leitungsrolle gesperrt, Stufenleiterin hat Zug
     assert.deepEqual(await res.json(), { error: 'Kein Zugriff auf den Stufenleiter-Planer' });
   }
 
-  const leader = cookiePair(await login({ id: 'p_3', first_name: 'Ida', roles: ['Stufenleiterin Jungschar'] }));
+  const leader = cookiePair(await login({ id: 'p_3', first_name: 'Ida', roles: [roleOf('Group::Stufe::Stufenleiter', 'demo_nord')] }));
   assert.equal((await request('/api/planner/overview', { cookie: leader })).status, 200);
+});
+
+test('Live-Login: Rollen als Text öffnen weder Planer noch Einstellungen, nur Rollenobjekte der Cevi-DB zählen (#170)', async (t) => {
+  const login = useLiveCeviDb(t);
+  const text = cookiePair(await login({ id: 'p_4', first_name: 'Eve', roles: ['Abteilungsleiter', 'Stufenleiterin'], groups: [{ id: 104, name: 'Cevi Abteilung', role: 'Abteilungsleiter' }] }));
+  assert.equal((await request('/api/planner/overview', { cookie: text })).status, 403);
+  assert.equal((await request('/api/settings/cevi-db-key', { cookie: text })).status, 403);
+  const me = await (await request('/api/auth/me', { cookie: text })).json();
+  assert.deepEqual([me.canUsePlanner, me.canManageSettings, me.user.roles], [false, false, []]);
 });
 
 test('Log: verweigerte Zugriffe und ungültiger state erscheinen mit Akteur, ohne Cookie oder Token (SR-52)', async (t) => {
