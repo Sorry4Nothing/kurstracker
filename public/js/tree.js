@@ -4,7 +4,7 @@
  */
 
 import { COURSE_MAP_COORDS, mapTransform, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, pickStartCourseId, setCanvasSize, growCanvasToFit, resetMapTransform, highlightConnectedEdges } from './tree-map.js';
-import { esc, errorText, responseError } from './utils.js';
+import { esc, errorText, responseError, clickAction } from './utils.js';
 import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
 let treeStructure = null;
@@ -136,7 +136,7 @@ function nodeCardHtml(node, nodeStates) {
     <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''} ${isJsCourse(node) ? 'is-js' : ''}"
          id="nodeCard-${node.id}"
          style="${coordStyle}"
-         onclick="selectTargetCourse('${node.id}')"
+         ${clickAction('selectTargetCourse', node.id)}
          tabindex="0"
          role="button"
          title="${esc(fullText)}"
@@ -432,7 +432,7 @@ export function updateTreeInspector(targetNode, pathResult) {
       : item.isOptional ? '<i class="fa-regular fa-lightbulb" aria-hidden="true"></i>' : stepNumber;
     checksHtml += `
       <div class="check-item ${item.isFulfilled ? 'check-fulfilled' : 'check-unfulfilled'}${item.isOptional ? ' check-optional' : ''}${item.onClickCourseId ? ' check-clickable' : ''}"
-           ${item.onClickCourseId ? `onclick="selectTargetCourse('${item.onClickCourseId}')" role="button" tabindex="0"` : ''}>
+           ${item.onClickCourseId ? `${clickAction('selectTargetCourse', item.onClickCourseId)} role="button" tabindex="0"` : ''}>
         <div class="check-step-badge">${badge}</div>
         <div class="check-text-content">
           <div class="check-title">${esc(item.title)}</div>

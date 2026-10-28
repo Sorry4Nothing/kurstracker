@@ -100,6 +100,7 @@ test('API: ohne Session ist das Demo-Profil mit Planerzugriff aktiv', async () =
     isMock: true,
     canUsePlanner: true,
     canManageSettings: true,
+    canViewSystemLog: true,
     canReviewProposals: true
   });
 });
@@ -809,7 +810,7 @@ test('OAuth-Callback: fehlgeschlagener Token-Tausch legt keine Session an', asyn
 
 test('Live-Login: Session-Cookie ist signiert, httpOnly, 7 Tage gültig und trägt das Cevi-DB-Profil', async (t) => {
   const login = useLiveCeviDb(t);
-  const user = { id: 'p_1', first_name: 'Mia', last_name: 'Muster', roles: ['Mitglied'] };
+  const user = { id: 'p_1', first_name: 'Mia', last_name: 'Muster', roles: [{ role_class: 'Group::Stufe::Teilnehmer', group_id: 10, role_name: 'Mitglied' }] };
   const line = await login(user);
   assert.match(line, /Max-Age=604800(;|$)/);
   assert.match(line, /HttpOnly/);
@@ -821,7 +822,7 @@ test('Live-Login: Session-Cookie ist signiert, httpOnly, 7 Tage gültig und trä
 
   const me = await (await request('/api/auth/me', { cookie: cookiePair(line) })).json();
   // Rollen erscheinen als Namen, das Frontend zeigt den ersten an
-  assert.deepEqual(me, { authenticated: true, user: { id: 'p_1', first_name: 'Mia', last_name: 'Muster', roles: ['Mitglied'] }, isMock: false, canUsePlanner: false, canManageSettings: false, canReviewProposals: false });
+  assert.deepEqual(me, { authenticated: true, user: { id: 'p_1', first_name: 'Mia', last_name: 'Muster', roles: ['Mitglied'] }, isMock: false, canUsePlanner: false, canManageSettings: false, canViewSystemLog: false, canReviewProposals: false });
 });
 
 test('Live-Login: /api/auth/me gibt keine E-Mail, Adresse oder übrigen Userinfo-Felder weiter (#176)', async (t) => {
@@ -838,7 +839,7 @@ test('Live-Login: /api/auth/me gibt keine E-Mail, Adresse oder übrigen Userinfo
 
 test('Live-Login: Planer ist ohne Leitungsrolle gesperrt, Stufenleiterin hat Zugriff', async (t) => {
   const login = useLiveCeviDb(t);
-  const member = cookiePair(await login({ id: 'p_2', first_name: 'Tim', roles: ['Mitglied', 'J+S Leiter LS/T'] }));
+  const member = cookiePair(await login({ id: 'p_2', first_name: 'Tim', roles: [roleOf('Group::Stufe::Teilnehmer', 10), roleOf('Group::Gruppe::Gruppenleiter', 10)] }));
   for (const [path, method, body] of [
     ['/api/planner/overview', 'GET'],
     ['/api/planner/propose', 'POST', { personId: 'tn_1', targetCourseId: 'heku' }]
@@ -848,8 +849,17 @@ test('Live-Login: Planer ist ohne Leitungsrolle gesperrt, Stufenleiterin hat Zug
     assert.deepEqual(await res.json(), { error: 'Kein Zugriff auf den Stufenleiter-Planer' });
   }
 
-  const leader = cookiePair(await login({ id: 'p_3', first_name: 'Ida', roles: ['Stufenleiterin Jungschar'] }));
+  const leader = cookiePair(await login({ id: 'p_3', first_name: 'Ida', roles: [roleOf('Group::Stufe::Stufenleiter', 'demo_nord')] }));
   assert.equal((await request('/api/planner/overview', { cookie: leader })).status, 200);
+});
+
+test('Live-Login: Rollen als Text öffnen weder Planer noch Einstellungen, nur Rollenobjekte der Cevi-DB zählen (#170)', async (t) => {
+  const login = useLiveCeviDb(t);
+  const text = cookiePair(await login({ id: 'p_4', first_name: 'Eve', roles: ['Abteilungsleiter', 'Stufenleiterin'], groups: [{ id: 104, name: 'Cevi Abteilung', role: 'Abteilungsleiter' }] }));
+  assert.equal((await request('/api/planner/overview', { cookie: text })).status, 403);
+  assert.equal((await request('/api/settings/cevi-db-key', { cookie: text })).status, 403);
+  const me = await (await request('/api/auth/me', { cookie: text })).json();
+  assert.deepEqual([me.canUsePlanner, me.canManageSettings, me.user.roles], [false, false, []]);
 });
 
 test('Log: verweigerte Zugriffe und ungültiger state erscheinen mit Akteur, ohne Cookie oder Token (SR-52)', async (t) => {
@@ -877,7 +887,45 @@ test('Session: ein neuer Login beendet die alte Session serverseitig (SR-02)', a
   assert.deepEqual(await (await request('/api/auth/me', { cookie: old })).json(), { authenticated: false });
 });
 
+test('Session: nach 8 Stunden ohne Anfrage ist sie ungültig, aktive Nutzung verlängert sie (SR-02, #177)', async (t) => {
+  const login = useLiveCeviDb(t);
+  const start = Date.now();
+  const cookie = cookiePair(await login({ id: 'p_9', roles: [] }));
+  const hours = h => start + h * 60 * 60 * 1000;
+  const authenticated = async () => (await (await request('/api/auth/me', { cookie })).json()).authenticated;
+
+  const clock = t.mock.method(Date, 'now', () => hours(7));
+  assert.equal(await authenticated(), true);
+  clock.mock.mockImplementation(() => hours(14)); // 7 h nach der letzten Anfrage
+  assert.equal(await authenticated(), true);
+  clock.mock.mockImplementation(() => hours(22.5)); // 8,5 h Leerlauf
+  assert.equal(await authenticated(), false);
+});
+
 // Rechtematrix (SR-12): jede /api-Route braucht hier eine Zeile, sonst schlägt der Test fehl (deny by default)
+test('API: Health-Check ist öffentlich, meldet ok und enthält nur Status und Datenbank', async () => {
+  const res = await request('/api/health');
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { status: 'ok', database: 'nicht konfiguriert' });
+});
+
+test('API: Systemlog zeigt Kennzahlen und Anfragen, aber weder Query-Strings noch Stacks (SR-50, SR-51)', async () => {
+  await request('/api/courses?token=geheim');
+  console.error(new Error('Beispielfehler').stack);
+  const res = await request('/api/system/logs');
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.system.database, 'nicht konfiguriert');
+  assert.equal(body.system.preparationMode, true);
+  assert.ok(body.requests.total >= 1);
+  assert.ok(body.entries.some(e => e.source === 'Anfrage' && /^200 GET \/api\/courses \d+ ms akteur=/.test(e.message)));
+  const text = JSON.stringify(body);
+  assert.ok(!text.includes('geheim'), 'Query-String im Log');
+  assert.ok(!/\bat \S+ \(/.test(text), 'Stack im Log');
+  assert.ok(body.entries.some(e => e.level === 'error' && e.message.startsWith('Error: Beispielfehler')));
+  assert.ok(!body.entries.some(e => e.message.includes('/api/system/logs')), 'Log-Seite loggt sich nicht selbst');
+});
+
 const RIGHTS = {
   'GET /api/auth/login': 'public',
   'GET /api/auth/mock-login': 'public',
@@ -887,6 +935,8 @@ const RIGHTS = {
   'GET /api/tree/structure': 'public',
   'GET /api/tree/regions': 'public',
   'GET /api/system/status': 'public',
+  'GET /api/health': 'public',
+  'GET /api/system/logs': 'lead',
   'GET /api/courses': 'session',
   'GET /api/user/history': 'session',
   'GET /api/user/qualifications': 'session',
@@ -1080,6 +1130,8 @@ test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-O
   for (const [path, source] of Object.entries({
     '/api/auth/me': 'testdaten',
     '/api/system/status': 'kurstracker',
+    '/api/health': 'kurstracker',
+    '/api/system/logs': 'kurstracker',
     '/api/courses': 'testdaten',
     '/api/user/history': 'testdaten',
     '/api/user/qualifications': 'testdaten',
@@ -1111,7 +1163,9 @@ test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-O
 test('Security-Header stehen auf Seiten und API, personenbezogene JSON-Antworten sind no-store', async () => {
   for (const path of ['/', '/api/system/status']) {
     const res = await request(path);
-    assert.ok(res.headers.get('content-security-policy').includes("default-src 'self'"), path);
+    const csp = res.headers.get('content-security-policy');
+    assert.ok(csp.includes("default-src 'self'"), path);
+    assert.ok(/script-src 'self'(;|$)/.test(csp), `${path}: script-src ohne unsafe-inline (#171)`);
     assert.equal(res.headers.get('x-content-type-options'), 'nosniff', path);
     assert.equal(res.headers.get('x-frame-options'), 'DENY', path);
     assert.equal(res.headers.get('referrer-policy'), 'strict-origin-when-cross-origin', path);

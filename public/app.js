@@ -4,6 +4,7 @@
  */
 
 import './js/fetch-guard.js';
+import { registerActions } from './js/actions.js';
 import { debounce } from './js/utils.js';
 import { initTheme, closeAllDropdowns } from './js/theme.js';
 import { checkAuth } from './js/auth.js';
@@ -15,8 +16,26 @@ import { loadAllCourses, filterCourses } from './js/courses.js';
 import { loadPlannerData, openNominationModal, closeNominationModal, submitNomination } from './js/planner.js';
 import { loadSystemFooterStatus } from './js/system.js';
 import { loadApiOutput, setApiView } from './js/api-output.js';
+import { loadSystemLog } from './js/system-log.js';
 
-// Globale Bereitstellung fuer Inline-HTML-Events (onclick, onsubmit etc.)
+// Aktionen der data-click/data-input/data-submit-Attribute im HTML (statt Inline-Handler, siehe js/actions.js)
+registerActions({
+  switchTab: (_, tab) => switchTab(tab),
+  toggleSidebar: () => toggleSidebar(),
+  zoomMap: (_, delta) => zoomMap(delta),
+  resetMapTransform: () => resetMapTransform(),
+  filterCourses: () => filterCourses(),
+  loadPlannerData: (_, fresh) => loadPlannerData(fresh),
+  openNominationModal: (_, ...args) => openNominationModal(...args),
+  closeNominationModal: () => closeNominationModal(),
+  submitNomination: ({ event }) => submitNomination(event),
+  loadApiOutput: () => loadApiOutput(),
+  setApiView: ({ element }) => setApiView(element),
+  selectTargetCourse: (_, courseId) => selectTargetCourse(courseId),
+  loadSystemLog: () => loadSystemLog()
+});
+
+// Auf window bleiben die Funktionen für Tests und die Konsole erreichbar
 window.switchTab = switchTab;
 window.toggleSidebar = toggleSidebar;
 window.selectTargetCourse = selectTargetCourse;
@@ -29,6 +48,7 @@ window.closeNominationModal = closeNominationModal;
 window.submitNomination = submitNomination;
 window.loadApiOutput = loadApiOutput;
 window.setApiView = setApiView;
+window.loadSystemLog = loadSystemLog;
 
 // Initialisierung bei DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {

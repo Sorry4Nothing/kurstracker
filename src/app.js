@@ -17,6 +17,7 @@ import { normalizeEntries, MAX_NOTE, STATUS_OPEN, STATUS_SUBMITTED } from './dom
 import { credentialStore } from './services/credentialStore.js';
 import { proposalStore } from './services/proposalStore.js';
 import { query as databaseQuery } from './services/database.js';
+import { installConsoleCapture, requestLogger, snapshot as systemLogSnapshot } from './services/systemLog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,14 +36,36 @@ function readReleaseVersion() {
   }
 }
 const releaseVersion = readReleaseVersion();
+installConsoleCapture();
 
 export const app = express();
+// Der Framework-Name hilft nur Angreifenden bei der Suche nach passenden Lücken (#173)
+app.disable('x-powered-by');
 
 // Hinter einem Reverse Proxy die echte Client-IP und das Protokoll aus X-Forwarded-* übernehmen (nur wenn konfiguriert)
 if (envConfig.server.trustProxy) {
   const hops = envConfig.server.trustProxy;
   app.set('trust proxy', /^\d+$/.test(hops) ? Number(hops) : hops);
 }
+
+// Host-Allowlist gegen DNS-Rebinding (#169): eine fremde Seite kann ihren Namen auf 127.0.0.1 umbiegen und so lokale Daten
+// lesen, weil der Browser sie dann als gleiche Herkunft behandelt. Erlaubt sind localhost, der Host aus APP_URL und die Namen
+// in ALLOWED_HOSTS (kommagetrennt, z.B. eine LAN-Adresse zum Testen mit dem Handy).
+const ALLOWED_HOSTNAMES = new Set([
+  'localhost', '127.0.0.1', '[::1]',
+  new URL(envConfig.server.url).hostname.toLowerCase(),
+  ...(process.env.ALLOWED_HOSTS || '').split(',').map(host => host.trim().toLowerCase()).filter(Boolean)
+]);
+app.use((req, res, next) => {
+  let hostname = '';
+  try {
+    hostname = new URL(`http://${req.headers.host}`).hostname.toLowerCase();
+  } catch {
+    // unlesbarer Host-Header zählt als fremd
+  }
+  if (ALLOWED_HOSTNAMES.has(hostname)) return next();
+  res.status(421).type('text/plain').send('Unbekannter Host');
+});
 
 // Nur HTTPS: In Produktion hinter einem Proxy jede HTTP-Anfrage auf die HTTPS-Adresse aus APP_URL umleiten.
 // Ziel ist APP_URL, nie der Host-Header der Anfrage, damit niemand die Umleitung auf eine fremde Seite lenken kann.
@@ -73,10 +96,11 @@ function sendError(res, err, context) {
 }
 
 // Security-Header für alle Antworten (Seiten, Statics und API)
-// Inline-Handler (onclick) und style="" im HTML brauchen 'unsafe-inline'; externe Quellen bleiben auf Fonts/Icons begrenzt
+// Skripte nur aus 'self': das Frontend hat keine Inline-Handler mehr (#171). style="" im HTML braucht in style-src noch
+// 'unsafe-inline'; externe Quellen bleiben auf Fonts/Icons begrenzt
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
   "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
   `img-src 'self' data: ${new URL(envConfig.ceviDb.baseUrl).origin}`,
@@ -105,6 +129,8 @@ app.use((req, res, next) => {
 app.use(compression());
 app.use(express.json({ limit: '50kb' }));
 app.use(cookieParser(envConfig.auth.sessionSecret));
+// Nach dem Cookie-Parser, damit der Akteur aus der Session lesbar ist (getSession ist hochgezogen)
+app.use(requestLogger(req => getSession(req)?.user?.id ?? 'anonym'));
 
 // CSRF-Schutz: Schreibende API-Aufrufe nur von der eigenen Seite (Browser senden Origin bei POST immer mit).
 // Clients ohne Origin/Referer (curl, Tests) tragen keine fremden Cookies und bleiben erlaubt.
@@ -144,7 +170,8 @@ app.use('/api', (req, res, next) => {
   next();
 }, requireSameOrigin, apiLimiter);
 
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 Tage
+const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 Tage absolut
+const SESSION_IDLE_MS = 8 * 60 * 60 * 1000; // 8 Stunden ohne Aktivität (SR-02, #177)
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: envConfig.auth.cookieSecure,
@@ -157,16 +184,24 @@ const COOKIE_OPTIONS = {
 const activeSessions = new Map();
 const MAX_ACTIVE_SESSIONS = 5000;
 
+// Abgelaufen: absolut nach 7 Tagen oder nach 8 Stunden ohne Anfrage. Ein gestohlenes Cookie bleibt so nicht tagelang brauchbar.
+const isExpired = (session, now) => now - session.createdAt >= SESSION_MAX_AGE_MS || now - session.lastSeen >= SESSION_IDLE_MS;
+
 function getSession(req) {
   const sessionId = req.signedCookies?.cevi_session_id;
   const session = sessionId && activeSessions.get(sessionId);
   if (session) {
-    if (Date.now() - session.createdAt < SESSION_MAX_AGE_MS) return session;
+    const now = Date.now();
+    if (!isExpired(session, now)) {
+      session.lastSeen = now;
+      return session;
+    }
     activeSessions.delete(sessionId);
   }
   // Nur der Vorbereitungsmodus arbeitet ohne Login mit dem Demo-Profil.
   // Im Live-Betrieb gibt es ohne gültige Session keinen Zugriff (null → 401 in requireAuth/requirePlanner).
-  if (!ceviDbService.isPreparationMode()) return null;
+  // In Produktion nie, auch nicht bei falscher Konfiguration (validateEnv lässt den Start dort ohnehin nicht zu)
+  if (!ceviDbService.isPreparationMode() || envConfig.app.isProduction) return null;
   return {
     user: ceviDbService.getMockUser(),
     accessToken: 'mock_token_cevi_auto',
@@ -179,7 +214,7 @@ function setSession(res, sessionData) {
   const now = Date.now();
   // Abgelaufene Sessions entfernen, damit der Store nicht endlos wächst
   for (const [id, session] of activeSessions) {
-    if (now - session.createdAt >= SESSION_MAX_AGE_MS) activeSessions.delete(id);
+    if (isExpired(session, now)) activeSessions.delete(id);
   }
   // Harte Obergrenze gegen Speicher-DoS: die ältesten Sessions weichen zuerst (Map hält Einfüge-Reihenfolge)
   while (activeSessions.size >= MAX_ACTIVE_SESSIONS) {
@@ -189,7 +224,8 @@ function setSession(res, sessionData) {
   const sessionId = crypto.randomUUID();
   activeSessions.set(sessionId, {
     ...sessionData,
-    createdAt: now
+    createdAt: now,
+    lastSeen: now
   });
 
   res.cookie('cevi_session_id', sessionId, { ...COOKIE_OPTIONS, maxAge: SESSION_MAX_AGE_MS });
@@ -317,7 +353,8 @@ app.get('/api/auth/callback', async (req, res) => {
     // Eine mitgesendete alte Session endet mit dem neuen Login (SR-02)
     activeSessions.delete(req.signedCookies?.cevi_session_id);
     setSession(res, {
-      user: userInfo,
+      // Live zählen nur Rollenobjekte der Cevi-DB: Rollen als Text sind für das Demo-Profil und öffneten alle Gruppen (#170)
+      user: { ...userInfo, roles: (Array.isArray(userInfo?.roles) ? userInfo.roles : []).filter(role => typeof role === 'object' && role !== null) },
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
       isMock: false
@@ -358,6 +395,7 @@ app.get('/api/auth/me', (req, res) => {
     isMock: session.isMock,
     canUsePlanner: canUsePlanner(session.user),
     canManageSettings: leadDepartments(session.user).length > 0,
+    canViewSystemLog: leadDepartments(session.user).length > 0,
     canReviewProposals: leadDepartments(session.user).length > 0
   });
 });
@@ -914,6 +952,51 @@ app.get('/api/system/status', (req, res) => {
     status.configValidation = validateEnv();
   }
   res.json(status);
+});
+
+// Erreichbarkeits-Check für Uptime-Monitoring: ohne Login, ohne Personen- und Konfigurationsdaten.
+// 503 nur, wenn die Datenbank konfiguriert, aber nicht erreichbar ist; die Cevi-DB zählt nicht dazu (fällt sie aus, läuft der Rest weiter).
+const HEALTH_DB_TIMEOUT_MS = 5000; // Neon schläft ein und braucht beim Aufwecken einige Sekunden
+async function checkDatabase() {
+  if (!databaseQuery) return 'nicht konfiguriert';
+  let timer;
+  try {
+    await Promise.race([
+      databaseQuery('SELECT 1'),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Zeitüberschreitung')), HEALTH_DB_TIMEOUT_MS); })
+    ]);
+    return 'ok';
+  } catch (err) {
+    console.error(logSafe(`[Health] Datenbank nicht erreichbar: ${err.code || err.message}`));
+    return 'fehler';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+app.get('/api/health', async (req, res) => {
+  setSource(res, 'kurstracker');
+  const database = await checkDatabase();
+  const healthy = database !== 'fehler';
+  res.status(healthy ? 200 : 503).json({ status: healthy ? 'ok' : 'degraded', database });
+});
+
+// Technisches Log und Systemzustand für Abteilungsleitungen: Konsolenmeldungen, API-Anfragen, Kennzahlen.
+// Gilt für den ganzen Server, nicht nur die eigene Abteilung; Einträge tragen nur pseudonyme Personen-IDs und keine Stacks (SR-50, SR-51).
+app.get('/api/system/logs', requireDepartmentLead, async (req, res) => {
+  setSource(res, 'kurstracker');
+  const database = await checkDatabase();
+  res.json({
+    ...systemLogSnapshot(),
+    system: {
+      version: releaseVersion,
+      env: envConfig.app.env,
+      preparationMode: ceviDbService.isPreparationMode(),
+      database,
+      activeSessions: activeSessions.size
+    },
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Unbekannte API-Routen: JSON-Fehler statt index.html

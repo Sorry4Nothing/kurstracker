@@ -29,8 +29,15 @@ const normalizedAppEnv = ['local', 'development', 'production'].includes(rawAppE
   ? rawAppEnv
   : 'local';
 
-// Platzhalter aus .env.example und der frühere Default stehen öffentlich im Repo: sie zählen als "kein Secret gesetzt"
-const SECRET_PLACEHOLDERS = ['change-this-to-a-secure-random-secret', 'dev-insecure-secret-key-change-in-production'];
+// Platzhalter aus .env.example, der frühere Default und die Beispielwerte der alten .env.*.example stehen öffentlich im Repo
+// (auch in der Git-Historie): sie zählen als "kein Secret gesetzt"
+const SECRET_PLACEHOLDERS = [
+  'change-this-to-a-secure-random-secret',
+  'dev-insecure-secret-key-change-in-production',
+  'live-production-high-entropy-crypto-secret-key-32chars-min',
+  'local-development-secret-key-cevi-tracker-9876543210',
+  'dev-server-random-crypto-secret-replace-in-actual-environment'
+];
 const configuredSessionSecret = SECRET_PLACEHOLDERS.includes(process.env.SESSION_SECRET) ? '' : (process.env.SESSION_SECRET || '');
 
 export const envConfig = {
@@ -94,6 +101,10 @@ export function validateEnv() {
   }
 
   if (envConfig.app.isProduction) {
+    // Der Vorbereitungsmodus gibt jeder Besucherin das Demo-Profil einer Abteilungsleitung: in Produktion nie (fail closed, #168)
+    if (envConfig.ceviDb.preparationMode) {
+      errors.push('PRODUKTION: Der Vorbereitungsmodus ist aktiv. CEVI_DB_PREPARATION_MODE=false und eine echte CEVI_DB_CLIENT_ID setzen, sonst sieht jede Besucherin die Demo-Daten mit Rechten einer Abteilungsleitung.');
+    }
     if (!envConfig.ceviDb.preparationMode) {
       if (!envConfig.ceviDb.clientId || envConfig.ceviDb.clientId === 'official_live_cevi_db_client_id') {
         errors.push('PRODUKTION: CEVI_DB_CLIENT_ID fehlt oder ist noch der Platzhalter.');

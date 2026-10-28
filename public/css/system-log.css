@@ -1,0 +1,613 @@
+/* ==============================================================================
+   SYSTEMLOG (nur Abteilungsleitungen): Gesamturteil, Kennzahlen, Diagramme als Inline-SVG und
+   das Ereignislog als Tabelle (js/system-log.js). Tokens only, Tabelle und Badges aus planner.css und components.css.
+   ============================================================================== */
+
+#systemLogContent {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ---------- Gesamturteil ---------- */
+.syslog-verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--border-subtle);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
+}
+
+.syslog-verdict > i {
+  font-size: var(--fs-24);
+}
+
+.syslog-verdict > div {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.syslog-verdict strong {
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
+}
+
+.syslog-verdict span {
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
+}
+
+.syslog-verdict-meta {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.syslog-verdict-ok { border-left-color: var(--teal-solid); }
+.syslog-verdict-ok > i { color: var(--teal-solid); }
+.syslog-verdict-warn { border-left-color: var(--warn-ink); }
+.syslog-verdict-warn > i { color: var(--warn-ink); }
+.syslog-verdict-bad { border-left-color: var(--red-solid); background-color: var(--red-soft); }
+.syslog-verdict-bad > i { color: var(--red-ink); }
+
+/* ---------- Kennzahlen ---------- */
+.syslog-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--sp-3);
+}
+
+.syslog-kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.syslog-kpi-label {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.syslog-kpi-value {
+  font-size: var(--fs-30);
+  line-height: var(--lh-30);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.syslog-kpi-sub {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  color: var(--text-muted);
+  max-width: calc(100% - 100px);
+}
+
+.syslog-kpi .syslog-spark {
+  position: absolute;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+}
+
+/* ---------- Diagramm-Karten ---------- */
+.syslog-charts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.syslog-grid-2,
+.syslog-grid-3 {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.syslog-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.syslog-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+@media (max-width: 1100px) {
+  .syslog-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .syslog-grid-2,
+  .syslog-grid-3 { grid-template-columns: minmax(0, 1fr); }
+  .syslog-verdict { flex-wrap: wrap; }
+  .syslog-verdict-meta { text-align: left; white-space: normal; }
+}
+
+.syslog-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.syslog-chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.syslog-chart-head h3 {
+  margin: 0;
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
+}
+
+.syslog-chart-head p {
+  margin: 0;
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+}
+
+.syslog-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  color: var(--text-muted);
+}
+
+.syslog-legend li,
+.syslog-mix li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.syslog-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+}
+
+.syslog-plot {
+  width: 100%;
+  min-height: 190px;
+}
+
+.syslog-plot svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.syslog-grid {
+  stroke: var(--border-strong);
+  stroke-opacity: 0.45;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.syslog-axis {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.syslog-line {
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.syslog-dot {
+  stroke: var(--bg-surface);
+  stroke-width: 2;
+}
+
+.syslog-hit {
+  fill: transparent;
+}
+
+/* Hover ohne Skript: Fadenkreuz und Punkte erscheinen, bei Säulen blenden die übrigen aus */
+.syslog-cross,
+.syslog-hdot {
+  opacity: 0;
+  transition: opacity 0.12s ease-out;
+}
+
+.syslog-slot:hover .syslog-cross,
+.syslog-slot:hover .syslog-hdot {
+  opacity: 1;
+}
+
+.syslog-bars {
+  transition: opacity 0.15s ease-in-out;
+}
+
+.syslog-plot svg:has(.syslog-slot:hover) .syslog-bars {
+  opacity: 0.3;
+}
+
+.syslog-plot svg .syslog-slot:hover .syslog-bars {
+  opacity: 1;
+}
+
+/* ---------- Ring ---------- */
+.syslog-ring {
+  align-self: center;
+  flex: none;
+}
+
+.syslog-ring-track,
+.syslog-arc {
+  fill: none;
+  stroke-width: 14;
+}
+
+.syslog-ring-track {
+  stroke: var(--bg-subtle);
+}
+
+.syslog-arc {
+  stroke-linecap: round;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.syslog-ring:has(.syslog-arc:hover) .syslog-arc:not(:hover) {
+  opacity: 0.3;
+}
+
+.syslog-ring-value {
+  fill: var(--text-main);
+  font-size: 24px;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.syslog-ring-label {
+  fill: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Tabellenansicht als Alternative zum Diagramm */
+.syslog-table-view summary {
+  cursor: pointer;
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  color: var(--text-muted);
+}
+
+.syslog-table-view[open] summary {
+  margin-bottom: var(--sp-2);
+}
+
+.syslog-table-view .table-responsive {
+  max-height: 220px;
+  overflow: auto;
+}
+
+/* ---------- Häufigste Endpunkte ---------- */
+.syslog-routes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.syslog-routes li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+}
+
+.syslog-route-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, monospace;
+}
+
+.syslog-route-bar {
+  height: 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-subtle);
+  overflow: hidden;
+}
+
+.syslog-route-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.syslog-route-count,
+.syslog-route-ms {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.syslog-route-count { font-weight: var(--fw-semibold); }
+.syslog-route-ms { min-width: 52px; }
+
+/* ---------- Antworten seit dem Start ---------- */
+.syslog-mix {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+}
+
+.syslog-mix li > span:nth-child(2) { flex: 1; }
+.syslog-mix strong { font-variant-numeric: tabular-nums; }
+.syslog-mix li > span:last-child { min-width: 40px; text-align: right; font-size: var(--fs-12); }
+
+/* ---------- System ---------- */
+.syslog-sys {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--sp-3);
+  margin: 0;
+}
+
+.syslog-sys-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-subtle);
+}
+
+.syslog-sys-tile > i {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background-color: var(--blue-soft);
+  color: var(--blue-ink);
+  font-size: var(--fs-14);
+}
+
+.syslog-sys-tile > div { min-width: 0; }
+
+.syslog-sys dt {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.syslog-sys dd {
+  margin: var(--sp-1) 0 0;
+  font-weight: var(--fw-medium);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Ereignisse ---------- */
+.syslog-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.syslog-toolbar input[type="search"] {
+  flex: 1 1 240px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+  font-size: var(--fs-14);
+}
+
+.syslog-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.syslog-sources-label {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.syslog-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.syslog-filter [aria-pressed="true"] {
+  border-color: transparent;
+  background-color: var(--blue-soft);
+  color: var(--blue-ink);
+}
+
+.syslog-count {
+  margin-left: var(--sp-1);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.syslog-log {
+  max-height: 560px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.syslog-day {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--sp-1) var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-subtle);
+  font-size: var(--fs-12);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.syslog-row {
+  display: grid;
+  grid-template-columns: 68px 76px minmax(0, 1fr) auto minmax(0, 150px);
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+  border-left: 3px solid transparent;
+  font-size: var(--fs-14);
+  line-height: var(--lh-18);
+}
+
+.syslog-row:last-child { border-bottom: 0; }
+.syslog-row:hover { background-color: var(--bg-hover); }
+.syslog-row-error { border-left-color: var(--red-solid); background-color: var(--red-soft); }
+.syslog-row-warn { border-left-color: var(--warn-ink); background-color: var(--warn-bg); }
+
+.syslog-time {
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-12);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.syslog-http,
+.syslog-chip {
+  justify-self: start;
+  min-width: 68px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-12);
+  line-height: var(--lh-18);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.syslog-http-ok { background-color: var(--teal-soft); color: var(--teal-ink); }
+/* Warnung und Fehler stehen auf getönter Zeile, darum volle Farbe statt Tönung */
+.syslog-http-warn,
+.syslog-row-warn .syslog-chip { background-color: var(--warn-ink); color: var(--bg-surface); }
+.syslog-http-bad,
+.syslog-row-error .syslog-chip { background-color: var(--red-ink); color: var(--bg-surface); }
+
+.syslog-main {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.syslog-method {
+  display: inline-block;
+  min-width: 44px;
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+
+.syslog-path {
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-14);
+  color: var(--text-main);
+}
+
+.syslog-source {
+  margin-right: var(--sp-2);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+
+.syslog-ms {
+  font-size: var(--fs-12);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.syslog-actor {
+  overflow: hidden;
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+@media (max-width: 760px) {
+  .syslog-row { grid-template-columns: 60px 76px minmax(0, 1fr) auto; }
+  .syslog-actor { display: none; }
+}
+
+.syslog-more {
+  align-self: center;
+  margin-top: var(--sp-3);
+}
+
+/* ---------- Tooltip ---------- */
+.syslog-tip {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface-elevated);
+  box-shadow: var(--shadow-float);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.syslog-tip[hidden] { display: none; }
+.syslog-tip span { color: var(--text-muted); }
