@@ -57,9 +57,11 @@ async function startLogin() {
 }
 
 // Live-Modus mit simulierter Cevi-DB (Token-Tausch und Userinfo ohne Netzwerk); login(user) liefert die Set-Cookie-Zeile der Session
-function useLiveCeviDb(t) {
+// Die Planer-Tests brauchen Mitglieder: demoGroup hält die Demo-Gruppe auch im simulierten Live-Modus (sonst ist sie leer, #28)
+function useLiveCeviDb(t, { demoGroup = true } = {}) {
   let currentUser;
   t.mock.method(ceviDbService, 'isPreparationMode', () => false);
+  t.mock.method(ceviDbService, 'usesDemoGroup', () => demoGroup);
   t.mock.method(ceviDbService, 'exchangeCodeForToken', async code => ({ access_token: `live_${code}` }));
   t.mock.method(ceviDbService, 'getUserInfo', async () => currentUser);
   return async user => {
@@ -527,6 +529,17 @@ test('API: abgewiesene Vorschläge (unbekannte Person, fehlender oder ungültige
 
 const proposalsUrl = (groupId, action = '') => `/api/planner/proposals/${groupId}${action}`;
 const roleOf = (role_class, group_id) => ({ role_class, group_id, group_name: 'Demo' });
+
+test('Planer: die Demo-Gruppe gibt es nur im Vorbereitungsmodus, live bleibt der Planer leer (#28)', async (t) => {
+  const prep = await (await request('/api/planner/overview')).json();
+  assert.ok(prep.group.length > 0, 'Vorbereitungsmodus zeigt die Demo-Gruppe');
+
+  const login = useLiveCeviDb(t, { demoGroup: false });
+  const lead = cookiePair(await login({ id: 'p_30', first_name: 'Max', roles: [roleOf('Group::Jungschar::Abteilungsleiter', 'demo')] }));
+  const res = await request('/api/planner/overview', { cookie: lead });
+  assert.equal(res.status, 200);
+  assert.deepEqual((await res.json()).group, []);
+});
 
 test('Vorschläge: Entwurf speichern, abgeben, sperren und von der Abteilungsleitung zurückgeben', async (t) => {
   const login = useLiveCeviDb(t);

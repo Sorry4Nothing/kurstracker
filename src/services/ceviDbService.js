@@ -68,6 +68,15 @@ export class CeviDbService {
   }
 
   /**
+   * Ob der Planer die Demo-Gruppe zeigt (#28): nur im Vorbereitungsmodus. Live bleibt er leer, bis die Gruppe der
+   * eingeloggten Person aus der Cevi-DB kommt (#25).
+   * @returns {boolean}
+   */
+  usesDemoGroup() {
+    return this.preparationMode;
+  }
+
+  /**
    * Testdaten nur im Vorbereitungsmodus oder für die automatische Demo-Session (ohne echtes Token)
    * @param {string} [accessToken]
    * @returns {boolean}
