@@ -449,8 +449,10 @@ async function resolveActivePerson(req) {
   ]);
 
   // shortcut: echte Hitobito-Teilnahmen tragen keine course_node_id; Mapping der Event-Typen auf Baum-IDs ergänzen, sobald das API-Format bekannt ist
+  // shortcut: «Nicht bestanden» wird am Text erkannt, bis die echten Resultatwerte der Cevi-DB bekannt sind (#23)
+  const failed = p => p.status === 'failed' || /nicht\s+bestanden/i.test(p.result ?? '');
   const completed = participations
-    .filter(p => p.status === 'confirmed' || p.status === 'completed' || p.certificate_issued || p.result?.includes('bestanden'))
+    .filter(p => !failed(p) && (p.status === 'confirmed' || p.status === 'completed' || p.certificate_issued || p.result?.includes('bestanden')))
     .map(p => (p.course_node_id || p.course_id || '').toLowerCase());
 
   return {
