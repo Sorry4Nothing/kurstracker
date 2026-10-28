@@ -263,7 +263,10 @@ export class CeviDbService {
     const today = new Date().toISOString().slice(0, 10);
     const load = async () => {
       const events = await this.fetchList(
-        `/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind`,
+        // Nur die Felder, die toCourse liest (#34); die Beziehungen dates und kind stehen mit in der Liste, sonst fehlt die Verknüpfung
+        `/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind`
+        + '&fields[courses]=name,number,location,description,application_closing_at,maximum_participants,participant_count,group_ids,dates,kind'
+        + '&fields[event_dates]=start_at,finish_at,location&fields[event_kinds]=label,short_name',
         this.serviceToken ? undefined : accessToken
       );
       return events.map(event => this.toCourse(event, today));
@@ -478,8 +481,9 @@ export class CeviDbService {
     if (this.usesMockData(accessToken)) {
       return this.getMockParticipations();
     }
-    const filter = personId ? `?filter[person_id]=${encodeURIComponent(personId)}` : '';
-    return this.fetchList(`/api/event_participations${filter}`, accessToken);
+    // Ohne `fields` lieferte die Cevi-DB jedes Feld der Teilnahme, auch Freitext der Teilnehmenden (#34)
+    const query = [personId && `filter[person_id]=${encodeURIComponent(personId)}`, 'fields[event_participations]=active,event,status,result,certificate_issued'].filter(Boolean).join('&');
+    return this.fetchList(`/api/event_participations?${query}`, accessToken);
   }
 
   /**
@@ -491,8 +495,8 @@ export class CeviDbService {
     if (this.usesMockData(accessToken)) {
       return this.getMockQualifications();
     }
-    const filter = personId ? `?filter[person_id]=${encodeURIComponent(personId)}` : '';
-    return this.fetchList(`/api/qualifications${filter}`, accessToken);
+    const query = [personId && `filter[person_id]=${encodeURIComponent(personId)}`, 'fields[qualifications]=finish_at,qualification_kind'].filter(Boolean).join('&');
+    return this.fetchList(`/api/qualifications?${query}`, accessToken);
   }
 
   // ===========================================================================
