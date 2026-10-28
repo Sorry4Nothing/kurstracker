@@ -361,13 +361,15 @@ test('Planer: abgeschlossene Kurse erscheinen mit dem Kürzel aus den Kursdaten,
   assert.deepEqual(codes(undefined), []);
 });
 
-test('Planer: SLK nur für Leitende ab 18 mit GLK 3', () => {
+test('Planer: SLK nur für Stufenleitende ab 18 mit GLK 3', () => {
   const engine = new StufenleiterPlanningEngine();
-  const recs = (age, currentRole, completedCourses) => engine
-    .analyzeParticipant({ id: 'tn', birthdate: birthdateForPlanAge(age), currentRole, completedCourses })
+  const recs = (age, currentRole, completedCourses, roleTypes) => engine
+    .analyzeParticipant({ id: 'tn', birthdate: birthdateForPlanAge(age), currentRole, completedCourses, groups: [{ id: 'g', type: 'Group::Stufe', roleTypes: roleTypes || [] }] })
     .recommendedCourses.map(r => `${r.courseId}:${r.priority}`);
-  assert.deepEqual(recs(18, 'Gruppenleiterin', ['glk3']), ['slk:NORMAL']);
-  assert.deepEqual(recs(19, 'Kader', ['glk3']), ['slk:HOCH']);
+  assert.deepEqual(recs(18, 'Stufenleiterin', ['glk3']), ['slk:NORMAL']);
+  assert.deepEqual(recs(19, 'Leiter*in', ['glk3'], ['Group::Stufe::Stufenleiter']), ['slk:HOCH']);
+  // Gruppen-, Hilfs-, Abteilungsleitende und Kader sind keine Stufenleitung
+  for (const role of ['Gruppenleiterin', 'Hilfsleiter', 'Kader', 'Abteilungsleiter']) assert.deepEqual(recs(19, role, ['glk3']), [], role);
   assert.deepEqual(recs(19, 'Teilnehmer', ['glk3']), []);
   assert.deepEqual(recs(17, 'Gruppenleiter', ['glk3']), []);
   assert.deepEqual(recs(25, 'Scharleiter', ['slk']), []);
@@ -376,7 +378,7 @@ test('Planer: SLK nur für Leitende ab 18 mit GLK 3', () => {
 test('Planer: J+S-Verfall innert 12 Monaten stellt das Fortbildungsmodul zuoberst, dringend ab 6 Monaten Restlaufzeit', () => {
   const engine = new StufenleiterPlanningEngine();
   const leader = extra => engine.analyzeParticipant({
-    id: 'tn', birthdate: birthdateForPlanAge(19), currentRole: 'Gruppenleiter', completedCourses: ['glk3'], ...extra
+    id: 'tn', birthdate: birthdateForPlanAge(19), currentRole: 'Stufenleiter', completedCourses: ['glk3'], ...extra
   });
 
   // Je ein Monat neben den Schwellen 6 und 12 (die Engine rechnet mit 30.5 Tagen pro Monat)

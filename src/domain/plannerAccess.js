@@ -6,7 +6,7 @@ export const FROESCHLI = 'Group::Froeschli';
 export const STUFE_TYPES = ['Group::Stufe', FROESCHLI];
 const isFroeschliLeiter = group => (group.roleTypes || []).some(type => /leiter$/i.test(type));
 export const ABTEILUNGSLEITUNG = 'Group::Jungschar::Abteilungsleiter';
-const STUFENLEITUNG = ['Group::Stufe::Stufenleiter'];
+export const STUFENLEITUNG = ['Group::Stufe::Stufenleiter'];
 
 // shortcut: Rollen als Text (Testdaten, Demo-Profil) öffnen den Planer wie bisher für alle Gruppen; echte Logins liefern Rollenobjekte
 const LEGACY_ROLES = ['abteilungsleiter', 'stufenleiter'];

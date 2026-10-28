@@ -1,5 +1,6 @@
 import { courseTreeEngine } from './courseTreeEngine.js';
 import { COURSE_NODES } from './courseTreeData.js';
+import { STUFENLEITUNG } from './plannerAccess.js';
 
 function formatEuropeanDate(dateVal) {
   if (!dateVal) return '';
@@ -125,9 +126,10 @@ export class StufenleiterPlanningEngine {
 
     // 3. Empfehlung: Scharleiterkurs (SLK)
     if (hasGlk && !hasSlk && planAge >= 18) {
-      const leaderRole = (participant.currentRole || '').toLowerCase();
-      const isLeader = leaderRole.includes('leiter') || leaderRole.includes('kader');
-      if (isLeader) {
+      // Der SLK ist für Stufenleitende: am Rollentyp der Cevi-DB erkannt, bei Rollen als Text (Demo) am Namen
+      const isStufenleiter = (participant.groups || []).some(g => (g.roleTypes || []).some(t => STUFENLEITUNG.includes(t)))
+        || /\bstufenleiter(in)?\b/i.test(participant.currentRole || '');
+      if (isStufenleiter) {
         const courseTitle = tree.nodes.slk.title;
         recommendedCourses.push({
           courseId: 'slk',
