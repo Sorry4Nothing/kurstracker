@@ -149,16 +149,18 @@ test('Mindestalter: wie im Kursreglement, jeder Kurs wird genau ab seinem Mindes
 // Statusableitung im Baum
 // -----------------------------------------------------------------------------
 
-test('Status: absolviert schlägt angemeldet, Angemeldetes zählt auch mit offenen Voraussetzungen', () => {
+test('Status: eine Anmeldung ändert den Status im Baum nicht', () => {
   const { nodes } = courseTreeEngine.evaluatePersonInTree({
     birthdate: birthdateForAge(16),
     completedCourses: ['heku'],
     inProgressCourses: ['HEKU', 'glk1', 'glk3']
   });
   assert.equal(nodes.heku.status, 'COMPLETED');
-  assert.equal(nodes.glk1.status, 'IN_PROGRESS');
-  assert.equal(nodes.glk3.status, 'IN_PROGRESS');
-  // Angemeldet ist nicht absolviert: Pioniertechnik verlangt GLK 1 und bleibt gesperrt
+  assert.equal(nodes.glk1.status, 'AVAILABLE');
+  // GLK 3 verlangt GLK 2 und bleibt trotz Anmeldung gesperrt
+  assert.equal(nodes.glk3.status, 'LOCKED');
+  assert.ok(!Object.values(nodes).some(node => node.status === 'IN_PROGRESS'));
+  // Pioniertechnik verlangt GLK 1 und bleibt gesperrt
   assert.equal(nodes.pionier.status, 'LOCKED');
   assert.deepEqual(nodes.pionier.missingPrerequisites, ['glk1']);
 });

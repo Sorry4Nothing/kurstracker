@@ -423,10 +423,6 @@ async function resolveActivePerson(req) {
     .filter(p => p.status === 'confirmed' || p.status === 'completed' || p.certificate_issued || p.result?.includes('bestanden'))
     .map(p => (p.course_node_id || p.course_id || '').toLowerCase());
 
-  const inProgress = participations
-    .filter(p => p.status === 'in_progress' || p.status === 'registered' || p.result?.includes('Bevorstehend'))
-    .map(p => (p.course_node_id || p.course_id || '').toLowerCase());
-
   return {
     id: user.id,
     name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
@@ -434,7 +430,6 @@ async function resolveActivePerson(req) {
     gender: user.gender,
     birthdate: user.birthday,
     completedCourses: completed,
-    inProgressCourses: inProgress,
     qualifications: qualifications.map(q => (q.key || q.id || '').toLowerCase())
   };
 }

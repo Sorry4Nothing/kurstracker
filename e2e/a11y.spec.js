@@ -50,7 +50,8 @@ const SCENARIOS = [
     await expect(page.getByRole('dialog', { name: 'Kurs vorschlagen' })).toBeVisible();
   }],
   ['Kurs im Baum gewählt', async page => {
-    await page.getByRole('button', { name: /Gruppenleiterkurs 3/ }).click();
+    // Nach dem Wegfall von «angemeldet» zentriert die Startansicht einen anderen Kurs: Karte per Tastatur wählen
+    await page.getByRole('button', { name: /Gruppenleiterkurs 3/ }).press('Enter');
     await expect(page.locator('#inspectorTitle')).toContainText('Gruppenleiterkurs 3');
   }],
   ['Profil mit Foto', async page => {
