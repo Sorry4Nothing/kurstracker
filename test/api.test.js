@@ -902,6 +902,19 @@ test('Session: nach 8 Stunden ohne Anfrage ist sie ungültig, aktive Nutzung ver
   assert.equal(await authenticated(), false);
 });
 
+test('Systemlog: fremde Akteur-IDs erscheinen nur als Code, die eigene als "du" (#174)', async (t) => {
+  const login = useLiveCeviDb(t);
+  const lead = cookiePair(await login({ id: 'p_lead', roles: [roleOf('Group::Jungschar::Abteilungsleiter', 'demo')] }));
+  const other = cookiePair(await login({ id: 'p_fremd_4711', roles: [] }));
+  await request('/api/courses', { cookie: other });
+  await request('/api/courses', { cookie: lead });
+  const { entries } = await (await request('/api/system/logs', { cookie: lead })).json();
+  const text = entries.map(e => e.message).join('\n');
+  assert.ok(!text.includes('p_fremd_4711') && !text.includes('p_lead'), 'Personen-IDs im Log');
+  assert.match(text, /GET \/api\/courses \d+ ms akteur=du/);
+  assert.match(text, /GET \/api\/courses \d+ ms akteur=p-[0-9a-f]{6}/);
+});
+
 // Rechtematrix (SR-12): jede /api-Route braucht hier eine Zeile, sonst schlägt der Test fehl (deny by default)
 test('API: Health-Check ist öffentlich, meldet ok und enthält nur Status und Datenbank', async () => {
   const res = await request('/api/health');

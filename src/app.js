@@ -981,13 +981,25 @@ app.get('/api/health', async (req, res) => {
   res.status(healthy ? 200 : 503).json({ status: healthy ? 'ok' : 'degraded', database });
 });
 
+// Akteure im Log (#174): die eigene Person erscheint als "du", andere als kurzer, stabiler Code. So lässt sich ein Ablauf
+// verfolgen, aber eine Abteilungsleitung erfährt keine Personen-IDs anderer Abteilungen. Der Code ist ein HMAC mit dem Session-Secret.
+function maskActors(entries, ownId) {
+  const code = id => 'p-' + crypto.createHmac('sha256', envConfig.auth.sessionSecret).update(String(id)).digest('hex').slice(0, 6);
+  return entries.map(entry => ({
+    ...entry,
+    message: entry.message.replace(/akteur=(\S+)/g, (match, id) => (id === 'anonym' ? match : `akteur=${id === String(ownId) ? 'du' : code(id)}`))
+  }));
+}
+
 // Technisches Log und Systemzustand für Abteilungsleitungen: Konsolenmeldungen, API-Anfragen, Kennzahlen.
 // Gilt für den ganzen Server, nicht nur die eigene Abteilung; Einträge tragen nur pseudonyme Personen-IDs und keine Stacks (SR-50, SR-51).
 app.get('/api/system/logs', requireDepartmentLead, async (req, res) => {
   setSource(res, 'kurstracker');
   const database = await checkDatabase();
+  const snapshot = systemLogSnapshot();
   res.json({
-    ...systemLogSnapshot(),
+    ...snapshot,
+    entries: maskActors(snapshot.entries, getSession(req)?.user?.id),
     system: {
       version: releaseVersion,
       env: envConfig.app.env,
