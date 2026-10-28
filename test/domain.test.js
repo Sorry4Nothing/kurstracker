@@ -154,6 +154,18 @@ test('Regionen (Baum-Vorschau aus dem Kursablauf-Editor-Artefakt): jeder Kurs ha
   }
 });
 
+test('Regionen: in jeder Region führt GLK 3 -> MF Wasser -> Sicherheitsmodul Wasser (Ablauf, nicht Kursangebot des Jahres)', () => {
+  for (const { key } of REGIONS) {
+    const nodes = Object.values(COURSE_NODES_BY_REGION[key]);
+    const sibe = nodes.find(n => n.id === `${key}_sibe_wasser_modul`);
+    const mf = nodes.find(n => n.code === 'MF Wasser');
+    assert.ok(mf, `${key} hat keinen MF Wasser`);
+    assert.deepEqual(sibe.prerequisites.filter(id => id === mf.id), [mf.id], `${key}: Sicherheitsmodul Wasser verlangt MF Wasser nicht`);
+    const glk3 = COURSE_NODES_BY_REGION[key][mf.prerequisites[0]];
+    assert.ok(glk3 && (glk3.grantsQualifications.includes('js_leiter_lst') || key === 'bern' || key === 'agsoluzg'), `${key}: MF Wasser hängt nicht an GLK 3`);
+  }
+});
+
 test('Mindestalter: wie im Kursreglement, jeder Kurs wird genau ab seinem Mindestalter frei', () => {
   // Kursreglement im Kopf von courseTreeData.js: Voku ab 12, Heku ab 13, GLK 1 ab 14, GLK 2 ab 15, GLK 3 (J+S-Leiterkurs) ab 17
   assert.deepEqual(['voku', 'heku', 'glk1', 'glk2', 'glk3'].map(id => COURSE_NODES[id].minAge), [12, 13, 14, 15, 17]);
@@ -541,4 +553,15 @@ test('Regionsbaum: Standard-Kurs-IDs werden ueber das Kuerzel zu Regions-IDs, Un
   const zh = COURSE_NODES_BY_REGION.zuerich;
   assert.deepEqual(toRegionCourseIds(['voku', 'glk1', 'glk3', 'unbekannt'], zh), ['zuerich_voku_2026', 'zuerich_glk1_f_2027', 'zuerich_glk3_fa_2027']);
   assert.deepEqual(toRegionCourseIds(['voku', 'glk1'], COURSE_NODES_BY_REGION.bern), []);
+});
+
+test('Anerkennungen: jede, die ein Kurs in irgendeinem Baum verlangt, hat einen lesbaren Namen (#146)', () => {
+  const required = new Set();
+  for (const nodes of [COURSE_NODES, ...Object.values(COURSE_NODES_BY_REGION)]) {
+    for (const node of Object.values(nodes)) (node.requiredQualifications || []).forEach(q => required.add(q));
+  }
+  assert.ok(required.size > 10);
+  for (const key of required) assert.notEqual(courseTreeEngine.qualLabel(key), key, key);
+  assert.equal(courseTreeEngine.qualLabel('slrg_plus_pool'), 'SLRG Brevet Plus Pool');
+  assert.equal(courseTreeEngine.qualLabel('unbekannt'), 'unbekannt');
 });

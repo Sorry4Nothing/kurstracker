@@ -14,6 +14,12 @@ const GLOBAL_QUAL_GRANTERS = (() => {
   return map;
 })();
 
+// Namen der Anerkennungen, die kein Kurs im Baum vergibt: die SLRG-Brevets kommen von der SLRG selbst
+const QUAL_LABELS = {
+  slrg_plus_pool: 'SLRG Brevet Plus Pool',
+  slrg_bls_aed: 'SLRG BLS-AED'
+};
+
 // Kurzbezeichnungen aus Altdaten und Tests auf die Baum-IDs abbilden
 const COURSE_ALIASES = { glk: 'glk3', hlk: 'heku', mf: 'mf_lst' };
 
@@ -110,7 +116,7 @@ export class CourseTreeEngine {
    * @returns {string}
    */
   qualLabel(qualKey) {
-    return this.qualGranter(qualKey)?.title || qualKey;
+    return this.qualGranter(qualKey)?.title || QUAL_LABELS[qualKey] || qualKey;
   }
 
   /**
@@ -334,7 +340,7 @@ export class CourseTreeEngine {
       const granter = this.qualGranter(q);
       return {
         id: q,
-        label: granter?.title || q,
+        label: this.qualLabel(q),
         grantedByCourseId: granter?.id || null,
         isFulfilled: quals.has(q)
       };
