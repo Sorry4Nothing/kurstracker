@@ -79,6 +79,22 @@ test.describe('Ausbildungsbaum', () => {
     expect(overlapping).toEqual([]);
   });
 
+  test('Jugend+Sport-Kurse tragen unten rechts das runde J+S-Abzeichen, die übrigen keines', async ({ page }) => {
+    const badge = id => page.locator(`#nodeCard-${id} .js-badge`);
+    await expect(badge(ID.glk3)).toHaveCount(1);
+    await expect(badge(ID.voku)).toHaveCount(0);
+    await expect(badge(ID.glk2)).toHaveCount(0);
+    await expect(badge('zuerich_level_up_2027')).toHaveCount(0);
+
+    const [card, dot] = await Promise.all([page.locator(`#nodeCard-${ID.glk3}`).boundingBox(), badge(ID.glk3).boundingBox()]);
+    expect(dot.width).toBe(dot.height);
+    expect(dot.x + dot.width, 'rechts in der Karte').toBeLessThanOrEqual(card.x + card.width);
+    expect(dot.y + dot.height, 'unten in der Karte').toBeLessThanOrEqual(card.y + card.height);
+    expect(card.x + card.width - (dot.x + dot.width)).toBeLessThan(16);
+    expect(card.y + card.height - (dot.y + dot.height)).toBeLessThan(16);
+    await expect(page.locator('.legend-item .js-badge')).toHaveCount(1);
+  });
+
   test('jeder Kurs zeigt den Status aus der Baumbewertung des Profils', async ({ page, request }) => {
     const { evaluation } = await (await request.get(`/api/tree/evaluation?region=${REGION}`)).json();
     const shown = Object.fromEntries(await page.locator('.tree-node-card').evaluateAll(cards =>
