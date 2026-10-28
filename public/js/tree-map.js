@@ -89,18 +89,31 @@ export function layoutRegionalCoords(nodeIds, nodesById) {
       });
     });
   }
+  // Sicherheitsmodule (Anerkennung js_sec_*: Berg, Winter, Wasser) stehen zusammen in einer eigenen Spalte, hinter
+  // dem tiefsten von ihnen (SiBe Wasser haengt hinter dem MF Wasser); sonst stuende es bei Coach und Expert*in
+  const isSibe = id => (nodesById[id].grantsQualifications || []).some(q => q.startsWith('js_sec_'));
+  const sibeIds = pipelineIds.filter(isSibe);
+  const sibeDepth = Math.max(0, ...sibeIds.map(id => depth[id]));
   const byDepth = {};
-  pipelineIds.forEach(id => { (byDepth[depth[id]] = byDepth[depth[id]] || []).push(id); });
+  pipelineIds.filter(id => !isSibe(id)).forEach(id => { (byDepth[depth[id]] = byDepth[depth[id]] || []).push(id); });
 
   // Erst alle Spalten (Tiefe + Unter-Spalte) als Listen sammeln, dann an der hoechsten Spalte
   // vertikal zentrieren, statt alle oben buendig zu beginnen - eine Spalte mit nur 2 Kursen stand
   // sonst stur am oberen Rand, auch wenn ihr Vorgaenger (z.B. GLK 3) mittig auf der Flaeche sitzt
   const columns = [];
+  const colDepth = [];
   Object.keys(byDepth).map(Number).sort((a, b) => a - b).forEach(d => {
     const ids = byDepth[d];
     const subCols = Math.max(1, Math.ceil(ids.length / MAX_ROWS));
-    for (let s = 0; s < subCols; s++) columns.push(ids.slice(s * MAX_ROWS, (s + 1) * MAX_ROWS));
+    for (let s = 0; s < subCols; s++) {
+      columns.push(ids.slice(s * MAX_ROWS, (s + 1) * MAX_ROWS));
+      colDepth.push(d);
+    }
   });
+  if (sibeIds.length) {
+    const at = colDepth.findIndex(d => d >= sibeDepth);
+    columns.splice(at < 0 ? columns.length : at, 0, ...Array.from({ length: Math.ceil(sibeIds.length / MAX_ROWS) }, (_, s) => sibeIds.slice(s * MAX_ROWS, (s + 1) * MAX_ROWS)));
+  }
   const maxRowsUsed = columns.reduce((m, col) => Math.max(m, col.length), 0);
 
   columns.forEach((col, colIndex) => {

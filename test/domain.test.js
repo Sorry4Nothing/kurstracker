@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, applyKindLabels, toRegionCourseIds } from '../src/domain/courseTreeData.js';
 import { courseTreeEngine, CourseTreeEngine } from '../src/domain/courseTreeEngine.js';
 import { StufenleiterPlanningEngine } from '../src/domain/stufenleiterPlanningEngine.js';
-import { COURSE_MAP_COORDS } from '../public/js/tree-map.js';
+import { COURSE_MAP_COORDS, layoutRegionalCoords } from '../public/js/tree-map.js';
 
 // Kurs-IDs ohne die Aliase (glk, hlk, mf), die auf denselben Knoten zeigen
 const CANONICAL_IDS = Object.keys(COURSE_NODES).filter(id => COURSE_NODES[id].id === id);
@@ -163,6 +163,17 @@ test('Regionen: in jeder Region führt GLK 3 -> MF Wasser -> Sicherheitsmodul Wa
     assert.deepEqual(sibe.prerequisites.filter(id => id === mf.id), [mf.id], `${key}: Sicherheitsmodul Wasser verlangt MF Wasser nicht`);
     const glk3 = COURSE_NODES_BY_REGION[key][mf.prerequisites[0]];
     assert.ok(glk3 && (glk3.grantsQualifications.includes('js_leiter_lst') || key === 'bern' || key === 'agsoluzg'), `${key}: MF Wasser hängt nicht an GLK 3`);
+  }
+});
+
+test('Regionsbaum-Layout: alle Sicherheitsmodule (Berg, Winter, Wasser) stehen in einer Spalte, rechts vom MF Wasser', () => {
+  for (const { key } of REGIONS) {
+    const nodes = COURSE_NODES_BY_REGION[key];
+    Object.keys(nodes).forEach(id => { delete COURSE_MAP_COORDS[id]; });
+    layoutRegionalCoords(Object.keys(nodes), nodes);
+    const sibeX = new Set(Object.values(nodes).filter(n => n.grantsQualifications.some(q => q.startsWith('js_sec_'))).map(n => COURSE_MAP_COORDS[n.id].x));
+    assert.equal(sibeX.size, 1, `${key}: Sicherheitsmodule in mehreren Spalten`);
+    assert.ok([...sibeX][0] > COURSE_MAP_COORDS[`${key}_mf_wasser_2027`].x, `${key}: Sicherheitsmodule nicht rechts vom MF Wasser`);
   }
 });
 
