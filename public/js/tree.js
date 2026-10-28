@@ -105,7 +105,9 @@ export async function loadCourseTree() {
     renderTree();
     setupInteractiveMap(pickStartCourse());
     setupNodeDrag();
-    setupRegionSwitcher();
+    // Regionen-Umschalter (setupRegionSwitcher) war nur zum Durchklicken der Regionen beim Review -
+    // bis die Region automatisch aus primary_group/layer_group der eingeloggten Person kommt (Folge-Issue),
+    // bleibt der Baum beim Standardpfad. Funktion/Daten bleiben fuer dieses Issue bestehen.
   } catch (err) {
     console.error('Fehler beim Laden des Kursbaums:', err);
     container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursbaums: ${esc(err.message)}</div>`;
@@ -212,7 +214,9 @@ function setupNodeDrag() {
     const dx = (e.clientX - dragState.startClientX) / mapTransform.zoom;
     const dy = (e.clientY - dragState.startClientY) / mapTransform.zoom;
     if (!dragState.moved) {
-      if (Math.hypot(dx, dy) < 4) return;
+      // Toleranz wie beim Verschieben der ganzen Karte (tree-map.js): ein Tipp mit dem Finger
+      // wandert mehr als ein Mausklick, ohne schon als Ziehen zu gelten
+      if (Math.hypot(dx, dy) <= (e.pointerType === 'mouse' ? 4 : 15)) return;
       dragState.moved = true;
       dragState.card.classList.add('is-dragging');
       // Capture kann vereinzelt NotFoundError werfen (Pointer gilt in dem Moment als nicht aktiv) -
