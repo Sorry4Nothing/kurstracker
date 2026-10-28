@@ -178,15 +178,16 @@ test('API: Frösch-Up fehlt im Baum ohne Fröschli-Leitungsrolle, NOLK und SLK z
   assert.ok(Object.hasOwn(COURSE_NODES_BY_REGION.zuerich, 'zuerich_frosch_up_2027'), 'der Kurs existiert, wird nur ausgeblendet');
 });
 
-test('API: nicht bestandener Kurs zählt nicht als absolviert', {
-  todo: 'Bug #52: resolveActivePerson zählt result "Nicht bestanden" als bestanden, weil nur auf includes("bestanden") geprüft wird (src/app.js:240)'
-}, async (t) => {
+test('API: nicht bestandener Kurs zählt nicht als absolviert, Bestandenes schon', async (t) => {
   t.mock.method(ceviDbService, 'getMockParticipations', () => [
-    { id: 'p1', course_node_id: 'glk1', status: 'failed', result: 'Nicht bestanden', certificate_issued: false }
+    { id: 'p1', course_node_id: 'glk1', status: 'failed', result: 'Nicht bestanden', certificate_issued: false },
+    { id: 'p2', course_node_id: 'glk2', status: 'confirmed', result: 'Nicht bestanden', certificate_issued: false },
+    { id: 'p3', course_node_id: 'voku', status: 'completed', result: 'Erfolgreich bestanden', certificate_issued: true }
   ]);
   const { person, evaluation } = await (await request('/api/tree/evaluation')).json();
-  assert.deepEqual(person.completedCourses, []);
+  assert.deepEqual(person.completedCourses, ['voku']);
   assert.notEqual(evaluation.nodes.glk1.status, 'COMPLETED');
+  assert.notEqual(evaluation.nodes.glk2.status, 'COMPLETED');
 });
 
 test('API: Pfad rechnet mit dem Profil der Session und löst Schreibweise und Aliase auf', async () => {
