@@ -3,6 +3,7 @@ import { execFileSync } from 'child_process';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { envConfig, validateEnv } from './config/env.js';
@@ -99,6 +100,8 @@ app.use((req, res, next) => {
 });
 
 // Middlewares
+// Kein BREACH-Risiko: Antworten tragen keine Tokens (CSRF-Schutz läuft über Origin, requireSameOrigin)
+app.use(compression());
 app.use(express.json({ limit: '50kb' }));
 app.use(cookieParser(envConfig.auth.sessionSecret));
 
