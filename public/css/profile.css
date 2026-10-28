@@ -681,6 +681,30 @@
   border-color: var(--border-subtle);
 }
 
+/* A course card keeps its size whatever the Cevi-DB delivers: category and
+   status chip shrink with an ellipsis instead of pushing past the card, and
+   each meta value stays on one line (the full text is in its title), so the
+   five rows are the same height on every card. */
+#coursesContainer .card-top > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#coursesContainer .card-top > .badge {
+  display: block;
+  flex-shrink: 1;
+  line-height: calc(var(--lh-12) - 2px);
+}
+
+#coursesContainer .meta-item > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Deadlines ("Anmeldeschluss") are gold: courses.js writes them in
    --cevi-gold inline, and !important pins them to the gold ink */
 #coursesContainer .meta-item > strong[style] {
