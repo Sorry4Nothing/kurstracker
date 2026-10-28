@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { plannerScope, visibleTo, groupsOf } from '../src/domain/plannerAccess.js';
+import { plannerScope, visibleTo, groupsOf, isAbteilungsleitung, isStufenleitung } from '../src/domain/plannerAccess.js';
 
 const role = (role_class, group_id) => ({ role_class, group_id });
 const stufe = (id, departmentId = '1') => ({ id, name: `Stufe ${id}`, type: 'Group::Stufe', departmentId, departmentName: 'JS Stäfa-Hombrechtikon' });
@@ -29,6 +29,19 @@ test('Planner-Zugriff: Abteilungsleitung sieht alle Stufen ihrer Abteilung, nich
   const visible = visibleTo(scope, members);
   assert.deepEqual(visible.map(m => m.id), ['a', 'b', 'c']);
   assert.deepEqual(visible.find(m => m.id === 'c').groups.map(g => g.id), ['10']);
+});
+
+test('Planner-Zugriff: NOLK braucht Abteilungsleitung, SLK reicht Stufenleitung - AL sieht beides', () => {
+  assert.equal(isAbteilungsleitung(null), false);
+  assert.equal(isStufenleitung(null), false);
+
+  const slScope = plannerScope({ roles: [role('Group::Stufe::Stufenleiter', 10)] });
+  assert.equal(isAbteilungsleitung(slScope), false);
+  assert.equal(isStufenleitung(slScope), true);
+
+  const alScope = plannerScope({ roles: [role('Group::Jungschar::Abteilungsleiter', '1')] });
+  assert.equal(isAbteilungsleitung(alScope), true);
+  assert.equal(isStufenleitung(alScope), true);
 });
 
 test('Planner-Zugriff: ohne Scope bleibt die Liste leer, Gruppen und Abteilungen kommen aus den sichtbaren Mitgliedern (#106)', () => {

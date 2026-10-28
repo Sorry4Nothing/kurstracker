@@ -10,7 +10,7 @@ import { ceviDbService } from './services/ceviDbService.js';
 import { courseTreeEngine, CourseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
 import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles } from './domain/courseTreeData.js';
-import { plannerScope, visibleTo, groupsOf } from './domain/plannerAccess.js';
+import { plannerScope, visibleTo, groupsOf, isAbteilungsleitung, isStufenleitung } from './domain/plannerAccess.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -402,8 +402,17 @@ app.get('/api/tree/regions', (req, res) => {
 app.get('/api/tree/structure', (req, res) => {
   setSource(res, 'kurstracker');
   const nodes = COURSE_NODES_BY_REGION[req.query.region] || COURSE_NODES;
+  const user = getSession(req)?.user;
+  const scope = plannerScope(user);
+  const canSeeNolk = isAbteilungsleitung(scope);
+  const canSeeSlk = isStufenleitung(scope);
+  // NOLK (Abteilungsleitung) und SLK (Stufenleitung) sind Funktionskurse, kein Teil des
+  // allgemeinen Ausbildungswegs - nur zeigen, wer die entsprechende Rolle traegt
+  const visibleNodes = Object.fromEntries(Object.entries(nodes).filter(([, n]) =>
+    (n.code !== 'NOLK' || canSeeNolk) && (n.code !== 'SLK' || canSeeSlk)
+  ));
   res.json({
-    nodes: withGenderTitles(nodes, getSession(req)?.user?.gender)
+    nodes: withGenderTitles(visibleNodes, user?.gender)
   });
 });
 
