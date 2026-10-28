@@ -336,10 +336,10 @@ export function updateTreeInspector(targetNode, pathResult) {
     checkItems.push({
       title: `Mindestalter (${targetNode.minAge} Jahre)`,
       desc: ageCheck.actual === null
-        ? 'Geburtsdatum fehlt in der Cevi-DB, Alter nicht pruefbar.'
+        ? 'Geburtsdatum fehlt in der Cevi-DB, Alter nicht prüfbar.'
         : ageCheck.isFulfilled
-          ? `Erfuellt! Du bist aktuell ${ageCheck.actual} Jahre alt.`
-          : `Fehlt noch: Du bist ${ageCheck.actual} Jahre alt (benoetigt: ${targetNode.minAge}).`,
+          ? `Erfüllt! Du bist aktuell ${ageCheck.actual} Jahre alt.`
+          : `Fehlt noch: Du bist ${ageCheck.actual} Jahre alt (benötigt: ${targetNode.minAge}).`,
       isFulfilled: ageCheck.isFulfilled
     });
   }
@@ -351,7 +351,7 @@ export function updateTreeInspector(targetNode, pathResult) {
     const stepInTree = treeStructure?.nodes[step.id];
     checkItems.push({
       title: step.title,
-      desc: step.isCompleted ? 'Abgeschlossen.' : 'Noch zu absolvieren - anklicken fuer den Weg dahin.',
+      desc: step.isCompleted ? 'Abgeschlossen.' : 'Noch zu absolvieren - anklicken für den Weg dahin.',
       isFulfilled: step.isCompleted,
       onClickCourseId: !step.isCompleted && stepInTree ? step.id : null
     });
@@ -368,9 +368,9 @@ export function updateTreeInspector(targetNode, pathResult) {
     checkItems.push({
       title: q.label || q.id,
       desc: q.isFulfilled
-        ? 'Qualifikation in der Cevi-DB bestaetigt.'
+        ? 'Qualifikation in der Cevi-DB bestätigt.'
         : granterInTree
-          ? 'Noch nicht erreicht - anklicken fuer den Weg dahin.'
+          ? 'Noch nicht erreicht - anklicken für den Weg dahin.'
           : 'Anerkennung fehlt noch im Profil.',
       isFulfilled: q.isFulfilled,
       onClickCourseId: !q.isFulfilled && granterInTree ? q.grantedByCourseId : null
