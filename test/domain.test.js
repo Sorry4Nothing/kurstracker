@@ -17,9 +17,12 @@ function birthdateForAge(years) {
   return d.toISOString().slice(0, 10);
 }
 
-// Datum in `months` Monaten (negativ: in der Vergangenheit) als YYYY-MM-DD
+// Vorschläge gelten fürs nächste Kursjahr: der Planer rechnet das Alter ab dem 1. Januar des nächsten Jahres
+const birthdateForPlanAge = years => birthdateForAge(years - 1);
+
+// Datum in `months` Monaten ab Beginn des nächsten Jahres (negativ: davor) als YYYY-MM-DD
 function inMonths(months) {
-  const d = new Date();
+  const d = new Date(new Date().getFullYear() + 1, 0, 1);
   d.setMonth(d.getMonth() + months);
   return d.toISOString().slice(0, 10);
 }
@@ -170,16 +173,18 @@ test('Mindestalter: wie im Kursreglement, jeder Kurs wird genau ab seinem Mindes
 // Statusableitung im Baum
 // -----------------------------------------------------------------------------
 
-test('Status: absolviert schlägt angemeldet, Angemeldetes zählt auch mit offenen Voraussetzungen', () => {
+test('Status: eine Anmeldung ändert den Status im Baum nicht', () => {
   const { nodes } = courseTreeEngine.evaluatePersonInTree({
     birthdate: birthdateForAge(16),
     completedCourses: ['heku'],
     inProgressCourses: ['HEKU', 'glk1', 'glk3']
   });
   assert.equal(nodes.heku.status, 'COMPLETED');
-  assert.equal(nodes.glk1.status, 'IN_PROGRESS');
-  assert.equal(nodes.glk3.status, 'IN_PROGRESS');
-  // Angemeldet ist nicht absolviert: Pioniertechnik verlangt GLK 1 und bleibt gesperrt
+  assert.equal(nodes.glk1.status, 'AVAILABLE');
+  // GLK 3 verlangt GLK 2 und bleibt trotz Anmeldung gesperrt
+  assert.equal(nodes.glk3.status, 'LOCKED');
+  assert.ok(!Object.values(nodes).some(node => node.status === 'IN_PROGRESS'));
+  // Pioniertechnik verlangt GLK 1 und bleibt gesperrt
   assert.equal(nodes.pionier.status, 'LOCKED');
   assert.deepEqual(nodes.pionier.missingPrerequisites, ['glk1']);
 });
@@ -351,12 +356,13 @@ test('Planer: ohne Geburtsdatum keine Altersempfehlung, J+S-Verfall wird trotzde
   assert.deepEqual(summaryStats, { readyForHlk: 0, readyForGlk: 0, readyForSlk: 0, urgentRenewalCount: 1 });
 });
 
-test('Planer: Heku von 14 bis 16 (ab 15 hohe Priorität), GLK 3 nach GLK 2 ab 17 (ab 18 sehr hoch)', () => {
+test('Planer: Heku von 13 bis 16 (ab 15 hohe Priorität), GLK 3 nach GLK 2 ab 17 (ab 18 sehr hoch)', () => {
   const engine = new StufenleiterPlanningEngine();
   const recs = (age, completedCourses = []) => engine
-    .analyzeParticipant({ id: 'tn', birthdate: birthdateForAge(age), completedCourses })
+    .analyzeParticipant({ id: 'tn', birthdate: birthdateForPlanAge(age), completedCourses })
     .recommendedCourses.map(r => `${r.courseId}:${r.priority}`);
-  assert.deepEqual(recs(13), []);
+  assert.deepEqual(recs(12), []);
+  assert.deepEqual(recs(13), ['heku:NORMAL']);
   assert.deepEqual(recs(14), ['heku:NORMAL']);
   assert.deepEqual(recs(15), ['heku:HOCH']);
   assert.deepEqual(recs(16), ['heku:HOCH']);
@@ -379,7 +385,7 @@ test('Planer: abgeschlossene Kurse erscheinen mit dem Kürzel aus den Kursdaten,
 test('Planer: SLK nur für Leitende ab 18 mit GLK 3', () => {
   const engine = new StufenleiterPlanningEngine();
   const recs = (age, currentRole, completedCourses) => engine
-    .analyzeParticipant({ id: 'tn', birthdate: birthdateForAge(age), currentRole, completedCourses })
+    .analyzeParticipant({ id: 'tn', birthdate: birthdateForPlanAge(age), currentRole, completedCourses })
     .recommendedCourses.map(r => `${r.courseId}:${r.priority}`);
   assert.deepEqual(recs(18, 'Gruppenleiterin', ['glk3']), ['slk:NORMAL']);
   assert.deepEqual(recs(19, 'Kader', ['glk3']), ['slk:HOCH']);
@@ -391,7 +397,7 @@ test('Planer: SLK nur für Leitende ab 18 mit GLK 3', () => {
 test('Planer: J+S-Verfall innert 12 Monaten stellt das Fortbildungsmodul zuoberst, dringend ab 6 Monaten Restlaufzeit', () => {
   const engine = new StufenleiterPlanningEngine();
   const leader = extra => engine.analyzeParticipant({
-    id: 'tn', birthdate: birthdateForAge(19), currentRole: 'Gruppenleiter', completedCourses: ['glk3'], ...extra
+    id: 'tn', birthdate: birthdateForPlanAge(19), currentRole: 'Gruppenleiter', completedCourses: ['glk3'], ...extra
   });
 
   // Je ein Monat neben den Schwellen 6 und 12 (die Engine rechnet mit 30.5 Tagen pro Monat)
@@ -407,14 +413,27 @@ test('Planer: J+S-Verfall innert 12 Monaten stellt das Fortbildungsmodul zuobers
   assert.equal(fromQual.hasExpiringJsLeiter, true);
 
   // Ohne GLK 3 gibt es keine J+S-Anerkennung, die verfallen kann
-  const noGlk = engine.analyzeParticipant({ id: 'x', birthdate: birthdateForAge(19), completedCourses: ['glk2'], jsExpirationDate: inMonths(3) });
+  const noGlk = engine.analyzeParticipant({ id: 'x', birthdate: birthdateForPlanAge(19), completedCourses: ['glk2'], jsExpirationDate: inMonths(3) });
   assert.equal(noGlk.hasExpiringJsLeiter, false);
+});
+
+test('Planer: Anerkennung, die vor dem Kursjahr endet, heisst «verfällt», nicht «abgelaufen»', () => {
+  const engine = new StufenleiterPlanningEngine();
+  const planYear = new Date().getFullYear() + 1;
+  const leader = jsExpirationDate => engine.analyzeParticipant({
+    id: 'tn', birthdate: birthdateForPlanAge(25), completedCourses: ['glk3'], jsExpirationDate
+  });
+  const [mf] = leader(`${planYear - 1}-12-31`).recommendedCourses;
+  assert.equal(mf.priority, 'DRINGEND');
+  assert.match(mf.reason, new RegExp(`verfällt am 31\\.12\\.${planYear - 1}, vor Beginn ${planYear}`));
+  assert.doesNotMatch(mf.reason, /abgelaufen/);
+  assert.equal(leader(`${planYear}-01-01`).hasExpiringJsLeiter, true);
 });
 
 test('Planer: J+S-Leiteranerkennung zählt wie ein GLK 3, angemeldete Kurse werden nicht vorgeschlagen (#96)', () => {
   const engine = new StufenleiterPlanningEngine();
   const recs = extra => engine
-    .analyzeParticipant({ id: 'tn', birthdate: birthdateForAge(18), completedCourses: [], ...extra })
+    .analyzeParticipant({ id: 'tn', birthdate: birthdateForPlanAge(18), completedCourses: [], ...extra })
     .recommendedCourses.map(r => `${r.courseId}:${r.priority}`);
   assert.deepEqual(recs({}), ['glk3:SEHR HOCH']);
   assert.deepEqual(recs({ qualifications: [{ id: 'js_leiter_lst', validUntil: inMonths(24) }] }), []);
@@ -428,7 +447,7 @@ test('Planer: abgelaufene J+S-Anerkennung wird nicht als «verfällt in -N Monat
 }, () => {
   const engine = new StufenleiterPlanningEngine();
   const { recommendedCourses: [mf] } = engine.analyzeParticipant({
-    id: 'tn', birthdate: birthdateForAge(25), completedCourses: ['glk3'], jsExpirationDate: inMonths(-10)
+    id: 'tn', birthdate: birthdateForPlanAge(25), completedCourses: ['glk3'], jsExpirationDate: inMonths(-10)
   });
   assert.equal(mf.courseId, 'mf_lst');
   assert.doesNotMatch(mf.reason, /in ca\. -\d+ Monaten/);
@@ -465,11 +484,11 @@ test('Kurstitel folgen `gender` aus der Cevi-DB, ohne Angabe gilt die neutrale W
   for (const [gender, glk1, heku] of cases) {
     assert.equal(withGenderTitles(COURSE_NODES, gender).glk1.title, glk1, gender);
     const tree = courseTreeEngine.forGender(gender);
-    assert.equal(tree.evaluatePersonInTree({ birthdate: birthdateForAge(14) }).nodes.glk1.title, glk1, gender);
+    assert.equal(tree.evaluatePersonInTree({ birthdate: birthdateForPlanAge(14) }).nodes.glk1.title, glk1, gender);
     assert.ok(tree.findPathToTarget({}, 'glk2').summary.includes(glk1), gender);
     // Planer: das Geschlecht der jeweiligen Person
     const planner = new StufenleiterPlanningEngine();
-    const person = { id: 'tn', gender, birthdate: birthdateForAge(15) };
+    const person = { id: 'tn', gender, birthdate: birthdateForPlanAge(15) };
     assert.equal(planner.analyzeParticipant(person).recommendedCourses[0].courseTitle, heku, gender);
     assert.equal(planner.proposeCourse(person, { courseId: 'glk1' }).nomination.courseTitle, glk1, gender);
   }

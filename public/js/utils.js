@@ -10,6 +10,18 @@ export function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// Kurze Bestätigung unten in der Mitte; die Region steht fest in index.html, damit Screenreader sie ansagen
+export function showToast(text) {
+  const region = document.getElementById('toastRegion');
+  if (!region) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> ';
+  toast.append(text);
+  region.replaceChildren(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
 export function debounce(fn, ms) {
   let timer;
   return (...args) => {

@@ -112,13 +112,13 @@ export async function loadCourseTree() {
   }
 }
 
-// Kurs, auf den die Karte beim Oeffnen zentriert: der erste angemeldete Kurs in Kartenreihenfolge,
-// sonst der erste bereite, sonst der zuletzt absolvierte
+// Kurs, auf den die Karte beim Oeffnen zentriert: der erste bereite Kurs in Kartenreihenfolge,
+// sonst der zuletzt absolvierte
 function pickStartCourse() {
   const nodeStates = currentTreeEvaluation?.evaluation?.nodes || currentTreeEvaluation?.evaluation?.nodeStates || {};
   const ids = Object.keys(COURSE_MAP_COORDS);
   const withStatus = status => id => nodeStates[id]?.status === status;
-  return ids.find(withStatus('IN_PROGRESS')) || ids.find(withStatus('AVAILABLE')) || ids.findLast(withStatus('COMPLETED')) || 'voku';
+  return ids.find(withStatus('AVAILABLE')) || ids.findLast(withStatus('COMPLETED')) || 'voku';
 }
 
 function nodeCardHtml(node, nodeStates) {
@@ -127,7 +127,6 @@ function nodeCardHtml(node, nodeStates) {
 
   let statusLabel = 'Gesperrt';
   if (statusLower === 'completed') statusLabel = '<i class="fa-solid fa-check" aria-hidden="true"></i> Absolviert';
-  else if (statusLower === 'in_progress') statusLabel = '<i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> Angemeldet';
   else if (statusLower === 'available') statusLabel = '<i class="fa-solid fa-lock-open" aria-hidden="true"></i> Bereit';
 
   const isSelected = selectedTargetCourseId === node.id;

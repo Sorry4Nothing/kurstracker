@@ -8,13 +8,12 @@ const renderedScale = page => page.locator('#nodeCard-voku').evaluate(el => el.g
 const ids = locator => locator.evaluateAll(els => els.map(el => el.id).sort());
 const edges = locator => locator.evaluateAll(paths => [...new Set(paths.map(p => p.dataset.edge))].sort());
 
-// Kurs der Startansicht, Regel wie in tree.js: erster angemeldeter Kurs in Kartenreihenfolge, sonst erster bereiter,
-// sonst zuletzt absolvierter
+// Kurs der Startansicht, Regel wie in tree.js: erster bereiter Kurs in Kartenreihenfolge, sonst zuletzt absolvierter
 async function startCourse(request) {
   const { evaluation } = await (await request.get('/api/tree/evaluation')).json();
   const courseIds = Object.keys(COURSE_MAP_COORDS);
   const withStatus = status => id => evaluation.nodes[id]?.status === status;
-  return courseIds.find(withStatus('IN_PROGRESS')) || courseIds.find(withStatus('AVAILABLE'))
+  return courseIds.find(withStatus('AVAILABLE'))
     || courseIds.findLast(withStatus('COMPLETED')) || 'voku';
 }
 
@@ -79,8 +78,8 @@ test.describe('Ausbildungsbaum', () => {
     const shown = Object.fromEntries(await page.locator('.tree-node-card').evaluateAll(cards =>
       cards.map(card => [card.id.replace('nodeCard-', ''), /\bstatus-(\w+)/.exec(card.className)?.[1]])));
     expect(shown).toEqual(Object.fromEntries(Object.keys(shown).map(id => [id, evaluation.nodes[id].status.toLowerCase()])));
-    // Das Demo-Profil hat Kurse in allen vier Zuständen, sonst wäre der Vergleich schwach
-    expect(new Set(Object.values(shown))).toEqual(new Set(['completed', 'in_progress', 'available', 'locked']));
+    // Das Demo-Profil hat Kurse in allen drei Zuständen, sonst wäre der Vergleich schwach
+    expect(new Set(Object.values(shown))).toEqual(new Set(['completed', 'available', 'locked']));
   });
 
   test('zeichnet jede Voraussetzung als Linie von Knotenkante zu Knotenkante', async ({ page, request }) => {

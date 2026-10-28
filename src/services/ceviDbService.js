@@ -5,7 +5,9 @@ import { courseTreeEngine } from '../domain/courseTreeEngine.js';
 // Hitobito (Graphiti) liefert Listen seitenweise; eine kürzere Seite ist die letzte.
 // Die Obergrenze schützt die Cevi-DB, falls sie page[number] einmal ignoriert.
 const PAGE_SIZE = 100;
-const MAX_PAGES = 50;
+const MAX_PAGES = 500;
+// Gleichzeitige Seiten-Abrufe an die Cevi-DB
+const PAGE_CONCURRENCY = 4;
 // Testkurse sind erfunden: der Anmeldelink führt auf das echte Kursangebot
 const DEMO_REGISTRATION_URL = 'https://ceviregionzuerich.ch/kurse';
 // Kürzel der Kurse klein und ohne Leerzeichen («glk1», «al-semi»), so wie sie in den Anlassnamen stehen
@@ -21,6 +23,14 @@ const QUALIFICATION_COURSES = [
   [/sibe winter/i, 'sec_winter'],
   [/slrg brevet basis pool/i, 'slrg_pool']
 ];
+
+// shortcut: Cache nur im Arbeitsspeicher dieses Prozesses; bei mehreren Instanzen oder Webhooks aus der Cevi-DB einen gemeinsamen Cache einführen
+const MEMBERS_TTL_MS = 60_000;
+const MEMBERS_MIN_AGE_MS = 10_000;
+// So lange dürfen abgelaufene Daten ausgeliefert werden, während im Hintergrund neu geladen wird
+const MEMBERS_STALE_MS = 600_000;
+// Die Kursliste ist für alle gleich; ein paar Minuten alt schadet nicht, freie Plätze ändern sich langsam
+const COURSES_TTL_MS = 300_000;
 
 /**
  * Cevi-DB (Hitobito) API & OAuth2 Service
@@ -76,19 +86,21 @@ export class CeviDbService {
   }
 
   /**
-   * Holt eine Liste von der Cevi-DB (JSON:API), Seite für Seite, und flacht `attributes` ab.
+   * Holt eine Liste von der Cevi-DB (JSON:API), seitenweise, und flacht `attributes` ab.
    * Mitgeladene Beziehungen (`include=`, auch verschachtelt wie `a.b`) hängen aufgelöst unter ihrem Namen am Eintrag.
+   * Die erste Seite nennt die Gesamtzahl (stats[total]), die übrigen Seiten laufen dann parallel, in der richtigen Reihenfolge.
    * Wirft bei Fehlern, damit nie Testdaten als echte Daten erscheinen.
    * @param {string} apiPath
    * @param {string} [accessToken] - ohne Token gilt der Service-Token (X-Token)
    * @returns {Promise<Array>}
    */
   async fetchList(apiPath, accessToken) {
-    const list = [];
     const separator = apiPath.includes('?') ? '&' : '?';
+    const tooLarge = () => Object.assign(new Error(`Cevi-DB Abruf zu gross (über ${MAX_PAGES * PAGE_SIZE} Einträge): ${apiPath}`), { status: 502 });
 
-    for (let page = 1; page <= MAX_PAGES; page++) {
-      const response = await fetch(`${this.baseUrl}${apiPath}${separator}page[size]=${PAGE_SIZE}&page[number]=${page}`, {
+    const loadPage = async (page) => {
+      const total = page === 1 ? '&stats[total]=count' : '';
+      const response = await fetch(`${this.baseUrl}${apiPath}${separator}page[size]=${PAGE_SIZE}&page[number]=${page}${total}`, {
         headers: this.getHeaders(accessToken)
       });
 
@@ -111,13 +123,40 @@ export class CeviDbService {
       };
       for (const item of data.included || []) link(included.get(`${item.type}:${item.id}`), item);
 
-      for (const item of items) {
-        list.push(item.attributes ? link({ id: item.id, ...item.attributes }, item) : item);
-      }
+      return {
+        items: items.map(item => item.attributes ? link({ id: item.id, ...item.attributes }, item) : item),
+        total: data.meta?.stats?.total?.count
+      };
+    };
 
-      if (items.length < PAGE_SIZE) break;
+    const first = await loadPage(1);
+    if (first.items.length < PAGE_SIZE) return first.items;
+
+    const list = [first.items];
+    if (Number.isInteger(first.total)) {
+      const pages = Math.ceil(first.total / PAGE_SIZE);
+      if (pages > MAX_PAGES) throw tooLarge();
+      // Wenige Worker holen die nächste freie Seite, so wird die Cevi-DB nicht mit allen Seiten auf einmal belastet
+      let next = 2;
+      let failed = false;
+      const worker = async () => {
+        while (!failed && next <= pages) {
+          const page = next++;
+          try { list[page - 1] = (await loadPage(page)).items; } catch (error) { failed = true; throw error; }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(PAGE_CONCURRENCY, pages - 1) }, worker));
+      return list.flat();
     }
-    return list;
+
+    // Ohne Gesamtzahl: Seite für Seite, bis eine kürzere kommt
+    for (let page = 2; page <= MAX_PAGES; page++) {
+      const { items } = await loadPage(page);
+      list.push(items);
+      if (items.length < PAGE_SIZE) return list.flat();
+    }
+    // Eine abgeschnittene Liste wäre still unvollständig (fehlende Personen im Planer): lieber melden
+    throw tooLarge();
   }
 
   /**
@@ -222,12 +261,24 @@ export class CeviDbService {
       return this.getMockCourses();
     }
     const today = new Date().toISOString().slice(0, 10);
-    // shortcut: kein Cache, jeder Seitenaufruf fragt die Cevi-DB ab; bei vielen Nutzenden die Kursliste serverseitig zwischenspeichern
-    const events = await this.fetchList(
-      `/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind`,
-      this.serviceToken ? undefined : accessToken
-    );
-    return events.map(event => this.toCourse(event, today));
+    const load = async () => {
+      const events = await this.fetchList(
+        `/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind`,
+        this.serviceToken ? undefined : accessToken
+      );
+      return events.map(event => this.toCourse(event, today));
+    };
+    // Mit dem Token einer Person kann die Sichtbarkeit je Person abweichen: nur die Liste des Service-Tokens ist für alle gleich
+    if (!this.serviceToken) return load();
+    const cache = this.coursesCache;
+    if (cache?.day === today && Date.now() - cache.at < COURSES_TTL_MS) return cache.promise;
+    // shortcut: Cache nur im Arbeitsspeicher dieses Prozesses, wie bei den Mitgliedern; ein Fehler wird nicht gemerkt
+    const promise = load().catch(err => {
+      if (this.coursesCache?.promise === promise) this.coursesCache = undefined;
+      throw err;
+    });
+    this.coursesCache = { at: Date.now(), day: today, promise };
+    return promise;
   }
 
   /**
@@ -295,16 +346,70 @@ export class CeviDbService {
   }
 
   /**
+   * Prüft einen API-Key (X-Token) mit je einem Abruf auf Personen, Gruppen und Anlässe (#129).
+   * Wirft einen Fehler mit status 422 und einer Meldung, die sagt, was dem Key fehlt; 502, wenn die Cevi-DB nicht antwortet.
+   * @param {string} token
+   */
+  async verifyServiceToken(token) {
+    const checks = { people: 'Personen lesen', groups: 'Gruppen lesen', events: 'Anlässe lesen' };
+    const results = await Promise.all(Object.entries(checks).map(async ([endpoint, right]) => {
+      let response;
+      try {
+        response = await fetch(`${this.baseUrl}/api/${endpoint}?page[size]=1`, {
+          headers: { Accept: 'application/vnd.api+json, application/json', 'X-Token': token },
+          signal: AbortSignal.timeout(10000)
+        });
+      } catch {
+        return { right, status: 0 };
+      }
+      return { right, status: response.status };
+    }));
+    if (results.some(r => r.status === 0 || r.status >= 500)) {
+      throw Object.assign(new Error('Die Cevi-DB antwortet nicht. Bitte später erneut versuchen.'), { status: 502 });
+    }
+    if (results.every(r => r.status === 401)) {
+      throw Object.assign(new Error('Die Cevi-DB kennt diesen Key nicht. Bitte prüfen, ob er vollständig kopiert wurde.'), { status: 422 });
+    }
+    const missing = results.filter(r => r.status !== 200).map(r => `«${r.right}»`);
+    if (missing.length) {
+      throw Object.assign(new Error(`Dem Key fehlen Rechte: ${missing.join(', ')}. In der Cevi-DB beim Key nachtragen.`), { status: 422 });
+    }
+  }
+
+  /**
    * Mitglieder der Gruppe des Service-Tokens für den Stufenleiter-Planer (#26), in der Form der Demo-Gruppe.
    * Fragt nur ab, was der Planer zeigt: Name, Ceviname, Geschlecht, Geburtstag, Rollen, Gruppen samt Abteilung (Layer-Gruppe), Kurse und Qualifikationen.
    * Adresse, E-Mail und Telefon bleiben in der Cevi-DB.
    * Wer davon wem gezeigt wird, entscheidet plannerAccess.js (#108), nicht dieser Dienst.
-   * Mitglied ist, wer eine laufende Rolle ausserhalb einer Externe-Gruppe hat.
+   * Rollen in Externe-Gruppen erscheinen in der Rolle; wer nur solche hat, ist kein Mitglied und fehlt im Planer.
+   * Das Ergebnis bleibt MEMBERS_TTL_MS im Arbeitsspeicher, gleichzeitige Aufrufe teilen sich eine Abfrage (#27).
+   * Der Cache hält die ungefilterte Gruppe; wer was sieht, filtert plannerAccess.js bei jeder Anfrage neu.
+   * @param {{ fresh?: boolean }} [options] fresh: Cache umgehen («Aktualisieren»), höchstens alle MEMBERS_MIN_AGE_MS
    * @returns {Promise<Array>}
    */
-  async getGroupMembers() {
+  getGroupMembers({ fresh = false } = {}) {
+    const cache = this.membersCache;
+    const age = cache ? Date.now() - cache.at : Infinity;
+    if (age < (fresh ? MEMBERS_MIN_AGE_MS : MEMBERS_TTL_MS)) return cache.promise;
+    // Abgelaufen, aber noch brauchbar: alte Daten sofort liefern und im Hintergrund neu laden, so wartet bei grossen Gruppen niemand auf den Abruf
+    const serveStale = !fresh && cache && age < MEMBERS_STALE_MS;
+    if (serveStale && !this.membersLoading) this.startMembersLoad().catch(() => {});
+    if (serveStale) return cache.promise;
+    return this.membersLoading || this.startMembersLoad();
+  }
+
+  /** Lädt die Mitglieder neu; erst wenn das gelingt, ersetzt das Ergebnis den Cache. Ein Fehler wird nicht gemerkt, alte Daten bleiben. */
+  startMembersLoad() {
+    const promise = this.loadGroupMembers().then(members => {
+      this.membersCache = { at: Date.now(), promise: Promise.resolve(members) };
+      return members;
+    }).finally(() => { this.membersLoading = undefined; });
+    this.membersLoading = promise;
+    return promise;
+  }
+
+  async loadGroupMembers() {
     const today = new Date().toISOString().slice(0, 10);
-    // shortcut: kein Cache, jeder Planer-Aufruf lädt die ganze Gruppe neu; zwischenspeichern mit #27
     // fields[...] nennt auch die Beziehungen, sonst fehlt die Verknüpfung zu den mitgeladenen Einträgen
     const people = await this.fetchList('/api/people?include=roles.group.layer_group,qualifications.qualification_kind,event_participations.event.dates'
       + '&fields[people]=first_name,last_name,nickname,gender,birthday,roles,qualifications,event_participations'
@@ -312,10 +417,12 @@ export class CeviDbService {
       + '&fields[qualifications]=finish_at,qualification_kind'
       + '&fields[event_participations]=active,event');
 
-    return people.map(person => {
-      // Rollen in Externe-Gruppen (Group::JungscharExterne::Externer, ::Goetti usw.) sind keine Mitgliedschaft (#96)
-      const roles = (person.roles || []).filter(r => (!r.start_on || r.start_on <= today) && (!r.end_on || r.end_on >= today)
-        && !String(r.type).includes('Externe::'));
+    const isActive = r => (!r.start_on || r.start_on <= today) && (!r.end_on || r.end_on >= today);
+    // Rollen in Externe-Gruppen (Group::JungscharExterne::Externer, ::Goetti usw.) sind keine Mitgliedschaft (#96)
+    const isMember = r => isActive(r) && !String(r.type).includes('Externe::');
+
+    return people.filter(person => (person.roles || []).some(isMember)).map(person => {
+      const roles = (person.roles || []).filter(isActive);
       // Bestätigte Teilnahmen an Kursen: vorbei heisst besucht, sonst angemeldet
       const courses = { completed: new Set(), upcoming: new Set() };
       for (const { active, event } of person.event_participations || []) {
@@ -341,6 +448,8 @@ export class CeviDbService {
         name: group.display_name || group.name,
         shortName: group.short_name || '',
         type: group.type,
+        // Rollentypen der Person in dieser Gruppe: im Fröschli zählen nur Leitende (plannerAccess.js)
+        roleTypes: roles.filter(r => String(r.group?.id) === String(group.id)).map(r => r.type).filter(Boolean),
         departmentId: String(group.layer_group_id ?? group.id),
         departmentName: group.layer_group?.name || (group.layer ? group.name : '')
       }])).values()];

@@ -59,6 +59,12 @@ export async function checkAuth() {
       tabPlanner.style.display = data.canUsePlanner ? 'flex' : 'none';
     }
 
+    // Kursvorschläge und Umgebungseinstellungen nur für Abteilungsleitungen
+    const tabProposals = document.getElementById('tabProposals');
+    if (tabProposals) tabProposals.hidden = !data.canReviewProposals;
+    const tabSettings = document.getElementById('tabSettings');
+    if (tabSettings) tabSettings.hidden = !data.canManageSettings;
+
     // Stammdaten im Profil-Cockpit aktualisieren (europaeisches Format)
     setText('profileDbBirthdate', user.birthday
       ? `${formatEuropeanDate(user.birthday)}${age !== null ? ` (${age} Jahre)` : ''}`

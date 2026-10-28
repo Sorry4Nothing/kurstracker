@@ -71,6 +71,11 @@ export const envConfig = {
     // Secure überall, wo die App per HTTPS erreichbar ist, nicht nur in Produktion (#51)
     cookieSecure: process.env.COOKIE_SECURE === 'true' || normalizedAppEnv === 'production' || (process.env.APP_URL || '').startsWith('https://')
   },
+  // Umgebungseinstellungen (#129): Datenbank und Schlüssel für die gespeicherten Cevi-DB-API-Keys der Abteilungen
+  credentials: {
+    databaseUrl: process.env.DATABASE_URL || '',
+    encryptionKey: process.env.CREDENTIAL_ENCRYPTION_KEY || ''
+  },
   logging: {
     level: process.env.LOG_LEVEL || (normalizedAppEnv === 'production' ? 'warn' : 'debug')
   }
@@ -114,6 +119,14 @@ export function validateEnv() {
 
   if (envConfig.app.isDevelopment && !envConfig.auth.sessionSecretConfigured) {
     errors.push('DEVELOPMENT: SESSION_SECRET muss gesetzt sein (kein Platzhalter). Erzeugen z. B. mit: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  }
+
+  const { databaseUrl, encryptionKey } = envConfig.credentials;
+  if (encryptionKey && !/^[0-9a-f]{64}$/i.test(encryptionKey)) {
+    errors.push('CREDENTIAL_ENCRYPTION_KEY muss aus genau 64 Hex-Zeichen bestehen (32 Byte).');
+  }
+  if (!databaseUrl || !encryptionKey) {
+    warnings.push('Umgebungseinstellungen aus: DATABASE_URL und CREDENTIAL_ENCRYPTION_KEY müssen beide gesetzt sein.');
   }
 
   return {

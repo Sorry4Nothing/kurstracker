@@ -83,10 +83,6 @@
   color: var(--ok-ink);
 }
 
-.legend-item:has(> .status-in_progress) {
-  color: var(--blue-ink);
-}
-
 .legend-item:has(> .status-available) {
   color: var(--teal-ink);
 }
@@ -103,10 +99,6 @@
 
 .legend-dot.status-completed {
   background-color: var(--ok-solid);
-}
-
-.legend-dot.status-in_progress {
-  background-color: var(--blue-solid);
 }
 
 .legend-dot.status-available {
@@ -347,11 +339,6 @@
   border-left-color: var(--ok-solid);
 }
 
-.tree-node-card.status-in_progress {
-  background-color: var(--blue-soft);
-  border-left-color: var(--blue-solid);
-}
-
 .tree-node-card.status-available {
   background-color: var(--teal-soft);
   border-left-color: var(--teal-solid);
@@ -443,8 +430,7 @@
 }
 
 /* On a node tinted in the tag's own hue the tag sits on the card surface,
-   so it keeps its shape (a registered J+S course, a ready SLRG course) */
-.tree-node-card.status-in_progress .node-org-pill.org-js,
+   so it keeps its shape (a ready SLRG course) */
 .tree-node-card.status-available .node-org-pill.org-slrg {
   background-color: var(--bg-surface-elevated);
 }
@@ -474,10 +460,6 @@
 
 .node-status-pill.status-completed {
   color: var(--ok-ink);
-}
-
-.node-status-pill.status-in_progress {
-  color: var(--blue-ink);
 }
 
 .node-status-pill.status-available {

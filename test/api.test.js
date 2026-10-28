@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 process.env.CEVI_DB_PREPARATION_MODE = 'true';
 // Ein Service-Token aus .env.local lädt Kurse live; die Tests setzen ihn nur gezielt
 process.env.CEVI_DB_SERVICE_TOKEN = '';
+// Tests schreiben nie in die echte Datenbank aus .env.local: Vorschläge liegen dann im Arbeitsspeicher
+process.env.DATABASE_URL = '';
 // Alle Tests laufen von derselben IP: das Anmelde-Limit hier anheben, der 429-Test am Dateiende zählt bis dahin weiter
 process.env.RATE_LIMIT_AUTH_MAX = '200';
 const { app, logSafe } = await import('../src/app.js');
@@ -92,7 +94,9 @@ test('API: ohne Session ist das Demo-Profil mit Planerzugriff aktiv', async () =
     authenticated: true,
     user: ceviDbService.getMockUser(),
     isMock: true,
-    canUsePlanner: true
+    canUsePlanner: true,
+    canManageSettings: true,
+    canReviewProposals: true
   });
 });
 
@@ -147,8 +151,9 @@ test('API: Baumbewertung übernimmt absolvierte und angemeldete Kurse sowie Qual
   assert.equal(res.status, 200);
   const { person, evaluation } = await res.json();
   for (const participation of ceviDbService.getMockParticipations()) {
-    const expected = { completed: 'COMPLETED', in_progress: 'IN_PROGRESS' }[participation.status];
-    assert.equal(evaluation.nodes[participation.course_node_id].status, expected, participation.course_node_id);
+    const { status } = evaluation.nodes[participation.course_node_id];
+    if (participation.status === 'completed') assert.equal(status, 'COMPLETED', participation.course_node_id);
+    else assert.notEqual(status, 'IN_PROGRESS', participation.course_node_id);
   }
   assert.deepEqual([...person.qualifications].sort(), ceviDbService.getMockQualifications().map(q => q.key).sort());
   assert.equal(person.birthdate, ceviDbService.getMockUser().birthday);
@@ -221,8 +226,102 @@ function setFor(t, target, values) {
   t.after(() => Object.assign(target, saved));
 }
 
+test('Cevi-DB: eine Liste über der Seitengrenze wird gemeldet statt still gekürzt', async (t) => {
+  const pageOf = n => ({ ok: true, json: async () => ({ data: Array.from({ length: n }, (_, i) => ({ id: String(i), attributes: {} })) }) });
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => { calls++; return pageOf(100); });
+  await assert.rejects(ceviDbService.fetchList('/api/people'), err => err.status === 502 && /zu gross/.test(err.message));
+  assert.equal(calls, 500);
+  t.mock.method(globalThis, 'fetch', async () => pageOf(100 - 1));
+  assert.equal((await ceviDbService.fetchList('/api/people')).length, 99, 'eine kurze Seite beendet die Liste normal');
+});
+
+test('Cevi-DB: mit Gesamtzahl laufen die Seiten parallel und bleiben in der richtigen Reihenfolge', async (t) => {
+  const urls = [];
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    urls.push(String(url));
+    const page = Number(/page\[number\]=(\d+)/.exec(url)[1]);
+    await new Promise(resolve => setTimeout(resolve, page === 2 ? 20 : 1));
+    const size = page === 4 ? 50 : 100;
+    return { ok: true, json: async () => ({ meta: { stats: { total: { count: 350 } } }, data: Array.from({ length: size }, (_, i) => ({ id: `${page}-${i}`, attributes: {} })) }) };
+  });
+  const list = await ceviDbService.fetchList('/api/people');
+  assert.equal(list.length, 350);
+  assert.equal(list[100].id, '2-0', 'Seite 2 steht vor Seite 3, auch wenn sie später antwortet');
+  assert.equal(list.at(-1).id, '4-49');
+  assert.equal(urls.length, 4);
+  assert.equal(urls.filter(u => u.includes('stats[total]')).length, 1, 'nur die erste Seite fragt die Gesamtzahl');
+
+  t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => ({ meta: { stats: { total: { count: 99_999_999 } } }, data: Array.from({ length: 100 }, () => ({ id: 'x', attributes: {} })) }) }));
+  await assert.rejects(ceviDbService.fetchList('/api/people'), err => err.status === 502 && /zu gross/.test(err.message), 'schon die Gesamtzahl über der Grenze wird gemeldet');
+});
+
+test('Cevi-DB-Mitglieder: Cache teilt gleichzeitige Abfragen, «Aktualisieren» erst nach 10 s, Fehler werden nicht gemerkt (#27)', async (t) => {
+  setFor(t, ceviDbService, { membersCache: undefined });
+  let loads = 0;
+  let fail = false;
+  t.mock.method(ceviDbService, 'loadGroupMembers', async () => { loads++; if (fail) throw new Error('down'); return [{ id: 'p' }]; });
+
+  await Promise.all([ceviDbService.getGroupMembers(), ceviDbService.getGroupMembers()]);
+  await ceviDbService.getGroupMembers();
+  assert.equal(loads, 1, 'gleichzeitige und folgende Aufrufe teilen eine Abfrage');
+  await ceviDbService.getGroupMembers({ fresh: true });
+  assert.equal(loads, 1, 'fresh umgeht den Cache erst nach 10 s');
+
+  ceviDbService.membersCache.at -= 11_000;
+  await ceviDbService.getGroupMembers({ fresh: true });
+  assert.equal(loads, 2);
+
+  ceviDbService.membersCache.at -= 61_000;
+  assert.deepEqual(await ceviDbService.getGroupMembers(), [{ id: 'p' }], 'abgelaufene Daten kommen sofort');
+  await ceviDbService.membersLoading;
+  assert.equal(loads, 3, 'und werden im Hintergrund neu geladen');
+
+  ceviDbService.membersCache.at -= 61_000;
+  fail = true;
+  await ceviDbService.getGroupMembers();
+  await ceviDbService.membersLoading?.catch(() => {});
+  assert.deepEqual(await ceviDbService.getGroupMembers(), [{ id: 'p' }], 'ein Fehler im Hintergrund lässt die alten Daten stehen');
+
+  ceviDbService.membersCache.at -= 11_000;
+  await assert.rejects(ceviDbService.getGroupMembers({ fresh: true }), /down/, '«Aktualisieren» meldet den Fehler');
+  ceviDbService.membersCache.at -= 600_000;
+  await assert.rejects(ceviDbService.getGroupMembers(), /down/, 'zu alte Daten werden nicht mehr ausgeliefert');
+  fail = false;
+  await ceviDbService.getGroupMembers();
+  assert.equal(loads, 7, 'ein Fehler bleibt nicht im Cache');
+});
+
+test('Cevi-DB-Kurse: mit Service-Token fünf Minuten zwischengespeichert, mit Personen-Token nie, Fehler werden nicht gemerkt (#27)', async (t) => {
+  setFor(t, ceviDbService, { serviceToken: 'svc_test', coursesCache: undefined });
+  let loads = 0;
+  let fail = false;
+  t.mock.method(ceviDbService, 'fetchList', async () => { loads++; if (fail) throw new Error('down'); return []; });
+
+  await Promise.all([ceviDbService.getCourses(), ceviDbService.getCourses()]);
+  await ceviDbService.getCourses();
+  assert.equal(loads, 1, 'gleichzeitige und folgende Aufrufe teilen eine Abfrage');
+
+  ceviDbService.coursesCache.at -= 301_000;
+  await ceviDbService.getCourses();
+  assert.equal(loads, 2, 'nach fünf Minuten wird neu geladen');
+
+  ceviDbService.coursesCache.at -= 301_000;
+  fail = true;
+  await assert.rejects(ceviDbService.getCourses(), /down/);
+  fail = false;
+  await ceviDbService.getCourses();
+  assert.equal(loads, 4, 'ein Fehler bleibt nicht im Cache');
+
+  ceviDbService.serviceToken = '';
+  t.mock.method(ceviDbService, 'isPreparationMode', () => false);
+  await ceviDbService.getCourses('user_token');
+  await ceviDbService.getCourses('user_token');
+  assert.equal(loads, 6, 'mit dem Token einer Person fragt jeder Aufruf die Cevi-DB');
+});
+
 test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötigen Feldern (#26)', async (t) => {
-  setFor(t, ceviDbService, { serviceToken: 'svc_test' });
+  setFor(t, ceviDbService, { serviceToken: 'svc_test', membersCache: undefined });
   setFor(t, envConfig.app, { isLocal: true });
   setFor(t, envConfig.server, { host: 'localhost' });
   const one = (type, id) => ({ data: { type, id } });
@@ -301,7 +400,7 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
       ceviname: 'Amsel',
       gender: 'w',
       birthdate: '2009-05-01',
-      currentRole: 'Leiter*in',
+      currentRole: 'Leiter*in, Externe/-r',
       groups: [],
       completedCourses: ['glk3', 'heku'],
       inProgressCourses: [],
@@ -314,7 +413,7 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
     },
     {
       id: '2', name: 'Ben Beispiel', ceviname: 'Ben', gender: 'm', birthdate: '2012-02-02', currentRole: 'Teilnehmer*in',
-      groups: [{ id: 'g1', name: 'M Imperius', shortName: '', type: 'Group::Stufe', departmentId: 'g1', departmentName: '' }],
+      groups: [{ id: 'g1', name: 'M Imperius', shortName: '', type: 'Group::Stufe', roleTypes: [], departmentId: 'g1', departmentName: '' }],
       completedCourses: ['sec_wasser'],
       inProgressCourses: ['heku'],
       qualifications: [
@@ -324,6 +423,8 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
     }
   ]);
   assert.deepEqual(analysis.analyzedParticipants[0].completedCourseCodes, ['GLK 3', 'Heku']);
+  // Dora hat nur eine Externe-Rolle und fehlt, Anna zeigt ihre Externe-Rolle neben Leiter*in
+  assert.equal(group.length, 2);
   // Ben ist für den Heku angemeldet: kein Heku-Vorschlag
   assert.ok(!analysis.analyzedParticipants[1].recommendedCourses.some(rec => rec.courseId === 'heku'));
   // Die abgelaufene alte Anerkennung meldet keinen Verfall
@@ -335,7 +436,7 @@ test('Planer: lokal mit Service-Token die echten Mitglieder, nur mit den nötige
 });
 
 test('Planer: wenn die App nicht nur lokal erreichbar ist, bleibt es trotz Service-Token bei der Demo-Gruppe (#26)', async (t) => {
-  setFor(t, ceviDbService, { serviceToken: 'svc_test' });
+  setFor(t, ceviDbService, { serviceToken: 'svc_test', membersCache: undefined });
   setFor(t, envConfig.app, { isLocal: true });
   setFor(t, envConfig.server, { host: '0.0.0.0' });
   const remote = t.mock.method(globalThis, 'fetch');
@@ -399,6 +500,103 @@ test('API: abgewiesene Vorschläge (unbekannte Person, fehlender oder ungültige
     assert.deepEqual(await res.json(), { error }, JSON.stringify(body));
   }
   assert.equal(await countNominations(), countBefore);
+});
+
+// -----------------------------------------------------------------------------
+// Kursvorschläge je Stufe (#131)
+// -----------------------------------------------------------------------------
+
+const proposalsUrl = (groupId, action = '') => `/api/planner/proposals/${groupId}${action}`;
+const roleOf = (role_class, group_id) => ({ role_class, group_id, group_name: 'Demo' });
+
+test('Vorschläge: Entwurf speichern, abgeben, sperren und von der Abteilungsleitung zurückgeben', async (t) => {
+  const login = useLiveCeviDb(t);
+  const nord = cookiePair(await login({ id: 'p_20', first_name: 'Ida', roles: [roleOf('Group::Stufe::Stufenleiter', 'demo_nord')] }));
+  const lead = cookiePair(await login({ id: 'p_21', first_name: 'Max', roles: [roleOf('Group::Jungschar::Abteilungsleiter', 'demo')] }));
+  const overview = await (await request('/api/planner/overview', { cookie: nord })).json();
+  const members = overview.group.map(person => person.id);
+  assert.ok(members.includes('tn_1') && !members.includes('tn_5'), 'Stufenleitung Nord sieht nur ihre Stufe');
+
+  // Lea (tn_2) wird für die Heku vorgeschlagen; ob das System sie vorsieht, entscheidet allein der Server
+  const candidates = overview.analysis.candidatesByCourse;
+  const system = Object.entries(candidates).flatMap(([courseId, list]) => list.map(c => ({ personId: c.participantId, courseId })))[0];
+  const manual = { personId: 'tn_1', courseId: 'llm' };
+  assert.ok(!candidates.llm?.some(c => c.participantId === 'tn_1'), 'Annahme: tn_1 ist kein LLM-Kandidat');
+
+  const save = (cookie, entries, action = '', method = 'PUT') => request(proposalsUrl('demo_nord', action), { method, cookie, body: { entries } });
+
+  // Manuell ohne Bemerkung: abgewiesen, nichts gespeichert
+  const noNote = await save(nord, [system, manual]);
+  assert.equal(noNote.status, 400);
+  assert.match((await noNote.json()).error, /braucht es eine Bemerkung/);
+  assert.equal((await (await request('/api/planner/proposals', { cookie: nord })).json()).groups.find(g => g.groupId === 'demo_nord').status, 'offen');
+
+  const draft = await save(nord, [{ ...system, season: ' Herbst 2027 ' }, { ...manual, note: 'Sehr reif für sein Alter' }]);
+  assert.equal(draft.status, 200);
+  const saved = await draft.json();
+  assert.equal(saved.status, 'entwurf');
+  assert.deepEqual(saved.entries.map(e => [e.manual, e.season]), [[false, 'Herbst 2027'], [true, '']]);
+  assert.equal(saved.updatedBy, 'Ida');
+  assert.deepEqual(saved.entries.map(e => e.proposedBy), ['Ida', 'Ida']);
+
+  // Abgeben sperrt das Bearbeiten
+  const submitted = await save(nord, saved.entries, '/submit', 'POST');
+  assert.equal(submitted.status, 200);
+  const sent = await submitted.json();
+  assert.equal(sent.status, 'abgegeben');
+  assert.deepEqual(sent.entries.map(e => e.proposedBy), ['Ida', 'Ida']);
+  assert.equal((await save(nord, [system])).status, 409);
+  assert.equal((await save(nord, [system], '/submit', 'POST')).status, 409);
+
+  // Abteilungsleitung liest alles, passt abgegebene Stände an (Stufe bleibt abgegeben) und gibt zurück
+  const listed = (await (await request('/api/planner/proposals', { cookie: lead })).json()).groups.find(g => g.groupId === 'demo_nord');
+  assert.deepEqual([listed.status, listed.canEdit, listed.canReopen, listed.entries.length], ['abgegeben', true, true, 2]);
+  assert.equal((await save(lead, [system])).status, 403);
+  assert.equal((await save(nord, [], '/reopen', 'POST')).status, 403);
+  assert.equal((await save(nord, [system], '/final')).status, 403);
+  const adjusted = await save(lead, [system], '/final');
+  assert.equal(adjusted.status, 200);
+  const adjustedBody = await adjusted.json();
+  assert.deepEqual([adjustedBody.status, adjustedBody.entries.length], ['abgegeben', 1]);
+  assert.equal((await save(lead, sent.entries, '/final')).status, 200);
+
+  // Übersicht der finalen Vorschläge: nur Abteilungsleitung, nur abgegebene Stände, mit Namen
+  assert.equal((await request('/api/proposals/final', { cookie: nord })).status, 403);
+  const final = await (await request('/api/proposals/final', { cookie: lead })).json();
+  const finalNord = final.submitted.find(g => g.groupId === 'demo_nord');
+  assert.deepEqual([finalNord.entries.length, finalNord.submittedBy], [2, 'Ida']);
+  assert.ok(finalNord.entries.every(e => e.name && e.ceviname !== undefined), 'Einträge tragen Namen statt nur IDs');
+  assert.ok(finalNord.entries.every(e => Number.isInteger(e.birthYear)), 'Einträge tragen den Jahrgang');
+  assert.ok(!final.pending.some(g => g.groupId === 'demo_nord'));
+
+  const reopened = await save(lead, [], '/reopen', 'POST');
+  assert.equal(reopened.status, 200);
+  assert.equal((await reopened.json()).status, 'entwurf');
+  assert.equal((await save(nord, [system])).status, 200);
+  const afterReopen = await (await request('/api/proposals/final', { cookie: lead })).json();
+  assert.ok(!afterReopen.submitted.some(g => g.groupId === 'demo_nord') && afterReopen.pending.some(g => g.groupId === 'demo_nord'));
+});
+
+test('Vorschläge: fremde Stufe, ungültige Einträge und doppelte Vorschläge werden abgewiesen', async (t) => {
+  const login = useLiveCeviDb(t);
+  const nord = cookiePair(await login({ id: 'p_22', roles: [roleOf('Group::Stufe::Stufenleiter', 'demo_nord')] }));
+  const put = (groupId, entries) => request(proposalsUrl(groupId), { method: 'PUT', cookie: nord, body: { entries } });
+
+  // Eine Stufe, die die Rolle nicht sieht, existiert für sie nicht
+  assert.equal((await put('demo_sued', [])).status, 404);
+  assert.equal((await put('__proto__', [])).status, 404);
+  // Person aus einer fremden Stufe
+  assert.equal((await put('demo_nord', [{ personId: 'tn_5', courseId: 'llm', note: 'x' }])).status, 400);
+  const invalid = [
+    undefined, 'nope', [null], [{ personId: 'tn_1', courseId: 'glk4', note: 'x' }], [{ personId: 'tn_1', courseId: '__proto__', note: 'x' }],
+    [{ personId: 'tn_1', courseId: 'llm', note: 42 }], [{ personId: 'tn_1', courseId: 'llm', note: 'x'.repeat(501) }],
+    [{ personId: 'tn_1', courseId: 'llm', note: '   ' }], [{ personId: 'tn_1', courseId: 'llm', note: 'a' }, { personId: 'tn_1', courseId: 'llm', note: 'b' }]
+  ];
+  for (const entries of invalid) {
+    const res = await put('demo_nord', entries);
+    assert.equal(res.status, 400, JSON.stringify(entries));
+  }
+  assert.equal((await put('demo_nord', [])).status, 200);
 });
 
 // -----------------------------------------------------------------------------
@@ -538,7 +736,7 @@ test('Live-Login: Session-Cookie ist signiert, httpOnly, 7 Tage gültig und trä
   assert.equal(ceviDbService.getUserInfo.mock.calls[0].arguments[0], 'live_abc');
 
   const me = await (await request('/api/auth/me', { cookie: cookiePair(line) })).json();
-  assert.deepEqual(me, { authenticated: true, user, isMock: false, canUsePlanner: false });
+  assert.deepEqual(me, { authenticated: true, user, isMock: false, canUsePlanner: false, canManageSettings: false, canReviewProposals: false });
 });
 
 test('Live-Login: Planer ist ohne Leitungsrolle gesperrt, Stufenleiterin hat Zugriff', async (t) => {
@@ -598,7 +796,16 @@ const RIGHTS = {
   'GET /api/tree/evaluation': 'session',
   'GET /api/tree/path/:courseId': 'session',
   'GET /api/planner/overview': 'planner',
-  'POST /api/planner/propose': 'planner'
+  'POST /api/planner/propose': 'planner',
+  'GET /api/planner/proposals': 'planner',
+  'PUT /api/planner/proposals/:groupId': 'planner',
+  'POST /api/planner/proposals/:groupId/submit': 'planner',
+  'PUT /api/planner/proposals/:groupId/final': 'planner',
+  'POST /api/planner/proposals/:groupId/reopen': 'planner',
+  'GET /api/proposals/final': 'lead',
+  'GET /api/settings/cevi-db-key': 'lead',
+  'PUT /api/settings/cevi-db-key/:departmentId': 'lead',
+  'DELETE /api/settings/cevi-db-key/:departmentId': 'lead'
 };
 
 test('Rechtematrix (SR-12): jede API-Route hat eine Zeile, Session- und Planer-Routen verweigern ohne Recht', async (t) => {
@@ -613,10 +820,10 @@ test('Rechtematrix (SR-12): jede API-Route hat eine Zeile, Session- und Planer-R
   for (const [route, right] of Object.entries(RIGHTS)) {
     if (right === 'public') continue;
     const [method, pattern] = route.split(' ');
-    const path = pattern.replace(':courseId', 'heku');
+    const path = pattern.replace(':courseId', 'heku').replace(':departmentId', 'demo').replace(':groupId', 'demo_nord');
     const anonymous = await request(path, { method });
     assert.equal(anonymous.status, 401, `${route} ohne Session`);
-    if (right === 'planner') {
+    if (right !== 'session') {
       const noRole = await request(path, { method, cookie: member });
       assert.equal(noRole.status, 403, `${route} ohne Leitungsrolle`);
     }
@@ -678,12 +885,12 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
   assert.deepEqual((await courses.json()).map(c => c.title), ['GLK 3 Herbst']);
   const [url, init] = remote.mock.calls[0].arguments;
   const today = new Date().toISOString().slice(0, 10);
-  assert.equal(url, `${ceviDbService.baseUrl}/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind&page[size]=100&page[number]=1`);
+  assert.equal(url, `${ceviDbService.baseUrl}/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind&page[size]=100&page[number]=1&stats[total]=count`);
   assert.equal(init.headers.Authorization, 'Bearer live_abc');
 
   // Teilnahmen nur der eingeloggten Person abfragen
   const history = await request('/api/user/history', { cookie });
-  assert.equal(remote.mock.calls[1].arguments[0], `${ceviDbService.baseUrl}/api/event_participations?filter[person_id]=p_6&page[size]=100&page[number]=1`);
+  assert.equal(remote.mock.calls[1].arguments[0], `${ceviDbService.baseUrl}/api/event_participations?filter[person_id]=p_6&page[size]=100&page[number]=1&stats[total]=count`);
   // Personendaten einer Live-Session kommen aus der Cevi-DB
   assert.equal(history.headers.get('x-datenquelle'), 'cevi-db');
   assert.equal((await request('/api/auth/me', { cookie })).headers.get('x-datenquelle'), 'cevi-db');
@@ -697,8 +904,7 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
 });
 
 test('Service-Token: Kurse kommen live per X-Token, auch im Vorbereitungsmodus, Seite für Seite und dem Baum zugeordnet (#11)', async (t) => {
-  ceviDbService.serviceToken = 'svc_test';
-  t.after(() => { ceviDbService.serviceToken = ''; });
+  setFor(t, ceviDbService, { serviceToken: 'svc_test', coursesCache: undefined });
   const event = (id, kind, dates = []) => ({
     id: String(id),
     type: 'courses',
@@ -760,7 +966,7 @@ test('Kursart-Titel: nur mit Service-Token von /api/event_kinds, ohne Leerzeiche
   assert.equal((await ceviDbService.getKindLabels()).size, 0);
   assert.equal(remote.mock.callCount(), 0);
 
-  setFor(t, ceviDbService, { serviceToken: 'svc_test' });
+  setFor(t, ceviDbService, { serviceToken: 'svc_test', membersCache: undefined });
   assert.deepEqual(await ceviDbService.getKindLabels(), new Map([[80, 'J+S-Leiter*innenkurs LS/T']]));
   const [url, init] = remote.mock.calls[0].arguments;
   assert.match(url, /\/api\/event_kinds\?fields\[event_kinds\]=label&/);
@@ -785,7 +991,7 @@ test('API: X-Datenquelle nennt pro Antwort die Herkunft der Daten für die API-O
   }
 
   // Mit Service-Token kommen Kurse und lokal die Mitglieder live; fällt die Cevi-DB aus, nennt auch der 502 sie
-  setFor(t, ceviDbService, { serviceToken: 'svc_test' });
+  setFor(t, ceviDbService, { serviceToken: 'svc_test', membersCache: undefined, coursesCache: undefined });
   setFor(t, envConfig.app, { isLocal: true });
   setFor(t, envConfig.server, { host: 'localhost' });
   t.mock.method(globalThis, 'fetch', async () => new Response('Fehler', { status: 500 }));
@@ -889,4 +1095,10 @@ test('Rate Limit: Anmelde-Endpunkte drosseln nach zu vielen Versuchen mit 429', 
   assert.equal(limited.status, 429);
   assert.deepEqual(await limited.json(), { error: 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.' });
   assert.ok(limited.headers.get('ratelimit-policy') || limited.headers.get('ratelimit'), 'RateLimit-Header fehlt');
+});
+
+test('API: grosse Antworten kommen komprimiert (#135)', async () => {
+  const res = await httpFetch(`${baseUrl}/js/planner.js`, { headers: { 'Accept-Encoding': 'gzip' } });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-encoding'), 'gzip');
 });

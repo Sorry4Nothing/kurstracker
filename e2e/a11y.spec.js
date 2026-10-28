@@ -44,11 +44,14 @@ const SCENARIOS = [
   }],
   ['Dialog «Kurs vorschlagen» offen', async page => {
     await showView('planner')(page);
-    await page.getByRole('button', { name: 'Vorschlagen' }).first().click();
+    await page.locator('#plannerStufeTrigger').click();
+    await page.getByRole('option').nth(1).click();
+    await page.locator('.proposal-group').getByRole('button', { name: 'Person hinzufügen' }).click();
     await expect(page.getByRole('dialog', { name: 'Kurs vorschlagen' })).toBeVisible();
   }],
   ['Kurs im Baum gewählt', async page => {
-    await page.getByRole('button', { name: /Gruppenleiterkurs 3/ }).click();
+    // Nach dem Wegfall von «angemeldet» zentriert die Startansicht einen anderen Kurs: Karte per Tastatur wählen
+    await page.getByRole('button', { name: /Gruppenleiterkurs 3/ }).press('Enter');
     await expect(page.locator('#inspectorTitle')).toContainText('Gruppenleiterkurs 3');
   }],
   ['Profil mit Foto', async page => {

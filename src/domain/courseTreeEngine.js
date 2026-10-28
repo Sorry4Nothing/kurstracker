@@ -160,14 +160,12 @@ export class CourseTreeEngine {
    * Bewertet den Zustand aller Baum-Knoten fur eine Person
    * @param {object} person
    * @param {string[]} [person.completedCourses] - IDs der absolvierten Kurse (z.B. ['voku', 'heku', 'glk1', 'glk2', 'glk3'])
-   * @param {string[]} [person.inProgressCourses] - IDs der angemeldeten/laufenden Kurse
    * @param {string[]} [person.qualifications] - IDs der vorhandenen Qualifikationen (z.B. ['js_leiter_lst'])
    * @param {string|Date} [person.birthdate] - Geburtsdatum
    * @returns {object} Tree State mit Status pro Knoten
    */
   evaluatePersonInTree(person = {}) {
     const completed = this.normalizeCourseSet(person.completedCourses || []);
-    const inProgress = new Set((person.inProgressCourses || []).map(c => this.resolveCourseId(c)));
     const quals = this.normalizeQualifications(person.qualifications);
     const personAge = this.calculateAge(person.birthdate);
 
@@ -179,7 +177,6 @@ export class CourseTreeEngine {
 
     for (const [id, node] of uniqueNodeEntries) {
       const isCompleted = completed.has(id);
-      const isInProgress = inProgress.has(id);
 
       // Voraussetzungen prufen
       const missingPrereqs = (node.prerequisites || []).filter(req => !completed.has(req));
@@ -191,8 +188,6 @@ export class CourseTreeEngine {
 
       if (isCompleted) {
         status = 'COMPLETED';
-      } else if (isInProgress) {
-        status = 'IN_PROGRESS';
       } else {
         if (!ageMet) {
           blockers.push(personAge === null
@@ -222,7 +217,6 @@ export class CourseTreeEngine {
         ...node,
         status,
         isCompleted,
-        isInProgress,
         isAvailable: status === 'AVAILABLE',
         isLocked: status === 'LOCKED',
         blockers,
@@ -242,8 +236,7 @@ export class CourseTreeEngine {
       personAge,
       availableNextCourses,
       nodes: evaluatedNodes,
-      completedCourseIds: Array.from(completed),
-      inProgressCourseIds: Array.from(inProgress)
+      completedCourseIds: Array.from(completed)
     };
   }
 
