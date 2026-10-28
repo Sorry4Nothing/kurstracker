@@ -298,16 +298,19 @@ test('ES-Module im Frontend: relative Importe treffen vorhandene Dateien und exp
   assert.deepEqual(problems, []);
 });
 
-test('Inline-Handler (onclick, oninput, onsubmit) rufen nur Funktionen, die app.js auf window legt', () => {
-  const globals = new Set([...read(join(PUBLIC, 'app.js')).matchAll(/window\.([\w$]+)\s*=/g)].map(m => m[1]));
-  const called = new Set();
+test('Keine Inline-Handler (CSP ohne unsafe-inline); jede Aktion aus data-click/data-input/data-submit ist in app.js registriert (#171)', () => {
+  const inline = frontend.flatMap(({ name, text }) => [...text.matchAll(/\son[a-z]+="/g)].map(() => name));
+  assert.deepEqual(inline, [], 'on...-Attribute sind mit der CSP nicht ausführbar: data-click und clickAction() nutzen');
+
+  const registry = /registerActions\(\{([\s\S]*?)\n\}\);/.exec(read(join(PUBLIC, 'app.js')))?.[1] ?? '';
+  const registered = new Set([...registry.matchAll(/^ {2}([\w$]+):/gm)].map(m => m[1]));
+  const used = new Set();
   for (const { text } of frontend) {
-    for (const [, code] of text.matchAll(/\son[a-z]+="([^"]*)"/g)) {
-      for (const [, fn] of code.replace(/\$\{[^}]*\}/g, '0').matchAll(/(?<![\w$.])([A-Za-z_$][\w$]*)\s*\(/g)) called.add(fn);
-    }
+    for (const m of text.matchAll(/data-(?:click|input|submit)="([\w$]+)"/g)) used.add(m[1]);
+    for (const m of text.matchAll(/clickAction\(\s*'([\w$]+)'/g)) used.add(m[1]);
   }
-  assert.ok(called.size > 0, 'keine Inline-Handler gefunden');
-  assert.deepEqual([...called].filter(fn => !globals.has(fn)), []);
+  assert.ok(used.size > 0 && registered.size > 0, 'keine Aktionen gefunden');
+  assert.deepEqual([...used].filter(name => !registered.has(name)), []);
 });
 
 function missingElementIds() {

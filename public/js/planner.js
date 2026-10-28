@@ -3,14 +3,13 @@
  * Ausbildungsreife-Uebersicht, Empfehlungen und Kursvorschlaege
  */
 
-import { formatEuropeanDate, formatEuropeanDateRange, esc, showToast, errorText, responseError } from './utils.js';
+import { formatEuropeanDate, formatEuropeanDateRange, esc, showToast, errorText, responseError, clickAction } from './utils.js';
 import { fetchCourses, upcomingDates } from './courses.js';
 import { getStandardStructure } from './tree.js';
 import { enhanceSelect, refreshSelect } from './select.js';
 import { confirmDialog, askReturn } from './confirm.js';
 
 // Wert als JS-String-Argument fuer ein onclick-Attribut
-const jsArg = value => esc(JSON.stringify(String(value ?? '')));
 const dateRange = course => formatEuropeanDateRange(course.start_date, course.end_date);
 // Ohne Kursdaten bleibt der Planer nutzbar, nur ohne Termine
 const loadCourses = () => fetchCourses().catch(() => []);
@@ -200,7 +199,7 @@ const courseCode = courseId =>
 // Eine Empfehlung des Systems wird ohne Dialog übernommen; ohne Empfehlung braucht der Vorschlag eine Begründung im Dialog
 function suggestButtonHtml(person, rec, group) {
   if (!rec) {
-    return `<button class="btn btn-secondary btn-sm" onclick="openNominationModal(${jsArg(person.id)}, ${jsArg(person.ceviname)}, 'voku', ${jsArg(group.id)})"><i class="fa-solid fa-plus"></i> Vorschlagen</button>`;
+    return `<button class="btn btn-secondary btn-sm" ${clickAction('openNominationModal', person.id, person.ceviname, 'voku', group.id)}><i class="fa-solid fa-plus"></i> Vorschlagen</button>`;
   }
   const done = proposals[group.id]?.entries.some(x => x.personId === person.id && x.courseId === rec.courseId);
   return `<button type="button" class="btn btn-secondary btn-sm${done ? ' is-done' : ''}" data-action="suggest" data-person="${esc(person.id)}" data-course="${esc(rec.courseId)}" data-group="${esc(group.id)}"${done ? ' aria-disabled="true"' : ''}>

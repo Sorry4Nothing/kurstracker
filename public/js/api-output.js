@@ -41,8 +41,8 @@ function cardHtml(url) {
     <details class="card api-card" data-url="${esc(url)}">
       <summary><strong>GET ${esc(url)}</strong> <span class="api-source"></span> · <span class="api-meta text-muted is-loading">lädt …</span></summary>
       <div class="api-switch" role="group" aria-label="Darstellung">
-        <button type="button" class="btn btn-sm btn-outline" value="table" aria-pressed="true" onclick="setApiView(this)">Tabelle</button>
-        <button type="button" class="btn btn-sm btn-outline" value="json" aria-pressed="false" onclick="setApiView(this)">JSON-Baum</button>
+        <button type="button" class="btn btn-sm btn-outline" value="table" aria-pressed="true" data-click="setApiView">Tabelle</button>
+        <button type="button" class="btn btn-sm btn-outline" value="json" aria-pressed="false" data-click="setApiView">JSON-Baum</button>
       </div>
       <div class="api-view" role="region" aria-label="Antwort von GET ${esc(url)}" tabindex="0"></div>
     </details>
