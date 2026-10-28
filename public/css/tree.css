@@ -375,6 +375,14 @@
   border-bottom-color: var(--route);
 }
 
+/* Verleiht eine Qualifikation, die irgendwo in der gehoverten Kette benoetigt wird - auch ohne
+   direkte Vorgaengerkante (z.B. ein SLRG-Brevet). Gestrichelter Ring statt durchgezogenem Rand,
+   damit er sich von is-path-highlight/is-selected unterscheidet. */
+.tree-node-card.is-hover-qual-source {
+  outline: calc(2px / var(--map-zoom)) dashed var(--route);
+  outline-offset: calc(2px / var(--map-zoom));
+}
+
 /* Selected target: route-coloured border plus a 2px ring. The outline adds
    no size, so the box stays 220 x 80. */
 .tree-node-card.is-selected {

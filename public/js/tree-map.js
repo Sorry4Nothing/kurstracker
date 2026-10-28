@@ -221,6 +221,9 @@ export function applyMapTransform() {
   if (!window._mapEventsInitialized) return;
   const canvas = document.getElementById('treeMapCanvas');
   const zoomLabel = document.getElementById('treeZoomLabel');
+  // Zoom/Pan verschiebt Karten unter dem (unbewegten) Cursor, ohne dass pointerout feuert - ein altes
+  // Hover-Highlight bliebe sonst auf allen anderen Linien bei opacity 0.2 haengen ("Linien verschwinden")
+  highlightConnectedEdges(null);
   if (canvas) {
     canvas.style.transform = `translate(${mapTransform.x}px, ${mapTransform.y}px) scale(${mapTransform.zoom})`;
     canvas.style.setProperty('--map-zoom', mapTransform.zoom);
@@ -368,11 +371,13 @@ export function highlightConnectedEdges(id, treeStructure) {
   if (!svg) return;
 
   const activeEdges = new Set();
+  const requiredQuals = new Set();
   if (id && treeStructure?.nodes) {
     const seen = new Set([id]);
     const walk = nodeId => {
       const node = treeStructure.nodes[nodeId];
       if (!node) return;
+      (node.requiredQualifications || []).forEach(q => requiredQuals.add(q));
       [...(node.prerequisites || []), ...(node.recommendedPrerequisites || [])].forEach(preId => {
         activeEdges.add(`${preId}->${nodeId}`);
         if (seen.has(preId)) return;
@@ -388,5 +393,13 @@ export function highlightConnectedEdges(id, treeStructure) {
     const connected = activeEdges.has(edge);
     p.classList.toggle('is-hover-active', connected);
     p.classList.toggle('is-hover-dimmed', !!id && !connected);
+  });
+
+  // Karten markieren, die eine der benoetigten Qualifikationen verleihen - auch wenn sie nicht als
+  // Vorgaenger verlinkt sind (z.B. ein Brevet, das nur ueber eine Qualifikation, nicht eine Kurskante zaehlt)
+  document.querySelectorAll('.tree-node-card').forEach(card => {
+    const node = treeStructure?.nodes?.[card.id.replace('nodeCard-', '')];
+    const grants = node?.grantsQualifications || [];
+    card.classList.toggle('is-hover-qual-source', requiredQuals.size > 0 && grants.some(q => requiredQuals.has(q)));
   });
 }
