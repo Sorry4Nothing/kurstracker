@@ -3,7 +3,7 @@
  * Knoten-Rendering, Pfadberechnung, Onboarding-Checkliste und Interaktionen
  */
 
-import { COURSE_MAP_COORDS, mapTransform, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, setCanvasSize, resetMapTransform, highlightConnectedEdges } from './tree-map.js';
+import { COURSE_MAP_COORDS, mapTransform, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, setCanvasSize, growCanvasToFit, resetMapTransform, highlightConnectedEdges } from './tree-map.js';
 import { esc } from './utils.js';
 import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
@@ -226,6 +226,7 @@ function setupNodeDrag() {
     COURSE_MAP_COORDS[dragState.id] = { x, y };
     dragState.card.style.left = `${x}px`;
     dragState.card.style.top = `${y}px`;
+    growCanvasToFit(x, y);
     renderTreeSvgLines(treeStructure, selectedTargetCourseId);
   });
 

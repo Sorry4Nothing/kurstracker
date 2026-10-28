@@ -117,6 +117,17 @@ export function setCanvasSize(w, h) {
   if (svg) { svg.style.width = CANVAS_WIDTH + 'px'; svg.style.height = CANVAS_HEIGHT + 'px'; svg.setAttribute('viewBox', `0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`); }
 }
 
+// Zieht man eine Karte ueber die bisherige Leinwandgroesse hinaus, blieb der SVG-viewBox fix -
+// die Verbindungslinie zu ihr wurde am alten Rand abgeschnitten. Waechst nur, schrumpft nie waehrend
+// des Ziehens (sonst springt die Leinwand bei jedem Pixel zurueck, sobald man wieder reinzieht).
+export function growCanvasToFit(x, y) {
+  const neededW = x + NODE_WIDTH + 40;
+  const neededH = y + NODE_HEIGHT + 40;
+  if (neededW > CANVAS_WIDTH || neededH > CANVAS_HEIGHT) {
+    setCanvasSize(Math.max(CANVAS_WIDTH, neededW), Math.max(CANVAS_HEIGHT, neededH));
+  }
+}
+
 export const mapTransform = {
   x: -250,
   y: 0,
