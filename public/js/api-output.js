@@ -5,6 +5,7 @@
  */
 
 import { esc } from './utils.js';
+import { rawFetch } from './fetch-guard.js';
 import { getSelectedTargetCourseId } from './tree.js';
 
 // Alle GET-Aufrufe, mit denen das Frontend seine Daten lädt
@@ -65,7 +66,7 @@ function setSource(card, source) {
 async function fetchResult(url) {
   const started = performance.now();
   try {
-    const res = await fetch(url);
+    const res = await rawFetch(url); // Fehlerstatus soll hier sichtbar bleiben, nicht auf die Fehlerseite führen
     const text = await res.text();
     const result = { ok: res.ok, status: res.status, source: res.headers.get('X-Datenquelle'), text, isJson: true, bytes: new Blob([text]).size, ms: Math.round(performance.now() - started) };
     try {

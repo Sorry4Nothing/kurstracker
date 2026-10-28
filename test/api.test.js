@@ -646,19 +646,42 @@ test('API: falsche Methode oder nackter /api-Pfad gibt JSON-404 statt index.html
   }
 });
 
-test('Statisch: Startseite und App-Pfade liefern index.html, Module und Styles mit passendem Typ', async () => {
+test('Statisch: Startseite liefert index.html, Module und Styles mit passendem Typ', async () => {
   const index = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
-  for (const path of ['/', '/planer', '/profil/qualifikationen']) {
-    const res = await request(path);
-    assert.equal(res.status, 200, path);
-    assert.match(res.headers.get('content-type'), /^text\/html/, path);
-    assert.equal(await res.text(), index, path);
-  }
+  const home = await request('/');
+  assert.equal(home.status, 200);
+  assert.match(home.headers.get('content-type'), /^text\/html/);
+  assert.equal(await home.text(), index);
   for (const [path, type] of [['/app.js', /javascript/], ['/js/tree-map.js', /javascript/], ['/style.css', /^text\/css/]]) {
     const res = await request(path);
     assert.equal(res.status, 200, path);
     assert.match(res.headers.get('content-type'), type, path);
   }
+});
+
+test('Fehlerseiten: unbekannte Adresse gibt 404, /fehler/401 und /fehler/502 tragen ihren Statuscode', async () => {
+  for (const [path, status, title] of [
+    ['/planer', 404, 'Seite nicht gefunden'],
+    ['/profil/qualifikationen', 404, 'Seite nicht gefunden'],
+    ['/fehler/404', 404, 'Seite nicht gefunden'],
+    ['/fehler/401', 401, 'Nicht angemeldet'],
+    ['/fehler/502', 502, 'Die Cevi-DB antwortet nicht'],
+    ['/fehler/418', 404, 'Seite nicht gefunden']
+  ]) {
+    const res = await request(path);
+    assert.equal(res.status, status, path);
+    assert.match(res.headers.get('content-type'), /^text\/html/, path);
+    const body = await res.text();
+    assert.ok(body.includes(`<title>${title} - Cevi Kurstracker</title>`), path);
+    assert.ok(body.includes(`data-code="${status}"`), path);
+    assert.ok(!body.includes('{{'), `${path}: Platzhalter ersetzt`);
+    assert.equal(body.match(/data-error="/g)?.length, 1, `${path}: nur der Abschnitt des Codes`);
+    assert.ok(body.includes(`data-error="${status}"`), path);
+  }
+  // Anmelden: im Vorbereitungsmodus (Tests) über den Mock-Login
+  assert.ok((await (await request('/fehler/401')).text()).includes('href="/api/auth/mock-login"'));
+  // Die API bleibt JSON
+  assert.match((await request('/api/gibt-es-nicht')).headers.get('content-type'), /^application\/json/);
 });
 
 test('Statisch: Quellcode und Umgebungsdateien werden nie ausgeliefert', async () => {

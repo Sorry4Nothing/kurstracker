@@ -471,3 +471,205 @@
     padding: var(--sp-6) var(--sp-4) var(--sp-8);
   }
 }
+
+/* ------------------------------------------------------------------------------
+   7. Error pages (src/views/fehler.html: 401, 404, 502). One template, the server
+      keeps only the section of the status code. The page sits on the same dot
+      grid as the tree map (drawn on a canvas, the design system allows no CSS gradients); a big outlined number, a round icon over its lower
+      edge, then label, title, text and one button. The accent (number, icon,
+      label) says what kind of problem it is: blue 404, amber 401, red 502.
+   ------------------------------------------------------------------------------ */
+.error-page {
+  --accent-bg: var(--blue-soft);
+  --accent-ink: var(--blue-ink);
+  --accent-solid: var(--blue-solid);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-height: calc(100vh - 80px);
+  padding: var(--sp-8) var(--sp-4) var(--sp-12);
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  color: var(--text-main);
+}
+
+/* Dot field behind everything, drawn by fehler.js (grows and takes the accent colour near the pointer) */
+.error-dots {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.error-hero {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  text-align: center;
+}
+
+.error-page[data-code="401"] {
+  --accent-bg: var(--warn-bg);
+  --accent-ink: var(--warn-ink);
+  --accent-solid: var(--warn-ink);
+}
+
+.error-page[data-code="502"] {
+  --accent-bg: var(--red-soft);
+  --accent-ink: var(--red-ink);
+  --accent-solid: var(--red-solid);
+}
+
+/* The number is decoration: an outline in the accent, faded so it stays behind the text */
+.error-numeral {
+  font-size: clamp(120px, 26vw, 220px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: transparent;
+  -webkit-text-stroke: 3px var(--accent-solid);
+  opacity: 0.28;
+  user-select: none;
+}
+
+/* The ring in the page colour cuts the icon out of the number behind it */
+.error-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  margin: calc(-1 * var(--sp-12)) auto var(--sp-5);
+  border-radius: var(--radius-full);
+  background-color: var(--accent-bg);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 8px var(--bg-main);
+}
+
+/* 502: the ring around the icon empties until the next automatic try (fehler.js) */
+.error-ring {
+  position: absolute;
+  inset: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.error-ring-track {
+  stroke: var(--border-subtle);
+}
+
+.error-ring-fill {
+  stroke: var(--accent-solid);
+  stroke-dasharray: 100;
+  transition: stroke-dashoffset 0.5s linear;
+}
+
+.error-retry {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.error-code {
+  font-size: var(--fs-14);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.error-hero h1 {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-30);
+  line-height: var(--lh-30);
+}
+
+.error-text {
+  max-width: 460px;
+  margin: var(--sp-3) auto 0;
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  color: var(--text-muted);
+}
+
+.error-hero .error-actions {
+  margin-top: var(--sp-8);
+}
+
+.error-help {
+  margin-top: var(--sp-6);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
+}
+
+/* Entrance: number fades in, icon pops, the rest rises one after another; the icon then floats slowly */
+@keyframes error-numeral-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 0.28; transform: none; }
+}
+
+@keyframes error-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes error-pop {
+  0% { opacity: 0; transform: scale(0.5); }
+  70% { transform: scale(1.08); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes error-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -6px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .error-numeral {
+    animation: error-numeral-in 0.7s ease-out both;
+  }
+
+  .error-icon {
+    animation: error-pop 0.5s 0.15s cubic-bezier(0.34, 1.4, 0.64, 1) both, error-float 4s 0.7s ease-in-out infinite;
+  }
+
+  .error-code,
+  .error-hero h1,
+  .error-text,
+  .error-hero .error-actions,
+  .error-help {
+    animation: error-rise 0.5s ease-out both;
+  }
+
+  .error-code { animation-delay: 0.25s; }
+  .error-hero h1 { animation-delay: 0.32s; }
+  .error-text { animation-delay: 0.4s; }
+  .error-hero .error-actions { animation-delay: 0.48s; }
+  .error-help { animation-delay: 0.56s; }
+}
+
+@media (max-width: 640px) {
+  .error-icon {
+    width: 72px;
+    height: 72px;
+    margin-top: calc(-1 * var(--sp-8));
+  }
+
+  .error-hero h1 {
+    font-size: var(--fs-24);
+    line-height: var(--lh-24);
+  }
+
+  .error-text {
+    font-size: var(--fs-16);
+    line-height: var(--lh-16);
+  }
+}
