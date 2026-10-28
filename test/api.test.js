@@ -842,6 +842,21 @@ test('Session: ein neuer Login beendet die alte Session serverseitig (SR-02)', a
   assert.deepEqual(await (await request('/api/auth/me', { cookie: old })).json(), { authenticated: false });
 });
 
+test('Session: nach 8 Stunden ohne Anfrage ist sie ungültig, aktive Nutzung verlängert sie (SR-02, #177)', async (t) => {
+  const login = useLiveCeviDb(t);
+  const start = Date.now();
+  const cookie = cookiePair(await login({ id: 'p_9', roles: [] }));
+  const hours = h => start + h * 60 * 60 * 1000;
+  const authenticated = async () => (await (await request('/api/auth/me', { cookie })).json()).authenticated;
+
+  const clock = t.mock.method(Date, 'now', () => hours(7));
+  assert.equal(await authenticated(), true);
+  clock.mock.mockImplementation(() => hours(14)); // 7 h nach der letzten Anfrage
+  assert.equal(await authenticated(), true);
+  clock.mock.mockImplementation(() => hours(22.5)); // 8,5 h Leerlauf
+  assert.equal(await authenticated(), false);
+});
+
 // Rechtematrix (SR-12): jede /api-Route braucht hier eine Zeile, sonst schlägt der Test fehl (deny by default)
 const RIGHTS = {
   'GET /api/auth/login': 'public',
