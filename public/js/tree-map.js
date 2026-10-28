@@ -46,9 +46,19 @@ export function layoutRegionalCoords(nodeIds, nodesById) {
   const todo = nodeIds.filter(id => !COURSE_MAP_COORDS[id] && nodesById[id]);
   if (!todo.length) return null;
 
+  // Zeigt ein anderer Kurs auf diesen als Vorgaenger, gehoert er zur Kette - auch wenn er selbst
+  // keinen Vorgaenger hat (z.B. GKU als Wurzel einer neu verknuepften Kette). Sonst sass er oben in
+  // der eigenstaendigen Reihe, waehrend seine Nachfolger weit unten in der Pipeline standen, und die
+  // Verbindungslinie lief quer durchs ganze Bild.
+  const referenced = new Set();
+  todo.forEach(id => {
+    const n = nodesById[id];
+    [...(n.prerequisites || []), ...(n.recommendedPrerequisites || [])].forEach(p => referenced.add(p));
+  });
+
   const isStandalone = id => {
     const n = nodesById[id];
-    return n.category === 'Optionale Sonderkurse' && !(n.prerequisites?.length || n.recommendedPrerequisites?.length);
+    return n.category === 'Optionale Sonderkurse' && !(n.prerequisites?.length || n.recommendedPrerequisites?.length) && !referenced.has(id);
   };
   const standaloneIds = todo.filter(isStandalone);
   const pipelineIds = todo.filter(id => !isStandalone(id));
