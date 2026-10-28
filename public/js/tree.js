@@ -3,11 +3,12 @@
  * Knoten-Rendering, Pfadberechnung, Onboarding-Checkliste und Interaktionen
  */
 
-import { COURSE_MAP_COORDS, mapTransform, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, setCanvasSize, growCanvasToFit, resetMapTransform, highlightConnectedEdges } from './tree-map.js';
+import { COURSE_MAP_COORDS, mapTransform, setupInteractiveMap, renderTreeSvgLines, layoutRegionalCoords, pickStartCourseId, setCanvasSize, growCanvasToFit, resetMapTransform, highlightConnectedEdges } from './tree-map.js';
 import { esc } from './utils.js';
 import { fetchCourses, upcomingDates, courseMetaHtml } from './courses.js';
 
 let treeStructure = null;
+let standardStructure = null; // Standard-Kurs-IDs, wie sie Planer und Vorschlaege verwenden (unabhaengig von der Region)
 let currentTreeEvaluation = null;
 let selectedTargetCourseId = null;
 let selectedRegion = '';
@@ -38,55 +39,33 @@ export function getTreeStructure() {
   return treeStructure;
 }
 
+export function getStandardStructure() {
+  return standardStructure;
+}
+
 export function getSelectedTargetCourseId() {
   return selectedTargetCourseId;
 }
 
-// Temporaere Vorschau: Pfad einer anderen Region laden, ohne Status/Evaluation neu zu holen
-// (die bleibt auf der eigenen Person, nur die Baumstruktur/Beschriftung wechselt)
-async function applyRegion(regionKey) {
-  selectedRegion = regionKey;
-  const structRes = await fetch(`/api/tree/structure?region=${encodeURIComponent(regionKey)}`);
-  treeStructure = await structRes.json();
+// Region der eingeloggten Person: ihre Kurse haben eigene IDs ohne feste Koordinate. Auto-Anordnung
+// einpassen, die Leinwand mitwachsen lassen und eigene Handplatzierungen darueberlegen
+function layoutRegion() {
   const extent = layoutRegionalCoords(Object.keys(treeStructure.nodes), treeStructure.nodes);
   if (extent) setCanvasSize(extent.width, extent.height); // sonst schneidet die feste 2360x840-Leinwand Karten/Linien ab
-  const dragged = loadDragPositions(regionKey);
+  const dragged = loadDragPositions(selectedRegion);
   Object.entries(dragged).forEach(([id, coord]) => {
     if (treeStructure.nodes[id]) COURSE_MAP_COORDS[id] = coord;
   });
-  renderTree();
-  resetMapTransform(); // neu einpassen, die Leinwand kann jetzt groesser sein als beim letzten Zoom
 }
 
 // Verworfene Handplatzierung: Koordinaten dieser Region vergessen (auch im Speicher, sonst haelt
-// layoutRegionalCoords sie fuer schon platziert und rechnet nichts neu) und neu laden
-function resetRegionLayout(regionKey) {
+// layoutRegionalCoords sie fuer schon platziert und rechnet nichts neu) und neu anordnen
+function resetRegionLayout() {
   Object.keys(treeStructure?.nodes || {}).forEach(id => { delete COURSE_MAP_COORDS[id]; });
-  try { localStorage.removeItem(dragStorageKey(regionKey)); } catch { /* z.B. privater Modus */ }
-}
-
-async function setupRegionSwitcher() {
-  const group = document.getElementById('treeRegionGroup');
-  const select = document.getElementById('treeRegionSelect');
-  const resetBtn = document.getElementById('treeResetLayoutBtn');
-  if (!group || !select) return;
-  try {
-    const res = await fetch('/api/tree/regions');
-    const { regions } = await res.json();
-    if (!regions?.length) return;
-    select.innerHTML = regions.map(r => `<option value="${esc(r.key)}">${esc(r.label)}</option>`).join('');
-    const initialRegion = selectedRegion || regions[0].key;
-    select.value = initialRegion;
-    group.style.display = '';
-    select.addEventListener('change', () => applyRegion(select.value));
-    resetBtn?.addEventListener('click', () => {
-      resetRegionLayout(selectedRegion);
-      applyRegion(selectedRegion);
-    });
-    await applyRegion(initialRegion); // Dropdown zeigt sonst eine Region, laedt aber noch den Standardbaum
-  } catch (err) {
-    console.error('Regionen fuer Baum-Vorschau nicht geladen:', err);
-  }
+  try { localStorage.removeItem(dragStorageKey(selectedRegion)); } catch { /* z.B. privater Modus */ }
+  layoutRegion();
+  renderTree();
+  resetMapTransform(); // neu einpassen, die Leinwand kann jetzt groesser sein als beim letzten Zoom
 }
 
 export async function loadCourseTree() {
@@ -94,20 +73,30 @@ export async function loadCourseTree() {
   if (!container) return;
 
   try {
-    const [structRes, evalRes] = await Promise.all([
-      fetch('/api/tree/structure'),
-      fetch('/api/tree/evaluation')
+    // Die Region der Person bestimmt die Struktur; ohne bekannte Region bleibt es beim Standardbaum
+    const regions = await fetch('/api/tree/regions').then(res => res.json()).catch(() => ({}));
+    selectedRegion = regions.own || '';
+    const query = selectedRegion ? `?region=${encodeURIComponent(selectedRegion)}` : '';
+    const [structRes, evalRes, standardRes] = await Promise.all([
+      fetch(`/api/tree/structure${query}`),
+      fetch(`/api/tree/evaluation${query}`),
+      query ? fetch('/api/tree/structure') : null
     ]);
 
     treeStructure = await structRes.json();
+    standardStructure = standardRes ? await standardRes.json() : treeStructure;
     currentTreeEvaluation = await evalRes.json();
+
+    const group = document.getElementById('treeRegionGroup');
+    if (selectedRegion) layoutRegion();
+    if (group) {
+      group.style.display = selectedRegion ? '' : 'none';
+      document.getElementById('treeResetLayoutBtn').onclick = resetRegionLayout; // onclick statt addEventListener: loadCourseTree kann mehrfach laufen
+    }
 
     renderTree();
     setupInteractiveMap(pickStartCourse());
     setupNodeDrag();
-    // Regionen-Umschalter (setupRegionSwitcher) war nur zum Durchklicken der Regionen beim Review -
-    // bis die Region automatisch aus primary_group/layer_group der eingeloggten Person kommt (Folge-Issue),
-    // bleibt der Baum beim Standardpfad. Funktion/Daten bleiben fuer dieses Issue bestehen.
   } catch (err) {
     console.error('Fehler beim Laden des Kursbaums:', err);
     container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursbaums: ${esc(err.message)}</div>`;
@@ -118,9 +107,7 @@ export async function loadCourseTree() {
 // sonst der zuletzt absolvierte
 function pickStartCourse() {
   const nodeStates = currentTreeEvaluation?.evaluation?.nodes || currentTreeEvaluation?.evaluation?.nodeStates || {};
-  const ids = Object.keys(COURSE_MAP_COORDS);
-  const withStatus = status => id => nodeStates[id]?.status === status;
-  return ids.find(withStatus('AVAILABLE')) || ids.findLast(withStatus('COMPLETED')) || 'voku';
+  return pickStartCourseId(treeStructure.nodes, nodeStates);
 }
 
 function nodeCardHtml(node, nodeStates) {
@@ -311,7 +298,7 @@ export async function selectTargetCourse(courseId) {
 async function showUpcomingDates(courseId) {
   const container = document.getElementById('inspectorDates');
   try {
-    const dates = upcomingDates(await fetchCourses(), courseId).slice(0, 3);
+    const dates = upcomingDates(await fetchCourses(), treeStructure.nodes[courseId]?.courseNodeId || courseId) // Regionskurse: die Durchfuehrungen tragen die Standard-ID.slice(0, 3);
     if (courseId !== selectedTargetCourseId) return; // inzwischen ist ein anderer Kurs gewählt
     container.innerHTML = dates.map(c => courseMetaHtml(c)).join('') || 'Keine kommenden Termine in der Cevi-DB.';
   } catch (err) {

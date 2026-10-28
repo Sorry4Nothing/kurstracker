@@ -116,6 +116,23 @@ export function layoutRegionalCoords(nodeIds, nodesById) {
   };
 }
 
+/**
+ * Kurs, auf den die Karte beim Oeffnen zentriert: der erste bereite Kurs in Kartenreihenfolge, sonst der zuletzt
+ * absolvierte. Kurse der Kette gehen vor freistehenden Zusatzkursen (Level Up, Froesch-Up), die in der Reihenfolge
+ * zuerst stehen, aber kein "aktueller Kurs" der Person sind.
+ */
+export function pickStartCourseId(nodes, nodeStates) {
+  const referenced = new Set(Object.values(nodes).flatMap(n => [...(n.prerequisites || []), ...(n.recommendedPrerequisites || [])]));
+  const ids = Object.keys(COURSE_MAP_COORDS).filter(id => nodes[id]);
+  const inChain = ids.filter(id => referenced.has(id) || nodes[id].prerequisites?.length || nodes[id].recommendedPrerequisites?.length);
+  const withStatus = status => id => nodeStates[id]?.status === status;
+  for (const list of [inChain, ids]) {
+    const hit = list.find(withStatus('AVAILABLE')) || list.findLast(withStatus('COMPLETED'));
+    if (hit) return hit;
+  }
+  return ids[0] || 'voku';
+}
+
 /** Vergroessert die feste Leinwand (Standard 2360x840) auf mindestens w x h, fuer eine Baum-Vorschau
  *  mit mehr Platzbedarf als der handgepflegte Standardbaum. Nie kleiner als der Standard. */
 export function setCanvasSize(w, h) {

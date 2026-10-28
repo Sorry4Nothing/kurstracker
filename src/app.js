@@ -10,7 +10,7 @@ import { envConfig, validateEnv } from './config/env.js';
 import { ceviDbService } from './services/ceviDbService.js';
 import { courseTreeEngine, CourseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
-import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles } from './domain/courseTreeData.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, toRegionCourseIds, standardCourseId } from './domain/courseTreeData.js';
 import { plannerScope, visibleTo, groupsOf, isAbteilungsleitung, isStufenleitung, leadDepartments, canEditGroup, canReopenGroup } from './domain/plannerAccess.js';
 import { normalizeEntries, MAX_NOTE, STATUS_OPEN, STATUS_SUBMITTED } from './domain/proposals.js';
 import { credentialStore } from './services/credentialStore.js';
@@ -400,10 +400,22 @@ app.get('/api/user/qualifications', requireAuth, async (req, res) => {
 // AUSBIILUNGSBAUM & PATHFINDING API
 // -----------------------------------------------------------------------------
 
-// Liefert die Liste der Regionen mit eigenem Ausbildungspfad (fuer den Regionen-Umschalter)
+// Region der eingeloggten Person (user.region); ohne bekannte Region bleibt der Standardbaum.
+// shortcut: nur das Mock-Profil traegt eine Region (Zuerich), echte Logins folgen aus primary_group/layer_group (#145)
+const regionOf = user => (Object.hasOwn(COURSE_NODES_BY_REGION, user?.region) ? user.region : null);
+
+// Engine pro Region nur einmal bauen, die Knoten aendern sich zur Laufzeit nicht
+const regionEngines = new Map();
+const engineFor = region => {
+  if (!region) return courseTreeEngine;
+  if (!regionEngines.has(region)) regionEngines.set(region, new CourseTreeEngine(COURSE_NODES_BY_REGION[region]));
+  return regionEngines.get(region);
+};
+
+// Liefert die Regionen mit eigenem Ausbildungspfad und die Region der eingeloggten Person (own, sonst null)
 app.get('/api/tree/regions', (req, res) => {
   setSource(res, 'kurstracker');
-  res.json({ regions: REGIONS });
+  res.json({ regions: REGIONS, own: regionOf(getSession(req)?.user) });
 });
 
 // Liefert die vollständige Baumstruktur; ?region=<key> zeigt probeweise den Pfad dieser
@@ -419,7 +431,7 @@ app.get('/api/tree/structure', (req, res) => {
   // allgemeinen Ausbildungswegs - nur zeigen, wer die entsprechende Rolle traegt
   const visibleNodes = Object.fromEntries(Object.entries(nodes).filter(([, n]) =>
     (n.code !== 'NOLK' || canSeeNolk) && (n.code !== 'SLK' || canSeeSlk)
-  ));
+  ).map(([id, n]) => [id, nodes === COURSE_NODES ? n : { ...n, courseNodeId: standardCourseId(n) }]));
   res.json({
     nodes: withGenderTitles(visibleNodes, user?.gender)
   });
@@ -456,7 +468,10 @@ app.get('/api/tree/evaluation', requireAuth, async (req, res) => {
   try {
     setPersonSource(req, res);
     const person = await resolveActivePerson(req);
-    const evaluation = courseTreeEngine.forGender(person.gender).evaluatePersonInTree(person);
+    // Regionsbaeume haben eigene Kurs-IDs: die absolvierten Kurse der Person (Standard-IDs) werden per Kuerzel uebersetzt
+    const region = Object.hasOwn(COURSE_NODES_BY_REGION, req.query.region) ? req.query.region : null;
+    const forTree = region ? { ...person, completedCourses: toRegionCourseIds(person.completedCourses, COURSE_NODES_BY_REGION[region]) } : person;
+    const evaluation = engineFor(region).forGender(person.gender).evaluatePersonInTree(forTree);
     res.json({
       person,
       evaluation
@@ -474,7 +489,7 @@ app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
     const { courseId } = req.params;
     const region = req.query.region;
     const nodes = region && COURSE_NODES_BY_REGION[region] ? COURSE_NODES_BY_REGION[region] : COURSE_NODES;
-    const engine = nodes === COURSE_NODES ? courseTreeEngine : new CourseTreeEngine(nodes);
+    const engine = engineFor(nodes === COURSE_NODES ? null : region);
     // Unbekannter Zielkurs ist ein Client-Fehler (404), kein Serverfehler (Bug #53)
     const resolved = engine.resolveCourseId(courseId);
     if (!Object.hasOwn(nodes, resolved)) {
@@ -482,7 +497,8 @@ app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
     }
     setPersonSource(req, res);
     const person = await resolveActivePerson(req);
-    const pathResult = engine.forGender(person.gender).findPathToTarget(person, courseId);
+    const forTree = nodes === COURSE_NODES ? person : { ...person, completedCourses: toRegionCourseIds(person.completedCourses, nodes) };
+    const pathResult = engine.forGender(person.gender).findPathToTarget(forTree, courseId);
     res.json(pathResult);
   } catch (err) {
     sendError(res, err, 'Pfadberechnung');

@@ -5,7 +5,7 @@
 
 import { formatEuropeanDate, formatEuropeanDateRange, esc, showToast } from './utils.js';
 import { fetchCourses, upcomingDates } from './courses.js';
-import { getTreeStructure } from './tree.js';
+import { getStandardStructure } from './tree.js';
 import { enhanceSelect, refreshSelect } from './select.js';
 import { confirmDialog, askReturn } from './confirm.js';
 
@@ -188,14 +188,14 @@ const isSystemCandidate = (personId, courseId) =>
   Boolean(overview?.analysis?.candidatesByCourse?.[courseId]?.some(c => c.participantId === personId));
 
 export function courseTitle(courseId, gender) {
-  const node = getTreeStructure()?.nodes?.[courseId];
+  const node = getStandardStructure()?.nodes?.[courseId];
   return node?.titles?.[gender] || node?.title || courseId;
 }
 
 // Kürzel wie im Kurs-Dropdown des Dialogs («Heku», «SiBe Berg»), sonst das aus dem Baum
 const courseCode = courseId =>
   document.querySelector(`#modalCourseSelect option[value="${CSS.escape(courseId)}"]`)?.dataset.code
-  || getTreeStructure()?.nodes?.[courseId]?.code || courseId;
+  || getStandardStructure()?.nodes?.[courseId]?.code || courseId;
 
 // Eine Empfehlung des Systems wird ohne Dialog übernommen; ohne Empfehlung braucht der Vorschlag eine Begründung im Dialog
 function suggestButtonHtml(person, rec, group) {
@@ -505,7 +505,7 @@ export function openNominationModal(personId, personName, defaultCourseId, group
   if (avatar) avatar.textContent = [...personName][0]?.toUpperCase() ?? '';
   document.getElementById('modalNotes').value = '';
   // Titel wie im Baum, bei J+S und SLRG also aus der Cevi-DB. Kurse mit m/w-Formen behalten den neutralen Titel aus dem HTML
-  const nodes = getTreeStructure()?.nodes;
+  const nodes = getStandardStructure()?.nodes;
   for (const option of courseSelect?.options || []) {
     const node = nodes?.[option.value];
     if (node && !node.titles) option.textContent = `${node.title} - ab ${node.minAge} J.`;
