@@ -11,7 +11,7 @@ import { envConfig, validateEnv } from './config/env.js';
 import { ceviDbService } from './services/ceviDbService.js';
 import { courseTreeEngine, CourseTreeEngine } from './domain/courseTreeEngine.js';
 import { stufenleiterPlanningEngine } from './domain/stufenleiterPlanningEngine.js';
-import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, toRegionCourseIds, standardCourseId } from './domain/courseTreeData.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles } from './domain/courseTreeData.js';
 import { plannerScope, visibleTo, groupsOf, isAbteilungsleitung, isStufenleitung, isFroeschliLeitung, leadDepartments, canEditGroup, canReopenGroup } from './domain/plannerAccess.js';
 import { normalizeEntries, MAX_NOTE, STATUS_OPEN, STATUS_SUBMITTED } from './domain/proposals.js';
 import { credentialStore } from './services/credentialStore.js';
@@ -433,7 +433,7 @@ app.get('/api/tree/structure', (req, res) => {
   // des allgemeinen Ausbildungswegs - nur zeigen, wer die entsprechende Rolle traegt
   const visibleNodes = Object.fromEntries(Object.entries(nodes).filter(([, n]) =>
     (n.code !== 'NOLK' || canSeeNolk) && (n.code !== 'SLK' || canSeeSlk) && (n.code !== 'Frösch-Up' || canSeeFroeschUp)
-  ).map(([id, n]) => [id, nodes === COURSE_NODES ? n : { ...n, courseNodeId: standardCourseId(n) }]));
+  ));
   res.json({
     nodes: withGenderTitles(visibleNodes, user?.gender)
   });
@@ -472,10 +472,8 @@ app.get('/api/tree/evaluation', requireAuth, async (req, res) => {
   try {
     setPersonSource(req, res);
     const person = await resolveActivePerson(req);
-    // Regionsbaeume haben eigene Kurs-IDs: die absolvierten Kurse der Person (Standard-IDs) werden per Kuerzel uebersetzt
     const region = Object.hasOwn(COURSE_NODES_BY_REGION, req.query.region) ? req.query.region : null;
-    const forTree = region ? { ...person, completedCourses: toRegionCourseIds(person.completedCourses, COURSE_NODES_BY_REGION[region]) } : person;
-    const evaluation = engineFor(region).forGender(person.gender).evaluatePersonInTree(forTree);
+    const evaluation = engineFor(region).forGender(person.gender).evaluatePersonInTree(person);
     res.json({
       person,
       evaluation
@@ -486,8 +484,7 @@ app.get('/api/tree/evaluation', requireAuth, async (req, res) => {
 });
 
 // Berechnet den Pfad zu einem Zielkurs via GET. ?region= rechnet auf der Baum-Vorschau einer
-// Region statt des Standardbaums (siehe /api/tree/structure) - die Kurs-IDs dort sind
-// regionsspezifisch (z.B. "zuerich_glk3_fa_2027") und stehen nicht in COURSE_NODES.
+// Region statt des Standardbaums (siehe /api/tree/structure); ein Slot, den die Region nicht hat, ist ein 404.
 app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -501,8 +498,7 @@ app.get('/api/tree/path/:courseId', requireAuth, async (req, res) => {
     }
     setPersonSource(req, res);
     const person = await resolveActivePerson(req);
-    const forTree = nodes === COURSE_NODES ? person : { ...person, completedCourses: toRegionCourseIds(person.completedCourses, nodes) };
-    const pathResult = engine.forGender(person.gender).findPathToTarget(forTree, courseId);
+    const pathResult = engine.forGender(person.gender).findPathToTarget(person, courseId);
     res.json(pathResult);
   } catch (err) {
     sendError(res, err, 'Pfadberechnung');

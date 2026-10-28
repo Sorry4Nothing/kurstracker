@@ -1,12 +1,9 @@
 import { test, expect, openApp } from './fixtures.js';
-import { layoutRegionalCoords, pickStartCourseId } from '../public/js/tree-map.js';
+import { COURSE_MAP_COORDS, layoutRegionalCoords, pickStartCourseId } from '../public/js/tree-map.js';
 
-// Das Mock-Profil gilt als Region Zürich: der Baum zeigt deren Kurse mit eigenen IDs
+// Das Mock-Profil gilt als Region Zürich: der Baum zeigt deren Kurse
 const REGION = 'zuerich';
-const ID = {
-  voku: 'zuerich_voku_2026', heku: 'zuerich_heku_m_2027', glk1: 'zuerich_glk1_f_2027', glk2: 'zuerich_glk2_2027',
-  glk3: 'zuerich_glk3_fa_2027'
-};
+const ID = { voku: 'voku', heku: 'heku', glk1: 'glk1', glk2: 'glk2', glk3: 'glk3' };
 
 const fetchStructure = async request => (await (await request.get(`/api/tree/structure?region=${REGION}`)).json()).nodes;
 const zoomPercent = async page => parseInt(await page.locator('#treeZoomLabel').textContent(), 10);
@@ -19,6 +16,7 @@ const edges = locator => locator.evaluateAll(paths => [...new Set(paths.map(p =>
 async function startCourse(request) {
   const { evaluation } = await (await request.get(`/api/tree/evaluation?region=${REGION}`)).json();
   const nodes = await fetchStructure(request);
+  Object.keys(nodes).forEach(id => { delete COURSE_MAP_COORDS[id]; });
   layoutRegionalCoords(Object.keys(nodes), nodes); // dieselbe Anordnung wie im Browser, damit die Reihenfolge stimmt
   return pickStartCourseId(nodes, evaluation.nodes);
 }
@@ -84,7 +82,7 @@ test.describe('Ausbildungsbaum', () => {
     await expect(badge(ID.glk3)).toHaveCount(1);
     await expect(badge(ID.voku)).toHaveCount(0);
     await expect(badge(ID.glk2)).toHaveCount(0);
-    await expect(badge('zuerich_level_up_2027')).toHaveCount(0);
+    await expect(badge('level_up')).toHaveCount(0);
 
     const [card, dot] = await Promise.all([page.locator(`#nodeCard-${ID.glk3}`).boundingBox(), badge(ID.glk3).boundingBox()]);
     expect(dot.width).toBe(dot.height);
@@ -157,7 +155,7 @@ test.describe('Ausbildungsbaum', () => {
     await expect.poll(() => edges(activeLines)).toEqual([[ID.glk1, ID.glk2], [ID.glk2, ID.glk3], [ID.heku, ID.glk1], [ID.voku, ID.heku]].map(([a, b]) => `${a}->${b}`).sort());
 
     // Neuer Zielkurs: alte Auswahl und alter Pfad verschwinden
-    const pionier = 'zuerich_pioniertechnik_modul_2027';
+    const pionier = 'pionier';
     await page.getByRole('button', { name: /Pioniertechnik-Mo/ }).click();
     await expect(page.locator('#inspectorTitle')).toContainText('Fortbildung Leiter*in');
     await expect(page.locator(`#nodeCard-${ID.glk3}`)).not.toHaveClass(/is-selected/);

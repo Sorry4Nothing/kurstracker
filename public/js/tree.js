@@ -47,9 +47,15 @@ export function getSelectedTargetCourseId() {
   return selectedTargetCourseId;
 }
 
+export function getSelectedRegion() {
+  return selectedRegion;
+}
+
 // Region der eingeloggten Person: ihre Kurse haben eigene IDs ohne feste Koordinate. Auto-Anordnung
 // einpassen, die Leinwand mitwachsen lassen und eigene Handplatzierungen darueberlegen
 function layoutRegion() {
+  // Die Slots teilen ihre IDs mit dem Standardbaum: dessen feste Koordinaten gelten hier nicht
+  Object.keys(treeStructure.nodes).forEach(id => { delete COURSE_MAP_COORDS[id]; });
   const extent = layoutRegionalCoords(Object.keys(treeStructure.nodes), treeStructure.nodes);
   if (extent) setCanvasSize(extent.width, extent.height); // sonst schneidet die feste 2360x840-Leinwand Karten/Linien ab
   const dragged = loadDragPositions(selectedRegion);
@@ -58,10 +64,8 @@ function layoutRegion() {
   });
 }
 
-// Verworfene Handplatzierung: Koordinaten dieser Region vergessen (auch im Speicher, sonst haelt
-// layoutRegionalCoords sie fuer schon platziert und rechnet nichts neu) und neu anordnen
+// Verworfene Handplatzierung: Koordinaten dieser Region vergessen und neu anordnen
 function resetRegionLayout() {
-  Object.keys(treeStructure?.nodes || {}).forEach(id => { delete COURSE_MAP_COORDS[id]; });
   try { localStorage.removeItem(dragStorageKey(selectedRegion)); } catch { /* z.B. privater Modus */ }
   layoutRegion();
   renderTree();
@@ -303,8 +307,7 @@ export async function selectTargetCourse(courseId) {
 async function showUpcomingDates(courseId) {
   const container = document.getElementById('inspectorDates');
   try {
-    // Regionskurse: die Durchführungen tragen die Standard-ID
-    const dates = upcomingDates(await fetchCourses(), treeStructure.nodes[courseId]?.courseNodeId || courseId).slice(0, 3);
+    const dates = upcomingDates(await fetchCourses(), courseId).slice(0, 3);
     if (courseId !== selectedTargetCourseId) return; // inzwischen ist ein anderer Kurs gewählt
     container.innerHTML = dates.map(c => courseMetaHtml(c)).join('') || 'Keine kommenden Termine in der Cevi-DB.';
   } catch (err) {
