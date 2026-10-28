@@ -209,7 +209,7 @@ export class CeviDbService {
    * @param {string} state - CSRF Token
    * @returns {string} Vollständige Redirect-URL zu db.cevi.ch oder lokaler Mock
    */
-  getAuthorizationUrl(state = 'cevi_auth_state') {
+  getAuthorizationUrl(state = 'cevi_auth_state', codeChallenge) {
     // Im Vorbereitungsmodus oder Mock-Modus wird auf den lokalen Sandbox-Login verwiesen,
     // um Fehlermeldungen wegen nicht registrierter OAuth-Clients auf db.cevi.ch zu verhindern!
     if (this.isPreparationMode()) {
@@ -223,6 +223,11 @@ export class CeviDbService {
       scope: this.scopes,
       state: state
     });
+    // PKCE (S256): ein abgefangener Code ist ohne den Verifier des Servers wertlos (#172)
+    if (codeChallenge) {
+      params.set('code_challenge', codeChallenge);
+      params.set('code_challenge_method', 'S256');
+    }
 
     return `${this.baseUrl}/oauth/authorize?${params.toString()}`;
   }
@@ -232,7 +237,7 @@ export class CeviDbService {
    * @param {string} code - Der von Cevi-DB empfangene Code
    * @returns {Promise<{ access_token: string, token_type: string, expires_in: number, refresh_token?: string }>}
    */
-  async exchangeCodeForToken(code) {
+  async exchangeCodeForToken(code, codeVerifier) {
     const response = await fetch(`${this.baseUrl}/oauth/token`, {
       method: 'POST',
       headers: {
@@ -244,7 +249,8 @@ export class CeviDbService {
         client_id: this.clientId,
         client_secret: this.clientSecret,
         code: code,
-        redirect_uri: this.redirectUri
+        redirect_uri: this.redirectUri,
+        ...(codeVerifier ? { code_verifier: codeVerifier } : {})
       })
     });
 

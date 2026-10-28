@@ -74,7 +74,7 @@
           <span class="nav-text">Umgebungseinstellungen</span>
         </button>
 
-        <button class="sidebar-nav-item" id="tabSystemLog" onclick="switchTab('systemlog')" hidden>
+        <button class="sidebar-nav-item" id="tabSystemLog" data-click="switchTab" data-args='["systemlog"]' hidden>
           <i class="fa-solid fa-heart-pulse nav-icon" aria-hidden="true"></i>
           <span class="nav-text">Systemlog</span>
         </button>
@@ -581,7 +581,7 @@
 
         <section class="tab-panel" id="panel-systemlog" role="tabpanel">
           <div class="panel-header">
-            <button class="btn btn-secondary" onclick="loadSystemLog()">
+            <button class="btn btn-secondary" data-click="loadSystemLog">
               <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Aktualisieren
             </button>
           </div>

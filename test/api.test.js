@@ -1,5 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -94,7 +95,8 @@ test('API: ohne Session ist das Demo-Profil mit Planerzugriff aktiv', async () =
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), {
     authenticated: true,
-    user: ceviDbService.getMockUser(),
+    // Nur die Felder, die das Frontend zeigt (#176): keine E-Mail, Gruppen oder übrigen Profilfelder
+    user: (({ id, first_name, last_name, nickname, birthday, picture_url, roles }) => ({ id, first_name, last_name, nickname, birthday, picture_url, roles }))(ceviDbService.getMockUser()),
     isMock: true,
     canUsePlanner: true,
     canManageSettings: true,
@@ -775,6 +777,26 @@ test('Live-Login: leitet zur Cevi-DB-Autorisierung mit Client-ID, Redirect-URI, 
   assert.ok(state);
 });
 
+test('Live-Login: PKCE - code_challenge (S256) geht an die Cevi-DB, der passende Verifier erst beim Token-Tausch (#172)', async (t) => {
+  const login = useLiveCeviDb(t);
+  // Den Verifier kennt nur der Server: der Hash der Autorisierungs-URL muss zum Verifier im Token-Tausch passen
+  const { location, state, cookie } = await startLogin();
+  assert.equal(location.searchParams.get('code_challenge_method'), 'S256');
+  const challenge = location.searchParams.get('code_challenge');
+  assert.match(challenge, /^[A-Za-z0-9_-]{43}$/);
+  assert.ok(!location.href.includes('code_verifier'));
+
+  await request(`/api/auth/callback?code=abc&state=${state}`, { cookie }).catch(() => {});
+  const verifier = ceviDbService.exchangeCodeForToken.mock.calls.at(-1).arguments[1];
+  assert.match(verifier, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(crypto.createHash('sha256').update(verifier).digest('base64url'), challenge);
+
+  // Jeder Login bekommt einen eigenen Verifier
+  const second = await startLogin();
+  assert.notEqual(second.location.searchParams.get('code_challenge'), challenge);
+  void login;
+});
+
 test('OAuth-Callback: fehlgeschlagener Token-Tausch legt keine Session an', async (t) => {
   t.mock.method(console, 'error', () => {});
   t.mock.method(ceviDbService, 'isPreparationMode', () => false);
@@ -799,7 +821,20 @@ test('Live-Login: Session-Cookie ist signiert, httpOnly, 7 Tage gültig und trä
   assert.equal(ceviDbService.getUserInfo.mock.calls[0].arguments[0], 'live_abc');
 
   const me = await (await request('/api/auth/me', { cookie: cookiePair(line) })).json();
-  assert.deepEqual(me, { authenticated: true, user, isMock: false, canUsePlanner: false, canManageSettings: false, canViewSystemLog: false, canReviewProposals: false });
+  // Rollen erscheinen als Namen, das Frontend zeigt den ersten an
+  assert.deepEqual(me, { authenticated: true, user: { id: 'p_1', first_name: 'Mia', last_name: 'Muster', roles: ['Mitglied'] }, isMock: false, canUsePlanner: false, canManageSettings: false, canViewSystemLog: false, canReviewProposals: false });
+});
+
+test('Live-Login: /api/auth/me gibt keine E-Mail, Adresse oder übrigen Userinfo-Felder weiter (#176)', async (t) => {
+  const login = useLiveCeviDb(t);
+  const cookie = cookiePair(await login({
+    id: 'p_9', first_name: 'Ida', last_name: 'Muster', nickname: 'Ida', birthday: '2000-01-02', picture_url: null,
+    email: 'ida@example.invalid', street: 'Musterweg', housenumber: '1', zip_code: '8000', town: 'Zürich', language: 'de',
+    roles: [{ role_class: 'Group::Stufe::Teilnehmer', group_id: 10, role_name: 'Teilnehmer*in', permissions: ['layer_and_below_full'] }]
+  }));
+  const { user } = await (await request('/api/auth/me', { cookie })).json();
+  assert.deepEqual(Object.keys(user).sort(), ['birthday', 'first_name', 'id', 'last_name', 'nickname', 'picture_url', 'roles']);
+  assert.deepEqual(user.roles, ['Teilnehmer*in']);
 });
 
 test('Live-Login: Planer ist ohne Leitungsrolle gesperrt, Stufenleiterin hat Zugriff', async (t) => {

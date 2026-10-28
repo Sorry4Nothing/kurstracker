@@ -31,7 +31,8 @@ registerActions({
   submitNomination: ({ event }) => submitNomination(event),
   loadApiOutput: () => loadApiOutput(),
   setApiView: ({ element }) => setApiView(element),
-  selectTargetCourse: (_, courseId) => selectTargetCourse(courseId)
+  selectTargetCourse: (_, courseId) => selectTargetCourse(courseId),
+  loadSystemLog: () => loadSystemLog()
 });
 
 // Auf window bleiben die Funktionen für Tests und die Konsole erreichbar

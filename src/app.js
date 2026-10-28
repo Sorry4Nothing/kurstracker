@@ -247,25 +247,28 @@ function requireAuth(req, res, next) {
 // OAuth-States sind serverseitig je einmal einlösbar: das signierte Cookie allein liesse sich beliebig oft wiederverwenden
 const STATE_TTL_MS = 10 * 60 * 1000;
 const MAX_PENDING_STATES = 10000;
-const pendingStates = new Map(); // state -> Ablaufzeit
+const pendingStates = new Map(); // state -> { expiresAt, verifier }
 
 function issueState() {
   const now = Date.now();
-  for (const [state, expiresAt] of pendingStates) {
-    if (expiresAt <= now) pendingStates.delete(state);
+  for (const [state, pending] of pendingStates) {
+    if (pending.expiresAt <= now) pendingStates.delete(state);
   }
   while (pendingStates.size >= MAX_PENDING_STATES) {
     pendingStates.delete(pendingStates.keys().next().value);
   }
   const state = crypto.randomUUID();
-  pendingStates.set(state, now + STATE_TTL_MS);
-  return state;
+  // PKCE: der Verifier bleibt auf dem Server, nur sein Hash (code_challenge) geht an die Cevi-DB
+  const verifier = crypto.randomBytes(32).toString('base64url');
+  pendingStates.set(state, { expiresAt: now + STATE_TTL_MS, verifier });
+  return { state, verifier, challenge: crypto.createHash('sha256').update(verifier).digest('base64url') };
 }
 
+// Liefert den Verifier zum state, oder null bei unbekanntem, abgelaufenem oder schon eingelöstem state
 function consumeState(state) {
-  const expiresAt = pendingStates.get(state);
+  const pending = pendingStates.get(state);
   pendingStates.delete(state);
-  return expiresAt !== undefined && expiresAt > Date.now();
+  return pending && pending.expiresAt > Date.now() ? pending.verifier : null;
 }
 
 const canUsePlanner = user => plannerScope(user) !== null;
@@ -304,9 +307,9 @@ function setPersonSource(req, res) {
 app.use(['/api/auth/login', '/api/auth/mock-login', '/api/auth/callback', '/api/auth/logout'], authLimiter);
 
 app.get('/api/auth/login', (req, res) => {
-  const state = issueState();
+  const { state, challenge } = issueState();
   res.cookie('cevi_oauth_state', state, { ...COOKIE_OPTIONS, maxAge: 10 * 60 * 1000 });
-  res.redirect(ceviDbService.getAuthorizationUrl(state));
+  res.redirect(ceviDbService.getAuthorizationUrl(state, challenge));
 });
 
 // Direkter Mock-Login, nur im Vorbereitungsmodus (dort ist das Demo-Profil ohnehin aktiv)
@@ -329,7 +332,8 @@ app.get('/api/auth/callback', async (req, res) => {
   }
 
   // Reihenfolge wichtig: erst Cookie-Abgleich, dann einlösen, damit gefälschte Versuche einen echten State nicht verbrauchen
-  if (!state || state !== expectedState || !consumeState(state)) {
+  const verifier = state && state === expectedState ? consumeState(state) : null;
+  if (!verifier) {
     logSecurity(req, 'OAuth-Callback mit ungültigem state abgewiesen');
     return res.redirect('/?error=invalid_state');
   }
@@ -343,7 +347,7 @@ app.get('/api/auth/callback', async (req, res) => {
   }
 
   try {
-    const tokenData = await ceviDbService.exchangeCodeForToken(code);
+    const tokenData = await ceviDbService.exchangeCodeForToken(code, verifier);
     const userInfo = await ceviDbService.getUserInfo(tokenData.access_token);
 
     // Eine mitgesendete alte Session endet mit dem neuen Login (SR-02)
@@ -364,6 +368,19 @@ app.get('/api/auth/callback', async (req, res) => {
   }
 });
 
+// Nur die Felder, die das Frontend anzeigt (#176): keine E-Mail, Adresse oder weitere Userinfo-Felder. Rollen als Namen:
+// die Cevi-DB liefert Objekte, das Demo-Profil Text.
+const roleLabel = role => (typeof role === 'string' ? role : String(role?.role_name ?? role?.role ?? ''));
+const publicUser = user => ({
+  id: user.id,
+  first_name: user.first_name,
+  last_name: user.last_name,
+  nickname: user.nickname,
+  birthday: user.birthday,
+  picture_url: user.picture_url,
+  roles: (user.roles ?? []).map(roleLabel).filter(Boolean)
+});
+
 // Aktuell eingeloggter Benutzer; im Live-Betrieb ohne Session ehrlich "nicht angemeldet"
 app.get('/api/auth/me', (req, res) => {
   const session = getSession(req);
@@ -374,7 +391,7 @@ app.get('/api/auth/me', (req, res) => {
   setPersonSource(req, res);
   res.json({
     authenticated: true,
-    user: session.user,
+    user: publicUser(session.user),
     isMock: session.isMock,
     canUsePlanner: canUsePlanner(session.user),
     canManageSettings: leadDepartments(session.user).length > 0,
