@@ -170,7 +170,8 @@ app.use('/api', (req, res, next) => {
   next();
 }, requireSameOrigin, apiLimiter);
 
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 Tage
+const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 Tage absolut
+const SESSION_IDLE_MS = 8 * 60 * 60 * 1000; // 8 Stunden ohne Aktivität (SR-02, #177)
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: envConfig.auth.cookieSecure,
@@ -183,11 +184,18 @@ const COOKIE_OPTIONS = {
 const activeSessions = new Map();
 const MAX_ACTIVE_SESSIONS = 5000;
 
+// Abgelaufen: absolut nach 7 Tagen oder nach 8 Stunden ohne Anfrage. Ein gestohlenes Cookie bleibt so nicht tagelang brauchbar.
+const isExpired = (session, now) => now - session.createdAt >= SESSION_MAX_AGE_MS || now - session.lastSeen >= SESSION_IDLE_MS;
+
 function getSession(req) {
   const sessionId = req.signedCookies?.cevi_session_id;
   const session = sessionId && activeSessions.get(sessionId);
   if (session) {
-    if (Date.now() - session.createdAt < SESSION_MAX_AGE_MS) return session;
+    const now = Date.now();
+    if (!isExpired(session, now)) {
+      session.lastSeen = now;
+      return session;
+    }
     activeSessions.delete(sessionId);
   }
   // Nur der Vorbereitungsmodus arbeitet ohne Login mit dem Demo-Profil.
@@ -206,7 +214,7 @@ function setSession(res, sessionData) {
   const now = Date.now();
   // Abgelaufene Sessions entfernen, damit der Store nicht endlos wächst
   for (const [id, session] of activeSessions) {
-    if (now - session.createdAt >= SESSION_MAX_AGE_MS) activeSessions.delete(id);
+    if (isExpired(session, now)) activeSessions.delete(id);
   }
   // Harte Obergrenze gegen Speicher-DoS: die ältesten Sessions weichen zuerst (Map hält Einfüge-Reihenfolge)
   while (activeSessions.size >= MAX_ACTIVE_SESSIONS) {
@@ -216,7 +224,8 @@ function setSession(res, sessionData) {
   const sessionId = crypto.randomUUID();
   activeSessions.set(sessionId, {
     ...sessionData,
-    createdAt: now
+    createdAt: now,
+    lastSeen: now
   });
 
   res.cookie('cevi_session_id', sessionId, { ...COOKIE_OPTIONS, maxAge: SESSION_MAX_AGE_MS });
