@@ -927,12 +927,17 @@ test('Live-Modus: Daten kommen gefiltert von der Cevi-DB, Fehler werden als 401/
   assert.deepEqual((await courses.json()).map(c => c.title), ['GLK 3 Herbst']);
   const [url, init] = remote.mock.calls[0].arguments;
   const today = new Date().toISOString().slice(0, 10);
-  assert.equal(url, `${ceviDbService.baseUrl}/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind&page[size]=100&page[number]=1&stats[total]=count`);
+  // Nur die Felder, die der Kurstracker liest (#34): keine übrigen Anlassfelder wie Kontakte oder Preise
+  const eventFields = 'fields[courses]=name,number,location,description,application_closing_at,maximum_participants,participant_count,group_ids,dates,kind'
+    + '&fields[event_dates]=start_at,finish_at,location&fields[event_kinds]=label,short_name';
+  assert.equal(url, `${ceviDbService.baseUrl}/api/events?filter[type]=Event::Course&filter[after_or_on]=${today}&include=dates,kind&${eventFields}&page[size]=100&page[number]=1&stats[total]=count`);
   assert.equal(init.headers.Authorization, 'Bearer live_abc');
 
   // Teilnahmen nur der eingeloggten Person abfragen
   const history = await request('/api/user/history', { cookie });
-  assert.equal(remote.mock.calls[1].arguments[0], `${ceviDbService.baseUrl}/api/event_participations?filter[person_id]=p_6&page[size]=100&page[number]=1&stats[total]=count`);
+  assert.equal(remote.mock.calls[1].arguments[0], `${ceviDbService.baseUrl}/api/event_participations?filter[person_id]=p_6&fields[event_participations]=active,event,status,result,certificate_issued&page[size]=100&page[number]=1&stats[total]=count`);
+  await request('/api/user/qualifications', { cookie });
+  assert.equal(remote.mock.calls[2].arguments[0], `${ceviDbService.baseUrl}/api/qualifications?filter[person_id]=p_6&fields[qualifications]=finish_at,qualification_kind&page[size]=100&page[number]=1&stats[total]=count`);
   // Personendaten einer Live-Session kommen aus der Cevi-DB
   assert.equal(history.headers.get('x-datenquelle'), 'cevi-db');
   assert.equal((await request('/api/auth/me', { cookie })).headers.get('x-datenquelle'), 'cevi-db');
