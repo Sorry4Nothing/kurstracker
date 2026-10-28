@@ -110,6 +110,10 @@ function pickStartCourse() {
   return pickStartCourseId(treeStructure.nodes, nodeStates);
 }
 
+// Jugend+Sport-Kurs: J+S als Organisation oder im Titel (auch "PBS: J+S-Modul"), oder verlangt/vergibt eine J+S-Qualifikation
+const isJsCourse = node => node.org === 'J+S' || /^(PBS: )?J[+]S/.test(node.title ?? '')
+  || [...(node.requiredQualifications || []), ...(node.grantsQualifications || [])].some(q => q.startsWith('js_'));
+
 function nodeCardHtml(node, nodeStates) {
   const state = nodeStates[node.id] || { status: 'LOCKED' };
   const statusLower = (state.status || 'locked').toLowerCase();
@@ -125,7 +129,7 @@ function nodeCardHtml(node, nodeStates) {
   // Kein aria-label: der Name kommt aus dem sichtbaren Text (Code, Status, Titel), WCAG 2.5.3
   const fullText = node.code && node.code !== node.title ? `${node.code} – ${node.title}` : node.title;
   return `
-    <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''}"
+    <div class="tree-node-card status-${statusLower} ${isSelected ? 'is-selected' : ''} ${isJsCourse(node) ? 'is-js' : ''}"
          id="nodeCard-${node.id}"
          style="${coordStyle}"
          onclick="selectTargetCourse('${node.id}')"
@@ -140,6 +144,7 @@ function nodeCardHtml(node, nodeStates) {
         <span class="node-status-pill status-${statusLower}">${statusLabel}</span>
       </div>
       <div class="node-title">${esc(node.title)}</div>
+      ${isJsCourse(node) ? '<span class="js-badge" role="img" aria-label="Jugend+Sport"></span>' : ''}
       <div class="node-meta">
         <span>${node.category}</span>
         <span>${node.js_type ? node.js_type : ''}</span>
