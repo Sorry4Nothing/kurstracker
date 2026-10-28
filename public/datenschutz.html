@@ -47,7 +47,7 @@
     <p>Die Daten stammen aus der Cevi-DB (db.cevi.ch). Für die Daten in der Cevi-DB selbst ist Cevi Schweiz zuständig, erreichbar unter <a href="mailto:cevidb@cevi.ch">cevidb@cevi.ch</a>.</p>
 
     <h2>2 Allgemeines</h2>
-    <p>Wir bearbeiten Personendaten nach den Vorgaben des Schweizer Datenschutzrechts: transparent, verhältnismässig, nach Treu und Glauben und nur für die Zwecke, die hier stehen. Der Kurstracker hat keine eigene Datenbank und speichert keine Personendaten dauerhaft. Das Angebot richtet sich an Mitglieder des Cevi in der Schweiz.</p>
+    <p>Wir bearbeiten Personendaten nach den Vorgaben des Schweizer Datenschutzrechts: transparent, verhältnismässig, nach Treu und Glauben und nur für die Zwecke, die hier stehen. Der Kurstracker speichert nur die Kursvorschläge des Stufenleiter-Planers dauerhaft in einer eigenen Datenbank (siehe 5). Alle anderen Personendaten holt er bei Bedarf aus der Cevi-DB und speichert sie nicht. Das Angebot richtet sich an Mitglieder des Cevi in der Schweiz.</p>
 
     <h2>3 Welche Daten wir bearbeiten</h2>
     <p>Du meldest dich mit deinem Konto der Cevi-DB an. Dabei erlaubst du dem Kurstracker, diese Daten aus der Cevi-DB zu lesen:</p>
@@ -62,23 +62,24 @@
     <p>Ausserdem liest der Kurstracker das Kursangebot aus der Cevi-DB, das sind keine Personendaten. Dein Passwort sieht der Kurstracker nie: Die Anmeldung läuft direkt über die Cevi-DB.</p>
 
     <h3>Stufenleiter-Planer</h3>
-    <p>Mit einer Leitungsrolle in der Cevi-DB (Abteilungs-, Stufen- oder Kursleitung, Kader) siehst du im Stufenleiter-Planer den Ausbildungsstand der Personen deiner Gruppe: Name, Ceviname, Alter, Rolle und absolvierte Kurse. Dort kannst du Kursvorschläge erfassen. Ein Kursvorschlag enthält die Person, den Kurs, das Jahr und eine freie Bemerkung.</p>
+    <p>Mit einer Leitungsrolle in der Cevi-DB (Abteilungs-, Stufen- oder Kursleitung, Kader) siehst du im Stufenleiter-Planer den Ausbildungsstand der Personen deiner Gruppe: Name, Ceviname, Alter, Rolle und absolvierte Kurse. Dort kannst du Kursvorschläge erfassen. Ein Kursvorschlag enthält die Person, den Kurs, das Jahr und eine freie Bemerkung. Dazu speichern wir, wer den Vorschlag erfasst oder abgegeben hat, und wann.</p>
 
     <h2>4 Wann wir Daten an Dritte weitergeben</h2>
     <h3>4.1 Auftragsbearbeitung</h3>
-    <p>Der Kurstracker läuft auf dem Server eines Hosting-Anbieters. Dieser bearbeitet die Daten nur in unserem Auftrag und nach unseren Vorgaben.</p>
+    <p>Der Kurstracker läuft auf dem Server eines Hosting-Anbieters. Die Kursvorschläge liegen in einer Postgres-Datenbank bei Neon. Beide bearbeiten die Daten nur in unserem Auftrag und nach unseren Vorgaben.</p>
     <h3>4.2 Keine weitere Weitergabe</h3>
     <p>Wir geben deine Daten nicht weiter und verkaufen sie nicht. Der Kurstracker schreibt nichts in die Cevi-DB zurück. Kursvorschläge sehen nur Personen, die den Stufenleiter-Planer nutzen dürfen. Für Schriften und Icons kontaktiert dein Browser Google und Cloudflare (siehe 9.3).</p>
 
     <h2>5 Wie lange wir Daten aufbewahren</h2>
     <ul>
       <li>Deine Profildaten und der Zugriffsschlüssel für die Cevi-DB liegen nur im Arbeitsspeicher des Servers, solange deine Sitzung läuft, höchstens 7 Tage. Bei einem Neustart des Servers sind sie sofort weg.</li>
-      <li>Kursvorschläge liegen ebenfalls nur im Arbeitsspeicher und sind nach einem Neustart des Servers weg.</li>
+      <li>Kursvorschläge bleiben in der Datenbank gespeichert, bis die Stufenleitung sie ändert oder entfernt. Abgegebene Vorschläge lassen sich erst ändern, nachdem sie zurückgegeben wurden. Eine automatische Löschung gibt es noch nicht.</li>
+      <li>Der Zugriffsschlüssel einer Abteilung für die Cevi-DB liegt verschlüsselt in der Datenbank, bis die Abteilung ihn entfernt. Im Klartext speichern wir ihn nie.</li>
       <li>Technische Fehler protokolliert der Server, damit wir sie beheben können. Wir achten darauf, dass dabei keine Personendaten ins Protokoll gelangen. Im Einzelfall kann eine Personennummer der Cevi-DB enthalten sein.</li>
     </ul>
 
     <h2>6 Bearbeitungsort</h2>
-    <p>Die Cevi-DB betreibt Cevi Schweiz. Den Hosting-Anbieter und den Standort des Kurstracker-Servers ergänzen wir hier, bevor der Kurstracker öffentlich in Betrieb geht. Schriften und Icons laden aus Rechenzentren von Google und Cloudflare, auch ausserhalb der Schweiz, zum Beispiel in den USA.</p>
+    <p>Die Cevi-DB betreibt Cevi Schweiz. Den Hosting-Anbieter und den Standort des Kurstracker-Servers und der Datenbank ergänzen wir hier, bevor der Kurstracker öffentlich in Betrieb geht. Schriften und Icons laden aus Rechenzentren von Google und Cloudflare, auch ausserhalb der Schweiz, zum Beispiel in den USA.</p>
 
     <h2>7 Wie wir deine Daten schützen</h2>
     <ul>
