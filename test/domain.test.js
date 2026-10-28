@@ -536,3 +536,14 @@ test('Kursart-Titel aus der Cevi-DB ersetzen bei J+S und SLRG die Titel der Date
   assert.deepEqual(nodes.slk, COURSE_NODES.slk);
   assert.equal(COURSE_NODES.glk3.title, 'Gruppenleiter/-innen-Kurs 3 (GLK 3)');
 });
+
+test('Anerkennungen: jede, die ein Kurs in irgendeinem Baum verlangt, hat einen lesbaren Namen (#146)', () => {
+  const required = new Set();
+  for (const nodes of [COURSE_NODES, ...Object.values(COURSE_NODES_BY_REGION)]) {
+    for (const node of Object.values(nodes)) (node.requiredQualifications || []).forEach(q => required.add(q));
+  }
+  assert.ok(required.size > 10);
+  for (const key of required) assert.notEqual(courseTreeEngine.qualLabel(key), key, key);
+  assert.equal(courseTreeEngine.qualLabel('slrg_plus_pool'), 'SLRG Brevet Plus Pool');
+  assert.equal(courseTreeEngine.qualLabel('unbekannt'), 'unbekannt');
+});
