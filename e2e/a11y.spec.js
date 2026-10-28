@@ -31,6 +31,19 @@ const PRIVACY = ['Datenschutzerklärung', async page => {
   await expect(page.getByRole('heading', { level: 1, name: 'Datenschutzerklärung' })).toBeVisible();
 }];
 
+// Fehlerseiten: der Statuscode 401/404/502 ist hier gewollt, darum zählt der Antwortstatus nicht als Fehler im Browser
+const ERROR_PAGES = [
+  ['/fehler/404', 'Seite nicht gefunden'],
+  ['/fehler/401', 'Du bist nicht angemeldet'],
+  ['/fehler/502', 'Die Cevi-DB antwortet nicht']
+].map(([path, heading]) => [`Fehlerseite ${path.slice(-3)}`, async page => {
+  // Der Browser meldet die 4xx/5xx-Seite auch als Konsolenfehler
+  page.removeAllListeners('response');
+  page.removeAllListeners('console');
+  await page.goto(path);
+  await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+}]);
+
 const SCENARIOS = [
   ...VIEWS,
   ['Theme-Menü offen', async page => {
@@ -66,7 +79,8 @@ const SCENARIOS = [
     await expect(page.locator('#navUserPhoto')).toBeVisible();
     await expect(page.locator('#profileHeroPhoto')).toBeVisible();
   }],
-  PRIVACY
+  PRIVACY,
+  ...ERROR_PAGES
 ];
 
 async function openAppInTheme(page, theme) {
@@ -121,6 +135,7 @@ test.describe('Barrierefreiheit Mobil 375 x 812', () => {
       await page.getByRole('button', { name: 'Menü ein-/ausblenden' }).click();
       await expect(page.locator('#appSidebar')).toBeVisible();
     }],
-    PRIVACY
+    PRIVACY,
+    ...ERROR_PAGES
   ], '375 x 812');
 });

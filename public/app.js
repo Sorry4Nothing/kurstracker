@@ -3,6 +3,7 @@
  * Orchestriert die modularen Komponenten: Themes, Auth, Tree-Map, Profil, Planer, Kurse & System
  */
 
+import './js/fetch-guard.js';
 import { debounce } from './js/utils.js';
 import { initTheme, closeAllDropdowns } from './js/theme.js';
 import { checkAuth } from './js/auth.js';

@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import fs from 'fs';
 import { execFileSync } from 'child_process';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -907,11 +908,34 @@ app.use('/api', (req, res) => {
 // Statische Dateien aus public/ servieren
 app.use(express.static(path.join(projectRoot, 'public')));
 
-// SPA Fallback
-// Express 5 wildcard syntax: a named splat, in braces so it also matches "/"
-app.get('/{*splat}', (req, res) => {
+// Fehlerseiten (401, 404, 502): eine Vorlage, der Code wird im Server eingesetzt. Anmelden geht im
+// Vorbereitungsmodus ueber den Mock-Login, sonst ueber die Cevi-DB.
+const ERROR_PAGES = {
+  401: 'Nicht angemeldet',
+  404: 'Seite nicht gefunden',
+  502: 'Die Cevi-DB antwortet nicht'
+};
+const errorTemplate = fs.readFileSync(path.join(projectRoot, 'src', 'views', 'fehler.html'), 'utf8');
+function sendErrorPage(res, code) {
+  const loginUrl = ceviDbService.isPreparationMode() ? '/api/auth/mock-login' : '/api/auth/login';
+  // Nur den Abschnitt des Codes ausliefern, damit vor dem CSS nicht alle drei kurz sichtbar sind
+  res.status(code).type('html').send(errorTemplate
+    .replace(/ *<section data-error="(\d+)"[\s\S]*?<\/section>\n\n?/g, (section, sectionCode) => (Number(sectionCode) === code ? section : ''))
+    .replaceAll('{{CODE}}', String(code))
+    .replaceAll('{{TITLE}}', ERROR_PAGES[code])
+    .replaceAll('{{LOGIN_URL}}', loginUrl));
+}
+
+app.get('/fehler/:code', (req, res) => {
+  const code = Number(req.params.code);
+  sendErrorPage(res, Object.hasOwn(ERROR_PAGES, code) ? code : 404);
+});
+
+// Die App kennt nur die Startseite, keine eigenen Pfade im Browser: alles andere ist eine unbekannte Adresse
+app.get('/', (req, res) => {
   res.sendFile(path.join(projectRoot, 'public', 'index.html'));
 });
+app.use((req, res) => sendErrorPage(res, 404));
 
 // Letzte Instanz: auch Parser- und Routingfehler antworten als JSON, nie mit Stacktrace
 // (Express' Default-Handler hängt an NODE_ENV und liefert sonst den Stack an den Client)
