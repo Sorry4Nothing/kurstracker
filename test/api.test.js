@@ -1066,3 +1066,9 @@ test('Rate Limit: Anmelde-Endpunkte drosseln nach zu vielen Versuchen mit 429', 
   assert.deepEqual(await limited.json(), { error: 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.' });
   assert.ok(limited.headers.get('ratelimit-policy') || limited.headers.get('ratelimit'), 'RateLimit-Header fehlt');
 });
+
+test('API: grosse Antworten kommen komprimiert (#135)', async () => {
+  const res = await httpFetch(`${baseUrl}/js/planner.js`, { headers: { 'Accept-Encoding': 'gzip' } });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-encoding'), 'gzip');
+});
