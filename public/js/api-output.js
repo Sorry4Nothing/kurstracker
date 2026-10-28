@@ -6,7 +6,7 @@
 
 import { esc } from './utils.js';
 import { rawFetch } from './fetch-guard.js';
-import { getSelectedTargetCourseId } from './tree.js';
+import { getSelectedTargetCourseId, getSelectedRegion } from './tree.js';
 
 // Alle GET-Aufrufe, mit denen das Frontend seine Daten lädt
 const ENDPOINTS = [
@@ -184,7 +184,10 @@ export async function loadApiOutput() {
 
   // Den Pfad lädt der Baum erst, wenn ein Zielkurs gewählt ist
   const target = getSelectedTargetCourseId();
-  const urls = [...ENDPOINTS, ...(target ? [`/api/tree/path/${target}`] : [])];
+  // Die Baum-Aufrufe brauchen dieselbe Region wie der Baum, sonst sucht der Server nur im Standardbaum
+  const region = getSelectedRegion();
+  const query = region ? `?region=${encodeURIComponent(region)}` : '';
+  const urls = [...ENDPOINTS.map(url => url.startsWith('/api/tree/') ? url + query : url), ...(target ? [`/api/tree/path/${target}${query}`] : [])];
 
   // Die Karten bleiben über jedes Neuladen stehen, samt Aufgeklapptem; nur der Pfad wechselt mit dem Zielkurs
   list.querySelectorAll(':scope > details').forEach(card => urls.includes(card.dataset.url) || card.remove());

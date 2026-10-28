@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, applyKindLabels, toRegionCourseIds } from '../src/domain/courseTreeData.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION, REGIONS, withGenderTitles, applyKindLabels } from '../src/domain/courseTreeData.js';
 import { courseTreeEngine, CourseTreeEngine } from '../src/domain/courseTreeEngine.js';
 import { StufenleiterPlanningEngine } from '../src/domain/stufenleiterPlanningEngine.js';
 import { COURSE_MAP_COORDS, layoutRegionalCoords } from '../public/js/tree-map.js';
@@ -148,16 +148,16 @@ test('Regionen (Baum-Vorschau aus dem Kursablauf-Editor-Artefakt): jeder Kurs ha
     }
   }
 
-  // nationale Kurse (Cevi Schweiz, Externe Kurse, wassermodul.ch) laufen in jeder Region mit (eigene id-Vorsilbe pro Region)
+  // nationale Kurse (Cevi Schweiz, Externe Kurse, wassermodul.ch) laufen in jeder Region mit
   for (const { key } of REGIONS) {
-    assert.ok(Object.keys(COURSE_NODES_BY_REGION[key]).includes(`${key}_j_s_coachkurs_2027`), `${key} hat den nationalen J+S-Coachkurs nicht`);
+    assert.ok(Object.keys(COURSE_NODES_BY_REGION[key]).includes('js_coach'), `${key} hat den nationalen J+S-Coachkurs nicht`);
   }
 });
 
 test('Regionen: in jeder Region führt GLK 3 -> MF Wasser -> Sicherheitsmodul Wasser (Ablauf, nicht Kursangebot des Jahres)', () => {
   for (const { key } of REGIONS) {
     const nodes = Object.values(COURSE_NODES_BY_REGION[key]);
-    const sibe = nodes.find(n => n.id === `${key}_sibe_wasser_modul`);
+    const sibe = nodes.find(n => n.id === 'sec_wasser');
     const mf = nodes.find(n => n.code === 'MF Wasser');
     assert.ok(mf, `${key} hat keinen MF Wasser`);
     assert.deepEqual(sibe.prerequisites.filter(id => id === mf.id), [mf.id], `${key}: Sicherheitsmodul Wasser verlangt MF Wasser nicht`);
@@ -173,7 +173,7 @@ test('Regionsbaum-Layout: alle Sicherheitsmodule (Berg, Winter, Wasser) stehen i
     layoutRegionalCoords(Object.keys(nodes), nodes);
     const sibeX = new Set(Object.values(nodes).filter(n => n.grantsQualifications.some(q => q.startsWith('js_sec_'))).map(n => COURSE_MAP_COORDS[n.id].x));
     assert.equal(sibeX.size, 1, `${key}: Sicherheitsmodule in mehreren Spalten`);
-    assert.ok([...sibeX][0] > COURSE_MAP_COORDS[`${key}_mf_wasser_2027`].x, `${key}: Sicherheitsmodule nicht rechts vom MF Wasser`);
+    assert.ok([...sibeX][0] > COURSE_MAP_COORDS.mf_wasser.x, `${key}: Sicherheitsmodule nicht rechts vom MF Wasser`);
   }
 });
 
@@ -560,10 +560,15 @@ test('Kursart-Titel aus der Cevi-DB ersetzen bei J+S und SLRG die Titel der Date
   assert.equal(COURSE_NODES.glk3.title, 'Gruppenleiter/-innen-Kurs 3 (GLK 3)');
 });
 
-test('Regionsbaum: Standard-Kurs-IDs werden ueber das Kuerzel zu Regions-IDs, Unbekanntes faellt weg', () => {
-  const zh = COURSE_NODES_BY_REGION.zuerich;
-  assert.deepEqual(toRegionCourseIds(['voku', 'glk1', 'glk3', 'unbekannt'], zh), ['zuerich_voku_2026', 'zuerich_glk1_f_2027', 'zuerich_glk3_fa_2027']);
-  assert.deepEqual(toRegionCourseIds(['voku', 'glk1'], COURSE_NODES_BY_REGION.bern), []);
+test('Regionsbaum: Knoten sind Slots ohne Region, Jahr und Geschlecht, Vorstufen liegen im selben Baum (#166)', () => {
+  for (const [region, nodes] of Object.entries(COURSE_NODES_BY_REGION)) {
+    for (const [key, node] of Object.entries(nodes)) {
+      assert.equal(node.id, key, `${region}/${key}`);
+      assert.doesNotMatch(key, /^(zuerich|winterthur|bern|ostschweiz|agsoluzg)|20\d\d$|_(f|m|fa)_?$/, `${region}/${key}`);
+      for (const pre of [...node.prerequisites, ...node.recommendedPrerequisites]) assert.ok(nodes[pre], `${region}/${key} braucht ${pre}`);
+    }
+  }
+  assert.ok(COURSE_NODES_BY_REGION.zuerich.glk3 && COURSE_NODES.glk3, 'derselbe Slot in Standard- und Regionsbaum');
 });
 
 test('Anerkennungen: jede, die ein Kurs in irgendeinem Baum verlangt, hat einen lesbaren Namen (#146)', () => {

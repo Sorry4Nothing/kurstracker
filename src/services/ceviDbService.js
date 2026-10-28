@@ -1,5 +1,5 @@
 import { envConfig } from '../config/env.js';
-import { COURSE_NODES } from '../domain/courseTreeData.js';
+import { COURSE_NODES, COURSE_NODES_BY_REGION } from '../domain/courseTreeData.js';
 import { courseTreeEngine } from '../domain/courseTreeEngine.js';
 
 // Hitobito (Graphiti) liefert Listen seitenweise; eine kürzere Seite ist die letzte.
@@ -10,8 +10,24 @@ const MAX_PAGES = 500;
 const PAGE_CONCURRENCY = 4;
 // Testkurse sind erfunden: der Anmeldelink führt auf das echte Kursangebot
 const DEMO_REGISTRATION_URL = 'https://ceviregionzuerich.ch/kurse';
+// Slots aller Bäume; der Standardbaum zuerst, damit sein Kürzel bei gleichem Kürzel gewinnt
+const SLOT_NODES = [COURSE_NODES, ...Object.values(COURSE_NODES_BY_REGION)].flatMap(nodes => Object.values(nodes));
+const SLOT_IDS = new Set(SLOT_NODES.map(node => node.id));
 // Kürzel der Kurse klein und ohne Leerzeichen («glk1», «al-semi»), so wie sie in den Anlassnamen stehen
-const COURSE_CODES = new Map(Object.values(COURSE_NODES).map(node => [node.code.toLowerCase().replace(/\s+/g, ''), node.id]));
+const COURSE_CODES = new Map();
+for (const node of SLOT_NODES) {
+  const code = node.code.toLowerCase().replace(/\s+/g, '');
+  if (!COURSE_CODES.has(code)) COURSE_CODES.set(code, node.id);
+}
+// Slots, die in der Cevi-DB denselben Titel tragen oder deren Kürzel nicht im Anlassnamen steht: der Name entscheidet
+const NAME_SLOTS = [
+  [/pionier/i, 'pionier'],
+  [/al-?semi/i, 'al_seminar'],
+  [/vielfalt/i, 'vielfalt_inklusion'],
+  [/expert\S*\s+(?:im\s+)?sicherheitsbereich\s+berg/i, 'expert_sibe_berg'],
+  [/expert\S*\s+(?:im\s+)?sicherheitsbereich\s+wasser/i, 'expert_sibe_wasser'],
+  [/expert\S*\s+(?:im\s+)?sicherheitsbereich\s+winter/i, 'expert_sibe_winter']
+];
 // Kurs im Baum, den eine Anerkennung belegt. Die Teilnahmen an Kursen von Cevi ZH und CH sieht der Service-Token nicht, die Anerkennungen schon.
 // shortcut: J+S-Kursleiter*in, SLRG Modul See, Seilbahn, Spoiz und Mira haben keinen Kurs im Baum; ergänzen, sobald geklärt
 const QUALIFICATION_COURSES = [
@@ -334,13 +350,15 @@ export class CeviDbService {
    * @returns {string|null} ID im Baum
    */
   courseNodeIdFor(event) {
+    const bySlot = NAME_SLOTS.find(([pattern]) => pattern.test(event.name || ''));
+    if (bySlot) return bySlot[1];
     const words = String(event.name || '').toLowerCase().split(/[\s(),/]+/).filter(Boolean);
     // Wortpaare zuerst: «GLK 1» ist GLK 1, nicht das Alias «glk» (GLK 3)
     const candidates = [event.kind?.short_name, ...words.flatMap((word, i) => [word + (words[i + 1] || ''), word])];
     for (const candidate of candidates) {
       const code = String(candidate || '').toLowerCase().replace(/\s+/g, '');
       const id = COURSE_CODES.get(code) || courseTreeEngine.resolveCourseId(code);
-      if (Object.hasOwn(COURSE_NODES, id)) return id;
+      if (SLOT_IDS.has(id)) return id;
     }
     return null;
   }

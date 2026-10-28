@@ -162,14 +162,17 @@ test('API: Baumbewertung übernimmt absolvierte und angemeldete Kurse sowie Qual
   assert.equal(typeof evaluation.personAge, 'number');
 });
 
-test('API: Region der Person (Mock = Zürich) bestimmt den Baum, Status kommt aus den übersetzten Kursen', async () => {
+test('API: Region der Person (Mock = Zürich) bestimmt den Baum, Status kommt aus den absolvierten Kursen', async () => {
   const { own, regions } = await (await request('/api/tree/regions')).json();
   assert.equal(own, 'zuerich');
   assert.ok(regions.some(region => region.key === own));
 
   const { evaluation } = await (await request('/api/tree/evaluation?region=zuerich')).json();
-  assert.equal(evaluation.nodes.zuerich_voku_2026.status, 'COMPLETED');
-  assert.ok(!('voku' in evaluation.nodes), 'nur Kurse der Region');
+  assert.equal(evaluation.nodes.voku.status, 'COMPLETED');
+
+  // Ein Slot, den die Region nicht hat, ist ein 404; hat sie ihn, rechnet der Pfad
+  assert.equal((await request('/api/tree/path/elku?region=bern')).status, 404);
+  assert.equal((await request('/api/tree/path/lk?region=bern')).status, 200);
 });
 
 test('API: Frösch-Up fehlt im Baum ohne Fröschli-Leitungsrolle, NOLK und SLK zeigt die Abteilungsleitung', async () => {
@@ -177,7 +180,7 @@ test('API: Frösch-Up fehlt im Baum ohne Fröschli-Leitungsrolle, NOLK und SLK z
   const codes = Object.values(nodes).map(node => node.code);
   assert.ok(!codes.includes('Frösch-Up'));
   assert.ok(codes.includes('NOLK') && codes.includes('SLK'));
-  assert.ok(Object.hasOwn(COURSE_NODES_BY_REGION.zuerich, 'zuerich_frosch_up_2027'), 'der Kurs existiert, wird nur ausgeblendet');
+  assert.ok(Object.hasOwn(COURSE_NODES_BY_REGION.zuerich, 'frosch_up'), 'der Kurs existiert, wird nur ausgeblendet');
 });
 
 test('API: nicht bestandener Kurs zählt nicht als absolviert, Bestandenes schon', async (t) => {
@@ -478,6 +481,10 @@ test('Cevi-DB: Kurs im Baum aus dem Kürzel der Kursart oder aus dem Anlassnamen
     [{ name: 'GLK 1 2027' }, 'glk1'],
     [{ name: 'SLK 2026' }, 'slk'],
     [{ name: 'AL-Semi 2027' }, 'al_seminar'],
+    [{ name: 'Pioniertechnik-Modul 2027', kind: { short_name: '' } }, 'pionier'],
+    [{ name: 'J+S-Modul kulturelle Vielfalt & Inklusion' }, 'vielfalt_inklusion'],
+    [{ name: 'Fortbildung Expert*in im Sicherheitsbereich Wasser 2027' }, 'expert_sibe_wasser'],
+    [{ name: 'LLK 2027' }, 'llk'],
     [{ name: 'Sommerlager 2026' }, null]
   ]) {
     assert.equal(ceviDbService.courseNodeIdFor(event), expected, event.name);
