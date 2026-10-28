@@ -44,6 +44,15 @@ export function isStufenleitung(scope) {
   return !!scope && (scope.all || scope.departments.size > 0 || scope.groups.size > 0);
 }
 
+const FROESCHLI_LEITUNG = ['Group::Froeschli::Froeschlileiter', 'Group::Froeschli::Froeschlihauptleiter'];
+
+/** Froesch-Up richtet sich an Leitende im Froeschli (Rollenobjekte der Cevi-DB, Textrollen wie im Demo-Profil). */
+export function isFroeschliLeitung(user) {
+  return (user?.roles || []).some(role => (typeof role === 'string'
+    ? /fr(ö|oe)schli(haupt)?leiter/i.test(role)
+    : FROESCHLI_LEITUNG.includes(role?.role_class)));
+}
+
 /**
  * Nur die Mitglieder und Gruppen, die der Scope zeigt. Mitglieder ohne sichtbare Gruppe fallen weg,
  * und jede Person trägt nur die sichtbaren Gruppen (Mitgliedschaften in anderen Abteilungen bleiben verborgen).
