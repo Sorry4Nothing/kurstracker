@@ -1,10 +1,10 @@
 /**
- * Cevi Kurstracker - Fehlerseiten (401, 404, 502)
+ * Cevi Kurstracker - Fehlerseiten (401, 404, 502) und Login-Seite
  * Punktfeld im Hintergrund: Punkte in der Rasterfarbe, in der Nähe des Mauszeigers wachsen sie und
  * nehmen die Akzentfarbe des Fehlers an. Farben kommen aus den Theme-Variablen. Mit «Bewegung reduzieren» steht das Raster still.
  */
 
-const page = document.querySelector('.error-page');
+const page = document.querySelector('.error-page, .login-stage');
 const canvas = page?.querySelector('.error-dots');
 
 if (canvas) {
@@ -72,3 +72,6 @@ if (retry && ring) {
   tick();
   setInterval(tick, 500);
 }
+
+// Login-Seite: der Footer zeigt wie in der App Umgebung, Cevi-DB-Modus und Version
+if (document.getElementById('footerDbStatus')) import('./system.js').then(m => m.loadSystemFooterStatus());

@@ -316,6 +316,18 @@
   min-width: 0;
 }
 
+/* Left and right take equal room, so the centre block sits in the true middle */
+@media (min-width: 641px) {
+  .app-global-footer .footer-left,
+  .app-global-footer .footer-right {
+    flex: 1 1 0;
+  }
+
+  .app-global-footer .footer-right {
+    justify-content: flex-end;
+  }
+}
+
 /* Link to the privacy notice: footer ink, set apart by the underline that
    every link has (variables.css) */
 .app-global-footer a {
@@ -671,5 +683,102 @@
   .error-text {
     font-size: var(--fs-16);
     line-height: var(--lh-16);
+  }
+}
+
+/* ------------------------------------------------------------------------------
+   8. Login page (src/views/anmelden.html), a page of its own outside the shell:
+      the header band, a stage with the dot field of the error pages (fehler.js)
+      and the one button.
+      Visitors without a session land here.
+   ------------------------------------------------------------------------------ */
+.login-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-main);
+}
+
+.login-stage {
+  --accent-solid: var(--primary);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  flex: 1;
+  padding: var(--sp-12) var(--sp-4);
+}
+
+.login-hero {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  text-align: center;
+}
+
+.login-mark {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto var(--sp-6);
+  padding: var(--sp-2);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 8px var(--bg-main);
+}
+
+.login-eyebrow {
+  font-size: var(--fs-14);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--blue-ink);
+}
+
+.login-hero h1 {
+  margin-top: var(--sp-2);
+  font-size: clamp(var(--fs-30), 6vw, 48px);
+  line-height: 1.1;
+}
+
+.login-text {
+  max-width: 480px;
+  margin: var(--sp-4) auto 0;
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  color: var(--text-muted);
+}
+
+.login-notice {
+  max-width: 480px;
+  margin: var(--sp-5) auto 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+  background-color: var(--bad-bg);
+  color: var(--bad-ink);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+}
+
+.login-actions {
+  margin-top: var(--sp-8);
+}
+
+.login-actions .btn {
+  height: 48px;
+  padding: 0 var(--sp-8);
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+}
+
+/* Footer at the bottom edge on a short page */
+body:has(.login-page) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+@media (max-width: 640px) {
+  .login-stage {
+    padding: var(--sp-8) var(--sp-4);
   }
 }

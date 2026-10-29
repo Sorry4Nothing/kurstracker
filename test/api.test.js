@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 // Vor dem Import setzen: env.js liest die Variablen beim Laden, dotenv überschreibt sie nicht
@@ -707,6 +708,24 @@ test('Fehlerseiten: unbekannte Adresse gibt 404, /fehler/401 und /fehler/502 tra
   assert.match((await request('/api/gibt-es-nicht')).headers.get('content-type'), /^application\/json/);
 });
 
+test('Login-Seite: /anmelden zeigt Anmelde-Link und nur feste Hinweise zu bekannten Fehlercodes', async () => {
+  const page = async path => {
+    const res = await request(path);
+    assert.equal(res.status, 200, path);
+    assert.match(res.headers.get('content-type'), /^text\/html/, path);
+    const body = await res.text();
+    assert.ok(!body.includes('{{'), `${path}: Platzhalter ersetzt`);
+    return body;
+  };
+  const plain = await page('/anmelden');
+  assert.ok(plain.includes('href="/api/auth/mock-login"'));
+  assert.ok(!plain.includes('login-notice'));
+  assert.ok((await page('/anmelden?error=callback_failed')).includes('role="alert"'));
+  // Text aus der URL kommt nie in die Seite
+  const hostile = await page('/anmelden?error=%3Cscript%3Ealert(1)%3C/script%3E');
+  assert.ok(!hostile.includes('login-notice') && !hostile.includes('alert(1)'));
+});
+
 test('Statisch: Quellcode und Umgebungsdateien werden nie ausgeliefert', async () => {
   for (const path of ['/.env.local', '/.env', '/package.json', '/src/app.js', '/src/config/env.js']) {
     const body = await (await request(path)).text();
@@ -908,6 +927,7 @@ test('Systemlog: fremde Akteur-IDs erscheinen nur als Code, die eigene als "du" 
   const other = cookiePair(await login({ id: 'p_fremd_4711', roles: [] }));
   await request('/api/courses', { cookie: other });
   await request('/api/courses', { cookie: lead });
+  await sleep(50); // der Logeintrag entsteht erst nach dem Senden der Antwort, auf langsamen Runnern kommt die nächste Anfrage zuvor
   const { entries } = await (await request('/api/system/logs', { cookie: lead })).json();
   const text = entries.map(e => e.message).join('\n');
   assert.ok(!text.includes('p_fremd_4711') && !text.includes('p_lead'), 'Personen-IDs im Log');

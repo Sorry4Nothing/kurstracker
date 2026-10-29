@@ -31,6 +31,13 @@ const PRIVACY = ['Datenschutzerklärung', async page => {
   await expect(page.getByRole('heading', { level: 1, name: 'Datenschutzerklärung' })).toBeVisible();
 }];
 
+// Login-Seite für Besucher ohne Sitzung, mit Hinweis nach gescheitertem Login (im Vorbereitungsmodus unter /anmelden)
+const LOGIN = ['Login-Seite', async page => {
+  await page.goto('/anmelden?error=callback_failed');
+  await expect(page.getByRole('heading', { level: 1, name: 'Deine Ausbildung im Überblick' })).toBeVisible();
+  await expect(page.getByRole('alert')).toBeVisible();
+}];
+
 // Fehlerseiten: der Statuscode 401/404/502 ist hier gewollt, darum zählt der Antwortstatus nicht als Fehler im Browser
 const ERROR_PAGES = [
   ['/fehler/404', 'Seite nicht gefunden'],
@@ -80,6 +87,7 @@ const SCENARIOS = [
     await expect(page.locator('#profileHeroPhoto')).toBeVisible();
   }],
   PRIVACY,
+  LOGIN,
   ...ERROR_PAGES
 ];
 
@@ -136,6 +144,7 @@ test.describe('Barrierefreiheit Mobil 375 x 812', () => {
       await expect(page.locator('#appSidebar')).toBeVisible();
     }],
     PRIVACY,
+    LOGIN,
     ...ERROR_PAGES
   ], '375 x 812');
 });
