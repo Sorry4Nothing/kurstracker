@@ -10,9 +10,9 @@ Der Kurstracker zeigt Leitenden, welche Kurse sie schon haben, was als Nächstes
 
 Es ist ein persönliches Projekt von Robin, zum Üben und Ausprobieren, und kein offizielles Angebot von Cevi Schweiz. Die App läuft heute im **Vorbereitungsmodus** mit erfundenen Testdaten. Die Anmeldung über die Cevi-DB (OAuth) ist gebaut und getestet, wartet aber noch auf die Freigabe einer OAuth-Applikation.
 
-![Ausbildungsbaum: Zielkurs J+S-Sicherheitsmodul Wasser, der rote Pfad führt über MF Wasser, rechts stehen erfüllte und offene Voraussetzungen](docs/img/ausbildungsbaum.png)
+![Der ganze Ausbildungsbaum mit ausgewähltem Zielkurs: der rote Pfad zeigt den Weg, rechts stehen erfüllte und offene Voraussetzungen](docs/img/ausbildungsbaum.png)
 
-*Der Baum zeigt für jeden Kurs, ob er abgeschlossen, freigeschaltet oder gesperrt ist. Wählt man einen Zielkurs, markiert der rote Pfad den Weg dorthin, und rechts steht, was noch fehlt.*
+*Der ganze Ausbildungsbaum (für die volle Auflösung das Bild anklicken). Jede Karte zeigt, ob der Kurs abgeschlossen, freigeschaltet oder gesperrt ist. Wählt man einen Zielkurs, markiert der rote Pfad den Weg dorthin, und rechts steht, was noch fehlt.*
 
 ## Was die App kann
 
