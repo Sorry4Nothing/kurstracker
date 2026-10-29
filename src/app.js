@@ -1042,8 +1042,30 @@ app.get('/fehler/:code', (req, res) => {
   sendErrorPage(res, Object.hasOwn(ERROR_PAGES, code) ? code : 404);
 });
 
-// Die App kennt nur die Startseite, keine eigenen Pfade im Browser: alles andere ist eine unbekannte Adresse
+// Login-Seite: feste Hinweise zu den Fehlercodes, die der OAuth-Callback in die URL schreibt (nie Text aus der URL)
+const LOGIN_NOTICES = {
+  provider_error: 'Die Cevi-DB hat die Anmeldung abgebrochen. Versuche es noch einmal.',
+  invalid_state: 'Die Anmeldung ist abgelaufen oder wurde von einer anderen Seite gestartet. Versuche es noch einmal.',
+  missing_code: 'Die Anmeldung ist nicht vollständig angekommen. Versuche es noch einmal.',
+  callback_failed: 'Die Anmeldung bei der Cevi-DB hat nicht geklappt. Versuche es in ein paar Minuten noch einmal.'
+};
+const loginTemplate = fs.readFileSync(path.join(projectRoot, 'src', 'views', 'anmelden.html'), 'utf8');
+function sendLoginPage(req, res) {
+  const notice = typeof req.query.error === 'string' && Object.hasOwn(LOGIN_NOTICES, req.query.error)
+    ? `      <p class="login-notice" role="alert">${LOGIN_NOTICES[req.query.error]}</p>\n`
+    : '';
+  res.type('html').send(loginTemplate
+    .replace(/\{\{HINWEIS\}\}\r?\n/, () => notice)
+    .replaceAll('{{LOGIN_URL}}', ceviDbService.isPreparationMode() ? '/api/auth/mock-login' : '/api/auth/login'));
+}
+
+// /anmelden zeigt die Login-Seite immer, auch im Vorbereitungsmodus mit seiner Demo-Sitzung
+app.get('/anmelden', sendLoginPage);
+
+// Die App kennt nur die Startseite, keine eigenen Pfade im Browser: alles andere ist eine unbekannte Adresse.
+// Ohne Sitzung zeigt die Startseite die Login-Seite statt der leeren App.
 app.get('/', (req, res) => {
+  if (!getSession(req)) return sendLoginPage(req, res);
   res.sendFile(path.join(projectRoot, 'public', 'index.html'));
 });
 app.use((req, res) => sendErrorPage(res, 404));

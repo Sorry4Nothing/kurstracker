@@ -707,6 +707,24 @@ test('Fehlerseiten: unbekannte Adresse gibt 404, /fehler/401 und /fehler/502 tra
   assert.match((await request('/api/gibt-es-nicht')).headers.get('content-type'), /^application\/json/);
 });
 
+test('Login-Seite: /anmelden zeigt Anmelde-Link und nur feste Hinweise zu bekannten Fehlercodes', async () => {
+  const page = async path => {
+    const res = await request(path);
+    assert.equal(res.status, 200, path);
+    assert.match(res.headers.get('content-type'), /^text\/html/, path);
+    const body = await res.text();
+    assert.ok(!body.includes('{{'), `${path}: Platzhalter ersetzt`);
+    return body;
+  };
+  const plain = await page('/anmelden');
+  assert.ok(plain.includes('href="/api/auth/mock-login"'));
+  assert.ok(!plain.includes('login-notice'));
+  assert.ok((await page('/anmelden?error=callback_failed')).includes('role="alert"'));
+  // Text aus der URL kommt nie in die Seite
+  const hostile = await page('/anmelden?error=%3Cscript%3Ealert(1)%3C/script%3E');
+  assert.ok(!hostile.includes('login-notice') && !hostile.includes('alert(1)'));
+});
+
 test('Statisch: Quellcode und Umgebungsdateien werden nie ausgeliefert', async () => {
   for (const path of ['/.env.local', '/.env', '/package.json', '/src/app.js', '/src/config/env.js']) {
     const body = await (await request(path)).text();
