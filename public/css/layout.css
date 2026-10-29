@@ -328,6 +328,14 @@
   }
 }
 
+/* With the release version shown, the right block must not wrap onto a second
+   line where the tree and inspector fill the window (e2e/baum.spec.js) */
+@media (min-width: 1201px) {
+  .app-global-footer .footer-right {
+    white-space: nowrap;
+  }
+}
+
 /* Link to the privacy notice: footer ink, set apart by the underline that
    every link has (variables.css) */
 .app-global-footer a {
