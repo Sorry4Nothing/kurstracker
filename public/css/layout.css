@@ -328,6 +328,14 @@
   }
 }
 
+/* Beside the sidebar the footer's middle is not the window's middle: pull the status block back by half the sidebar, so it sits centred on the screen */
+@media (min-width: 1025px) {
+  .app-global-footer .footer-center {
+    position: relative;
+    left: calc(var(--shell-sidebar-w) / -2);
+  }
+}
+
 /* With the release version shown, the right block must not wrap onto a second
    line where the tree and inspector fill the window (e2e/baum.spec.js) */
 @media (min-width: 1201px) {
