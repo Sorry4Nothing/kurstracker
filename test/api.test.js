@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 // Vor dem Import setzen: env.js liest die Variablen beim Laden, dotenv überschreibt sie nicht
@@ -926,6 +927,7 @@ test('Systemlog: fremde Akteur-IDs erscheinen nur als Code, die eigene als "du" 
   const other = cookiePair(await login({ id: 'p_fremd_4711', roles: [] }));
   await request('/api/courses', { cookie: other });
   await request('/api/courses', { cookie: lead });
+  await sleep(50); // der Logeintrag entsteht erst nach dem Senden der Antwort, auf langsamen Runnern kommt die nächste Anfrage zuvor
   const { entries } = await (await request('/api/system/logs', { cookie: lead })).json();
   const text = entries.map(e => e.message).join('\n');
   assert.ok(!text.includes('p_fremd_4711') && !text.includes('p_lead'), 'Personen-IDs im Log');
