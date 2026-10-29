@@ -3,60 +3,95 @@
  * Kursdaten-Laden, Suche und Filterung nach Kategorien
  */
 
-import { formatEuropeanDate, formatEuropeanDateRange } from './utils.js';
+import { esc, errorText, responseError, formatEuropeanDate, formatEuropeanDateRange } from './utils.js';
 
 let allCourses = [];
+let coursesRequest = null;
+
+// Kursanlässe einmal pro Seitenaufruf laden: Kursangebot, Baum und Planer teilen sie
+export function fetchCourses() {
+  coursesRequest ??= fetch('/api/courses')
+    .then(async res => {
+      if (!res.ok) throw await responseError(res);
+      return res.json();
+    })
+    .then(data => (Array.isArray(data) ? data : (data.courses || [])))
+    .catch(err => {
+      coursesRequest = null; // der nächste Aufruf versucht es neu
+      throw err;
+    });
+  return coursesRequest;
+}
+
+// Kommende Durchführungen eines Kurses im Baum, die früheste zuerst
+export function upcomingDates(courses, courseNodeId) {
+  const today = new Date().toISOString().slice(0, 10);
+  return courses
+    .filter(c => c.course_node_id === courseNodeId && c.start_date >= today)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+}
+
+// Angaben einer Durchführung. Im Baum fallen leere Angaben weg und der Anmeldelink steht dabei; im Kursangebot
+// (catalog) zeigt jede Kachel alle fünf Zeilen, Fehlendes als «Nicht bekannt», damit alle gleich hoch bleiben
+export function courseMetaHtml(c, { catalog = false } = {}) {
+  const row = (label, value, style = '') => (value === '' || value == null
+    ? (catalog ? `
+    <div class="meta-item">
+      <span>${label}:</span>
+      <strong class="text-dim">Nicht bekannt</strong>
+    </div>` : '')
+    : `
+    <div class="meta-item">
+      <span>${label}:</span>
+      <strong${style}${catalog ? ` title="${esc(value)}"` : ''}>${esc(value)}</strong>
+    </div>`);
+  return `
+    <div class="meta-list">
+      ${row('Veranstalter', c.organizer)}
+      ${row('Kursort', c.location)}
+      ${row('Kursdatum', formatEuropeanDateRange(c.start_date, c.end_date))}
+      ${row('Anmeldeschluss', formatEuropeanDate(c.registration_deadline), ' style="color: var(--cevi-gold);"')}
+      ${row('Freie Plätze', c.free_places)}
+      ${!catalog && c.registration_url ? `
+        <a class="btn btn-secondary btn-sm" href="${esc(c.registration_url)}" target="_blank" rel="noopener noreferrer" aria-label="Zur Anmeldung in der Cevi-DB (öffnet in neuem Tab)">
+          <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          <span>Zur Anmeldung in der Cevi-DB</span>
+        </a>` : ''}
+    </div>`;
+}
 
 export async function loadAllCourses() {
   const container = document.getElementById('coursesContainer');
-  const modalContainer = document.getElementById('modalCoursesContainer');
-  if (!container && !modalContainer) return;
+  if (!container) return;
 
   try {
-    const res = await fetch('/api/courses');
-    allCourses = await res.json();
+    allCourses = await fetchCourses();
     renderCourses(allCourses);
   } catch (err) {
     console.error('Fehler beim Laden des Kursangebots:', err);
-    if (container) container.innerHTML = `<div class="loading-placeholder text-danger">Fehler: ${err.message}</div>`;
+    container.innerHTML = `<div class="loading-placeholder text-danger">Fehler beim Laden des Kursangebots: ${esc(errorText(err))}</div>`;
   }
 }
 
 export function renderCourses(courses) {
   const container = document.getElementById('coursesContainer');
-  const modalContainer = document.getElementById('modalCoursesContainer');
+  const list = Array.isArray(courses) ? courses : (courses?.courses || []);
 
-  const html = courses.map(c => `
+  // Kursdaten kommen im Live-Betrieb aus der Cevi-DB (fremde Eingaben): alles escapen
+  const html = list.map(c => `
     <div class="card">
       <div class="card-top">
-        <span class="card-category">${c.category}</span>
-        <span class="badge ${c.status.includes('Offen') ? 'badge-success' : 'badge-warning'}">${c.status}</span>
+        <span class="card-category">${esc(c.category)}</span>
+        <span class="badge ${String(c.status || '').includes('Offen') ? 'badge-success' : 'badge-warning'}">${esc(c.status)}</span>
       </div>
-      <h3 class="card-title">${c.title}</h3>
-      <p class="card-subtitle">${c.description}</p>
-      <div class="meta-list">
-        <div class="meta-item">
-          <span>Veranstalter:</span>
-          <strong>${c.organizer}</strong>
-        </div>
-        <div class="meta-item">
-          <span>Kursort:</span>
-          <strong>${c.location}</strong>
-        </div>
-        <div class="meta-item">
-          <span>Kursdatum:</span>
-          <strong>${formatEuropeanDateRange(c.start_date, c.end_date)}</strong>
-        </div>
-        <div class="meta-item">
-          <span>Anmeldeschluss:</span>
-          <strong style="color: var(--cevi-gold);">${formatEuropeanDate(c.registration_deadline)}</strong>
-        </div>
-      </div>
+      <h3 class="card-title">${esc(c.title)}</h3>
+      <p class="card-subtitle">${esc(c.description)}</p>
+      ${courseMetaHtml(c, { catalog: true })}
     </div>
   `).join('');
 
-  if (container) container.innerHTML = html;
-  if (modalContainer) modalContainer.innerHTML = html;
+  // Ohne Treffer (Suche, Kategorie) einen Hinweis statt einer leeren Liste
+  if (container) container.innerHTML = html || '<p class="empty-text">Keine passenden Kurse gefunden.</p>';
 }
 
 export function filterCourses() {

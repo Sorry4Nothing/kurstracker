@@ -1,0 +1,122 @@
+/* ==============================================================================
+   API-OUTPUT (nur zur Entwicklung): eine Karte pro Endpunkt, darin die Antwort
+   als Tabelle oder als JSON-Baum (js/api-output.js). Die Tabellen bauen auf
+   .data-table aus planner.css auf.
+   ============================================================================== */
+
+.api-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.api-card > summary {
+  cursor: pointer;
+}
+
+/* Umschalter Tabelle / JSON-Baum: die gewählte Darstellung trägt das Blau der Interaktion */
+.api-switch {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.api-switch [aria-pressed="true"] {
+  border-color: transparent;
+  background-color: var(--blue-soft);
+  color: var(--blue-ink);
+}
+
+/* Die Antwort scrollt in ihrer Karte, nie die Seite */
+.api-view {
+  max-height: 70vh;
+  margin-top: var(--sp-3);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* Dichter als die Mitgliedertabelle; Werte bleiben auf einer Zeile, nur lange Texte brechen um (.api-long) */
+.api-table :is(th, td) {
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.api-table tbody tr:last-child th {
+  border-bottom: 0;
+}
+
+/* Feldnamen und Zeilennummern so schmal wie ihr Text */
+.api-table th[scope="row"] {
+  width: 1%;
+}
+
+/* Hover nur auf der Zeile unter der Maus: eine Zeile mit offener Unterebene färbt sonst die ganze innere Tabelle */
+.api-table tbody tr:hover td:not([colspan]) {
+  background-color: transparent;
+}
+
+.api-table tbody tr:not(:has(details[open])):hover > td {
+  background-color: var(--bg-hover);
+}
+
+/* Spaltenköpfe der äussersten Tabelle bleiben beim Scrollen stehen */
+.api-view > .api-table > thead th {
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-surface);
+}
+
+.api-long {
+  display: inline-block;
+  min-width: 24ch;
+  max-width: 48ch;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.api-table summary {
+  cursor: pointer;
+  color: var(--info-ink);
+}
+
+/* Leere Werte grau; im JSON-Baum tragen die Werte zudem die Farbe ihres Typs */
+.api-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.api-json .api-string {
+  color: var(--ok-ink);
+}
+
+.api-json .api-number {
+  color: var(--info-ink);
+}
+
+.api-json .api-boolean {
+  color: var(--teal-ink);
+}
+
+/* JSON-Baum: eine Einrückung pro Ebene */
+.api-json {
+  padding-left: var(--sp-5);
+  list-style: none;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: var(--fs-12);
+  line-height: var(--lh-14);
+}
+
+.api-view > .api-json {
+  padding-left: 0;
+}
+
+.api-json summary {
+  cursor: pointer;
+}
+
+.api-key {
+  font-weight: var(--fw-medium);
+}

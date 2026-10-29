@@ -1,0 +1,150 @@
+import AxeBuilder from '@axe-core/playwright';
+import { test, expect, openApp, THEMES } from './fixtures.js';
+
+const WCAG_21_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+// Nur diese Stufen lassen den Test scheitern; leichtere Verstösse stehen im Anhang «axe» des Reports
+const BLOCKING = ['serious', 'critical'];
+
+const showView = view => page => page.evaluate(id => window.switchTab(id), view);
+
+// Die Ansichten, ausgehend von der frisch geladenen App (Baum)
+const VIEWS = [
+  ['Ausbildungsbaum', async () => {}],
+  ['Stufenleiter-Planer', showView('planner')],
+  ['Profil', showView('profile')],
+  ['API-Output', async page => {
+    await showView('api')(page);
+    // Je eine Karte als Tabelle und als JSON-Baum offen, sonst prüft axe nur die zugeklappten Köpfe
+    const card = url => page.locator('#apiOutputList > details').filter({ hasText: `GET ${url}` });
+    await card('/api/auth/me').locator(':scope > summary').click();
+    await card('/api/auth/me').locator('td summary').first().click();
+    await card('/api/courses').locator(':scope > summary').click();
+    await card('/api/courses').getByRole('button', { name: 'JSON-Baum' }).click();
+    await card('/api/courses').locator('.api-json summary').first().click();
+    await expect(card('/api/courses').locator('.api-key').first()).toBeVisible();
+  }]
+];
+
+// Eigene Seite ausserhalb der App, im gespeicherten Theme
+const PRIVACY = ['Datenschutzerklärung', async page => {
+  await page.goto('/datenschutz.html');
+  await expect(page.getByRole('heading', { level: 1, name: 'Datenschutzerklärung' })).toBeVisible();
+}];
+
+// Login-Seite für Besucher ohne Sitzung, mit Hinweis nach gescheitertem Login (im Vorbereitungsmodus unter /anmelden)
+const LOGIN = ['Login-Seite', async page => {
+  await page.goto('/anmelden?error=callback_failed');
+  await expect(page.getByRole('heading', { level: 1, name: 'Deine Ausbildung im Überblick' })).toBeVisible();
+  await expect(page.getByRole('alert')).toBeVisible();
+}];
+
+// Fehlerseiten: der Statuscode 401/404/502 ist hier gewollt, darum zählt der Antwortstatus nicht als Fehler im Browser
+const ERROR_PAGES = [
+  ['/fehler/404', 'Seite nicht gefunden'],
+  ['/fehler/401', 'Du bist nicht angemeldet'],
+  ['/fehler/502', 'Die Cevi-DB antwortet nicht']
+].map(([path, heading]) => [`Fehlerseite ${path.slice(-3)}`, async page => {
+  // Der Browser meldet die 4xx/5xx-Seite auch als Konsolenfehler
+  page.removeAllListeners('response');
+  page.removeAllListeners('console');
+  await page.goto(path);
+  await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+}]);
+
+const SCENARIOS = [
+  ...VIEWS,
+  ['Theme-Menü offen', async page => {
+    await page.locator('#themeDropdownTrigger').click();
+    await expect(page.locator('#themeDropdownMenu')).toBeVisible();
+  }],
+  ['Kategorie-Menü im Profil offen', async page => {
+    await showView('profile')(page);
+    await page.locator('#categoryDropdownTrigger').click();
+    await expect(page.locator('#categoryDropdownMenu')).toBeVisible();
+  }],
+  ['Dialog «Kurs vorschlagen» offen', async page => {
+    await showView('planner')(page);
+    await page.locator('#plannerStufeTrigger').click();
+    await page.getByRole('option').nth(1).click();
+    await page.locator('.proposal-group').getByRole('button', { name: 'Person hinzufügen' }).click();
+    await expect(page.getByRole('dialog', { name: 'Kurs vorschlagen' })).toBeVisible();
+  }],
+  ['Kurs im Baum gewählt', async page => {
+    // Nach dem Wegfall von «angemeldet» zentriert die Startansicht einen anderen Kurs: Karte per Tastatur wählen
+    await page.getByRole('button', { name: /GLK 3/ }).press('Enter');
+    await expect(page.locator('#inspectorTitle')).toContainText('Leiter*innenkurs');
+  }],
+  ['Profil mit Foto', async page => {
+    // Der Mock-Benutzer hat kein Foto (picture_url null): ohne Foto bleiben beide <img> verborgen und ungeprüft
+    await page.route('/api/auth/me', async route => {
+      const response = await route.fetch();
+      const body = await response.json();
+      await route.fulfill({ response, json: { ...body, user: { ...body.user, picture_url: '/apple-touch-icon.png' } } });
+    });
+    await openApp(page);
+    await showView('profile')(page);
+    await expect(page.locator('#navUserPhoto')).toBeVisible();
+    await expect(page.locator('#profileHeroPhoto')).toBeVisible();
+  }],
+  PRIVACY,
+  LOGIN,
+  ...ERROR_PAGES
+];
+
+async function openAppInTheme(page, theme) {
+  await page.addInitScript(value => localStorage.setItem('cevi_theme', value), theme);
+  await openApp(page);
+}
+
+async function expectNoSeriousViolations(page, scenario) {
+  // Menüs und Drawer blenden 200 ms ein: halb durchsichtig ergäben sie falsche Kontraste
+  await page.evaluate(() => Promise.all([
+    document.fonts.ready,
+    ...document.getAnimations()
+      .filter(a => a.effect?.getComputedTiming().endTime !== Infinity)
+      .map(a => a.finished.catch(() => {}))
+  ]).then(() => {}));
+  const { violations, incomplete } = await new AxeBuilder({ page }).withTags(WCAG_21_AA).analyze();
+  // Doppelte IDs hinter aria-labelledby & Co. meldet axe nur «zur Prüfung» (reviewOnFail); hier sind sie immer ein Fehler
+  const findings = [...violations, ...incomplete.filter(v => v.id === 'duplicate-id-aria')];
+  await test.info().attach(`axe: ${scenario}`, { body: JSON.stringify(findings, null, 2), contentType: 'application/json' });
+
+  const blocking = findings
+    .filter(v => BLOCKING.includes(v.impact))
+    .map(v => `${v.id} (${v.impact}): ${v.nodes.map(n => n.target.join(' ')).join(' | ')}`);
+  expect(blocking, `Schwere WCAG-2.1-AA-Verstösse in «${scenario}»`).toEqual([]);
+}
+
+function scanEach(themes, scenarios, size) {
+  for (const [theme, label] of themes) {
+    for (const [name, prepare] of scenarios) {
+      test(`keine schweren WCAG-2.1-AA-Verstösse: ${label}, ${name}`, async ({ page }) => {
+        await openAppInTheme(page, theme);
+        await prepare(page);
+        await expectNoSeriousViolations(page, `${label}, ${name}, ${size}`);
+      });
+    }
+  }
+}
+
+test.describe('Barrierefreiheit Desktop 1440 x 900', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+  scanEach(THEMES, SCENARIOS, '1440 x 900');
+});
+
+test.describe('Barrierefreiheit Mobil 375 x 812', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  // Standard-Theme und ein dunkles Theme. Die Ansichten im Handy-Layout (eigenes CSS) mit eingeklappter Sidebar:
+  // aufgeklappt deckt sie den Inhalt fast ganz ab
+  scanEach(THEMES.filter(([id]) => ['cevi-tools', 'midnight'].includes(id)), [
+    ...VIEWS,
+    ['Sidebar aufgeklappt', async page => {
+      await page.getByRole('button', { name: 'Menü ein-/ausblenden' }).click();
+      await expect(page.locator('#appSidebar')).toBeVisible();
+    }],
+    PRIVACY,
+    LOGIN,
+    ...ERROR_PAGES
+  ], '375 x 812');
+});

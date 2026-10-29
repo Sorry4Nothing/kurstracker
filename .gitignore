@@ -36,6 +36,8 @@ docs/
 # Testing & Coverage
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
 
 # Build, Bundlers & Caches
 .cache/
@@ -68,3 +70,5 @@ Desktop.ini
 *.ntvs*
 *.njsproj
 *.sln
+.playwright-mcp/
+.neon

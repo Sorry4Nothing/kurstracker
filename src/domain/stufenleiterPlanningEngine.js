@@ -1,5 +1,6 @@
 import { courseTreeEngine } from './courseTreeEngine.js';
 import { COURSE_NODES } from './courseTreeData.js';
+import { STUFENLEITUNG } from './plannerAccess.js';
 
 function formatEuropeanDate(dateVal) {
   if (!dateVal) return '';
@@ -33,14 +34,7 @@ export class StufenleiterPlanningEngine {
     const analyzed = participants.map(tn => this.analyzeParticipant(tn));
 
     // Gruppierung nach Kurs-Kandidaten (Wer kommt für welchen Kurs in Frage?)
-    const candidatesByCourse = {
-      hlk: [],
-      glk: [],
-      slk: [],
-      sec_berg: [],
-      sec_wasser: [],
-      mf_lst: []
-    };
+    const candidatesByCourse = {};
 
     analyzed.forEach(item => {
       item.recommendedCourses.forEach(rec => {
@@ -67,9 +61,9 @@ export class StufenleiterPlanningEngine {
       candidatesByCourse,
       urgentRenewals,
       summaryStats: {
-        readyForHlk: candidatesByCourse.hlk.length,
-        readyForGlk: candidatesByCourse.glk.length,
-        readyForSlk: candidatesByCourse.slk.length,
+        readyForHlk: candidatesByCourse.heku?.length || 0,
+        readyForGlk: candidatesByCourse.glk3?.length || 0,
+        readyForSlk: candidatesByCourse.slk?.length || 0,
         urgentRenewalCount: urgentRenewals.length
       }
     };
@@ -80,53 +74,68 @@ export class StufenleiterPlanningEngine {
    * @param {object} participant
    */
   analyzeParticipant(participant) {
-    const age = this.treeEngine.calculateAge(participant.birthdate);
-    const treeState = this.treeEngine.evaluatePersonInTree(participant);
+    // Kurstitel in der Form fur das Geschlecht der jeweiligen Person
+    const tree = this.treeEngine.forGender(participant.gender);
+    // Vorschläge gelten fürs nächste Kursjahr: Alter (Jahrgang) und Gültigkeit der Anerkennung ab dem 1. Januar.
+    // Angezeigt wird das heutige Alter (`age`); `planAge` rechnet nur die Empfehlungen.
+    const now = new Date();
+    const planYear = now.getFullYear() + 1;
+    const planStart = new Date(planYear, 0, 1);
+    const planAge = tree.calculateAge(participant.birthdate, planStart);
+    const age = tree.calculateExactAge(participant.birthdate, now);
+    const treeState = tree.evaluatePersonInTree(participant);
     const recommendedCourses = [];
 
-    const hasHlk = (participant.completedCourses || []).some(c => ['hlk', 'heku'].includes(c.toLowerCase()));
-    const hasGlk = (participant.completedCourses || []).some(c => ['glk', 'glk3'].includes(c.toLowerCase()));
-    const hasSlk = (participant.completedCourses || []).some(c => ['slk'].includes(c.toLowerCase()));
+    const completed = tree.normalizeCourseSet(participant.completedCourses || []);
+    const registered = tree.normalizeCourseSet(participant.inProgressCourses || []);
+    const jsQual = (participant.qualifications || []).find(q =>
+      typeof q === 'object' ? q.id === 'js_leiter_lst' : q === 'js_leiter_lst'
+    );
+    const hasHlk = completed.has('heku');
+    // Die J+S-Leiteranerkennung kommt aus dem GLK 3, auch wenn der Kurs selbst nicht in der Cevi-DB steht (#96)
+    const hasGlk = completed.has('glk3') || Boolean(jsQual);
+    const hasSlk = completed.has('slk');
 
     // 1. Empfehlung: Helferkurs (Heku)
-    if (!hasHlk && !hasGlk && age >= 14 && age <= 16) {
-      const courseTitle = COURSE_NODES.heku ? COURSE_NODES.heku.title : 'Helferkurs (Heku)';
+    if (!hasHlk && !hasGlk && planAge >= tree.nodes.heku.minAge && planAge <= 16) {
+      const courseTitle = tree.nodes.heku.title;
       recommendedCourses.push({
         courseId: 'heku',
         title: courseTitle,
         courseTitle: courseTitle,
-        priority: age >= 15 ? 'HOCH' : 'NORMAL',
-        reason: age >= 15
-          ? `Ideales Einstiegsalter (${age} Jahre) für den Hilfsleiterkurs.`
-          : 'Berechtigt für Heku (ab 13-14 Jahren).'
+        priority: planAge >= 15 ? 'HOCH' : 'NORMAL',
+        reason: planAge >= 15
+          ? `Ideales Einstiegsalter (${planAge} Jahre) für den ${courseTitle}.`
+          : `Berechtigt für Heku (ab ${tree.nodes.heku.minAge} Jahren, Jahrgang).`
       });
     }
 
     // 2. Empfehlung: Gruppenleiterkurs 3 (GLK 3 / J+S Leiter)
-    if (!hasGlk && age >= 17) {
-      const courseTitle = COURSE_NODES.glk3 ? COURSE_NODES.glk3.title : 'Gruppenleiterkurs 3 (GLK 3 / J+S Leiter)';
+    if (!hasGlk && planAge >= tree.nodes.glk3.minAge) {
+      const courseTitle = tree.nodes.glk3.title;
       recommendedCourses.push({
         courseId: 'glk3',
         title: courseTitle,
         courseTitle: courseTitle,
-        priority: age >= 18 ? 'SEHR HOCH' : 'HOCH',
-        reason: age >= 18
-          ? `Erreicht Volljährigkeit (${age} Jahre) - GLK für vollen J+S-Leiterstatus dringend empfohlen.`
-          : `Berechtigt für GLK im laufenden Jahr (17 Jahre, J+S-Einstieg).`
+        priority: planAge >= 18 ? 'SEHR HOCH' : 'HOCH',
+        reason: planAge >= 18
+          ? `Erreicht Volljährigkeit (${planAge} Jahre) - GLK für vollen J+S-Leiterstatus dringend empfohlen.`
+          : `Berechtigt für GLK ${planYear} (17 Jahre, J+S-Einstieg).`
       });
     }
 
     // 3. Empfehlung: Scharleiterkurs (SLK)
-    if (hasGlk && !hasSlk && age >= 18) {
-      const leaderRole = (participant.currentRole || '').toLowerCase();
-      const isLeader = leaderRole.includes('leiter') || leaderRole.includes('kader');
-      if (isLeader) {
-        const courseTitle = COURSE_NODES.slk ? COURSE_NODES.slk.title : 'Stufenleitenden-Kurs (SLK)';
+    if (hasGlk && !hasSlk && planAge >= 18) {
+      // Der SLK ist für Stufenleitende: am Rollentyp der Cevi-DB erkannt, bei Rollen als Text (Demo) am Namen
+      const isStufenleiter = (participant.groups || []).some(g => (g.roleTypes || []).some(t => STUFENLEITUNG.includes(t)))
+        || /\bstufenleiter(in)?\b/i.test(participant.currentRole || '');
+      if (isStufenleiter) {
+        const courseTitle = tree.nodes.slk.title;
         recommendedCourses.push({
           courseId: 'slk',
           title: courseTitle,
           courseTitle: courseTitle,
-          priority: age >= 19 ? 'HOCH' : 'NORMAL',
+          priority: planAge >= 19 ? 'HOCH' : 'NORMAL',
           reason: `Hat GLK abgeschlossen. Bereit für Kader- und Scharleiterverantwortung.`
         });
       }
@@ -135,24 +144,37 @@ export class StufenleiterPlanningEngine {
     // 4. Prüfung: J+S Weiterbildung (Modul Fortbildung)
     let hasExpiringJsLeiter = false;
     if (hasGlk) {
-      const jsQual = (participant.qualifications || []).find(q =>
-        typeof q === 'object' ? q.id === 'js_leiter_lst' : q === 'js_leiter_lst'
-      );
-
       // Falls Gültigkeitsdatum hinterlegt ist
       const expirationDate = (typeof jsQual === 'object' && jsQual?.validUntil) ? jsQual.validUntil : participant.jsExpirationDate;
       if (expirationDate) {
         const validUntil = new Date(expirationDate);
-        const monthsRemaining = (validUntil - new Date()) / (1000 * 60 * 60 * 24 * 30.5);
-        if (monthsRemaining <= 12) {
+        const monthsRemaining = (validUntil - planStart) / (1000 * 60 * 60 * 24 * 30.5);
+        const courseTitle = tree.nodes.mf_lst.title;
+        if (validUntil < now || monthsRemaining < 0) {
           hasExpiringJsLeiter = true;
-          const courseTitle = COURSE_NODES.mf_lst ? COURSE_NODES.mf_lst.title : 'Modul Fortbildung Lagersport/Trekking (MF)';
+          recommendedCourses.unshift({
+            courseId: 'mf_lst',
+            title: courseTitle,
+            courseTitle: courseTitle,
+            priority: 'DRINGEND',
+            // Die Pille nennt den Zustand der Anerkennung, nicht den Kurs
+            badge: validUntil < now ? 'J+S abgelaufen' : 'J+S läuft ab',
+            // Noch gültig, aber vor Beginn des Kursjahres vorbei: nicht «abgelaufen» nennen
+            reason: validUntil < now
+              ? `J+S-Brevetierung ist am ${formatEuropeanDate(expirationDate)} abgelaufen.`
+              : `J+S-Brevetierung verfällt am ${formatEuropeanDate(expirationDate)}, vor Beginn ${planYear}. Fortbildung nötig.`
+          });
+        } else if (monthsRemaining <= 12) {
+          hasExpiringJsLeiter = true;
           recommendedCourses.unshift({
             courseId: 'mf_lst',
             title: courseTitle,
             courseTitle: courseTitle,
             priority: monthsRemaining <= 6 ? 'DRINGEND' : 'HOCH',
-            reason: `J+S Leiterstatus verfällt am ${formatEuropeanDate(expirationDate)} (in ca. ${Math.round(monthsRemaining)} Monaten). Fortbildungsmodul nötig!`
+            badge: 'J+S läuft ab',
+            reason: monthsRemaining <= 6
+              ? `J+S-Status verfällt am ${formatEuropeanDate(expirationDate)}. Fortbildung nötig.`
+              : `J+S-Status verfällt am ${formatEuropeanDate(expirationDate)}. Auffrischung nötig.`
           });
         }
       }
@@ -161,12 +183,20 @@ export class StufenleiterPlanningEngine {
     // Vorhandene Planung/Vorschlag abrufen
     const activeNomination = this.nominations.get(participant.id) || null;
 
+    // Kürzel aus den Kursdaten (Alias 'hlk' wird «Heku»), unbekannte IDs bleiben stehen
+    const completedCourseCodes = [...new Set(
+      (participant.completedCourses || []).map(id => COURSE_NODES[id]?.code ?? id)
+    )];
+
     return {
       participant,
       age,
-      currentLevel: treeState.currentMaxLevel,
+      completedCourseCodes,
       availableNextCourses: treeState.availableNextCourses,
-      recommendedCourses,
+      // Für einen Kurs, für den die Person schon angemeldet ist, kein Vorschlag
+      recommendedCourses: recommendedCourses
+        .filter(rec => !registered.has(rec.courseId))
+        .map(rec => ({ ...rec, code: COURSE_NODES[rec.courseId]?.code })),
       hasExpiringJsLeiter,
       activeNomination
     };
@@ -184,13 +214,14 @@ export class StufenleiterPlanningEngine {
    * @returns {object} Das erstellte Vorschlags-Objekt mit Eignungsprüfung
    */
   proposeCourse(participant, nominationData) {
-    const course = COURSE_NODES[nominationData.courseId];
+    const tree = this.treeEngine.forGender(participant.gender);
+    const course = tree.nodes[nominationData.courseId];
     if (!course) {
       throw new Error(`Ungültiger Kurs: '${nominationData.courseId}'`);
     }
 
     // Eignungsprüfung durchführen
-    const pathCheck = this.treeEngine.findPathToTarget(participant, nominationData.courseId);
+    const pathCheck = tree.findPathToTarget(participant, nominationData.courseId);
 
     const nomination = {
       id: 'nom_' + participant.id + '_' + nominationData.courseId,
@@ -220,13 +251,6 @@ export class StufenleiterPlanningEngine {
    */
   getAllNominations() {
     return Array.from(this.nominations.values());
-  }
-
-  /**
-   * Löscht einen Vorschlag
-   */
-  removeNomination(participantId) {
-    return this.nominations.delete(participantId);
   }
 }
 

@@ -175,13 +175,13 @@ cp .env.example .env.local</code></pre>
     <span style="background: rgba(50, 51, 148, 0.35); border: 1px solid #38BDF8; color: #BAE6FD; font-family: monospace; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 12px;">EMBEDDED CODE</span>
   </div>
 
-  <!-- Card 1: 100% Enthalten -->
+  <!-- Card 1: Ohne Build-Schritt -->
   <div style="background: #10152b; border: 1px solid rgba(16, 138, 67, 0.4); border-left: 4px solid #108A43; border-radius: 8px; padding: 16px 18px; margin-bottom: 14px;">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-      <span style="background: rgba(16, 138, 67, 0.25); color: #86EFAC; border: 1px solid #108A43; padding: 3px 10px; border-radius: 6px; font-family: monospace; font-size: 11px; font-weight: bold;">100% ENTHALTEN</span>
-      <code style="background: #060914; color: #38BDF8; border: 1px solid #1e293b; padding: 3px 10px; border-radius: 4px; font-family: monospace; font-size: 12px;">src/components/kokonutui-pro/</code>
+      <span style="background: rgba(16, 138, 67, 0.25); color: #86EFAC; border: 1px solid #108A43; padding: 3px 10px; border-radius: 6px; font-family: monospace; font-size: 11px; font-weight: bold;">OHNE BUILD</span>
+      <code style="background: #060914; color: #38BDF8; border: 1px solid #1e293b; padding: 3px 10px; border-radius: 4px; font-family: monospace; font-size: 12px;">public/</code>
     </div>
-    <p style="color: #E2E8F0; font-size: 13px; line-height: 1.5; margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Alle UI-Komponenten (u. a. <code style="color: #BAE6FD; background: #060914; padding: 2px 6px; border-radius: 4px;">continue-learning-card.jsx</code> und <code style="color: #BAE6FD; background: #060914; padding: 2px 6px; border-radius: 4px;">onboarding-checklist.jsx</code>) sind fest im Quellcode enthalten. <b>Kein Token oder Registrierung für Klonen, Setup oder Weiterentwicklung erforderlich.</b></p>
+    <p style="color: #E2E8F0; font-size: 13px; line-height: 1.5; margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Die Oberfläche ist reines HTML, CSS und JavaScript (ES-Module) und läuft ohne Build-Schritt. <b>Kein Token oder Registrierung für Klonen, Setup oder Weiterentwicklung erforderlich.</b></p>
   </div>
 
   <!-- Card 2: Optionale Registry -->

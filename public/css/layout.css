@@ -1,329 +1,784 @@
 /* ==============================================================================
-   CEVI KURSTRACKER - APP SHELL & LAYOUT
-   Sidebar, Continuous 64px Header Line, Responsive Drawer, Footer
+   CEVI KURSTRACKER - APP SHELL
+   Sidebar (brand, navigation, footer slot), sticky topbar with the page title,
+   content area, global footer, and the off-canvas drawer at 1024px and below;
+   last the privacy notice, a page of its own (datenschutz.html).
+   Tokens only: colours, type, spacing and motion come from variables.css.
+   The theme dropup (components.css) and the profile card (profile.css) sit in
+   .sidebar-footer but are styled in their own files.
    ============================================================================== */
 
+/* ------------------------------------------------------------------------------
+   1. Shell
+   The sidebar header and the topbar share --shell-header-h, so their bottom
+   borders form one continuous line across the window.
+   ------------------------------------------------------------------------------ */
 .app-layout {
+  --shell-sidebar-w: 256px;
+  --shell-header-h: 76px; /* 24/32 title + 14/20 subtitle, 12px above and below */
+
   display: flex;
-  min-height: 100vh;
   width: 100%;
-  position: relative;
+  min-height: 100vh;
   background-color: var(--bg-main);
 }
 
-/* Sidebar Navigation */
-.app-sidebar {
-  width: 275px;
-  flex-shrink: 0;
+.app-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
   min-height: 100vh;
-  height: 100vh;
+  background-color: var(--bg-main);
+}
+
+.app-content-area {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: var(--sp-6) var(--sp-8) var(--sp-8);
+}
+
+/* ------------------------------------------------------------------------------
+   2. Sidebar
+   ------------------------------------------------------------------------------ */
+.app-sidebar {
   position: sticky;
   top: 0;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
+  z-index: var(--z-sidebar);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  z-index: 100;
+  flex-shrink: 0;
+  width: var(--shell-sidebar-w);
+  height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.app-sidebar::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+  overscroll-behavior: contain;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border-subtle);
 }
 
+/* The sidebar header is the left end of the header band (see the topbar) */
 .sidebar-header {
-  height: 64px;
-  max-height: 64px;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
-  padding: 0 1rem;
-  border-bottom: 1px solid var(--border-subtle);
-  width: 100%;
-  box-sizing: border-box;
+  min-height: var(--shell-header-h);
+  padding: 0 var(--sp-5);
+  background-color: var(--band-bg);
+  border-bottom: 3px solid var(--band-rule);
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  text-decoration: none;
-}
+/* Logo mark on a white plate (its Cevi-Blau would vanish on the band) plus
+   a two-weight wordmark */
 .brand-link {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: var(--sp-3);
+  min-width: 0;
+  border-radius: var(--radius-md);
+  color: var(--on-brand);
   text-decoration: none;
-  flex-shrink: 0;
-  width: 100%;
-  box-sizing: border-box;
 }
+
 .brand-logo-svg {
   display: block;
   flex-shrink: 0;
-}
-.brand-title {
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 1.15rem;
-  letter-spacing: -0.02em;
-  display: block;
-  color: var(--text-main);
-  line-height: 1.2;
-}
-.brand-title .highlight {
-  color: var(--cevi-accent);
+  width: 36px;
+  height: 36px;
+  padding: var(--sp-1);
+  border-radius: var(--radius-md);
+  background-color: var(--logo-plate);
 }
 
+.brand-text {
+  min-width: 0;
+}
+
+.brand-title {
+  display: block;
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-bold);
+  color: var(--on-brand);
+  white-space: nowrap;
+}
+
+.brand-title .highlight {
+  font-weight: var(--fw-regular);
+  color: var(--band-ink-muted);
+}
+
+/* Navigation */
 .sidebar-nav {
-  padding: 1rem 1rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
   flex: 1;
-  width: 100%;
-  box-sizing: border-box;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-4);
 }
 
 .sidebar-nav-group-title {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-  margin-bottom: 0.5rem;
-  padding-left: 0.5rem;
+  margin-bottom: var(--sp-1);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
 }
 
+/* auth.js shows #tabPlanner with an inline display: flex.
+   Label in ink, icon in Cevi-Blau (interaction); the current view takes the
+   solid primary fill (see below). */
 .sidebar-nav-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: var(--sp-3);
   width: 100%;
-  box-sizing: border-box;
-  padding: 0.75rem 0.85rem;
+  min-height: var(--control-h);
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
   border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text-muted);
+  background-color: transparent;
+  color: var(--text-main);
   font-family: var(--font-body);
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-medium);
   text-align: left;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
-  overflow: hidden;
+  cursor: pointer;
+  transition: var(--transition);
 }
 
 .sidebar-nav-item .nav-icon {
-  font-size: 1rem;
+  flex-shrink: 0;
   width: 20px;
+  font-size: var(--fs-14);
   text-align: center;
-  color: var(--text-dim);
-  transition: color 0.15s ease;
+  color: var(--blue-ink);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.sidebar-nav-item .nav-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-nav-item:hover {
-  background: var(--bg-surface-elevated);
-  color: var(--text-main);
+  background-color: var(--bg-hover);
 }
-.sidebar-nav-item:hover .nav-icon {
-  color: var(--text-main);
+
+/* Current view: a solid primary fill (Cevi-Rot).
+   Same specificity as :hover and later, so it keeps its fill under the
+   pointer. */
+.sidebar-nav-item.active,
+.sidebar-nav-item.active .nav-icon {
+  color: var(--primary-ink);
 }
 
 .sidebar-nav-item.active {
-  background: rgba(196, 19, 51, 0.12);
-  color: var(--text-main);
-  border-color: rgba(196, 19, 51, 0.25);
-  border-left: 3px solid var(--cevi-red);
-}
-.sidebar-nav-item.active .nav-icon {
-  color: var(--cevi-red);
+  background-color: var(--primary);
 }
 
-.nav-permission-pill {
-  margin-left: auto;
-  font-size: 0.62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.15rem 0.45rem;
-  border-radius: var(--radius-full);
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--cevi-gold);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
+.sidebar-nav-item.active:hover {
+  background-color: var(--primary-hover);
+}
+
+/* forced-colors drops the fill; a transparent border keeps the marker */
+.sidebar-nav-item.active::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  border-radius: inherit;
 }
 
 .sidebar-footer {
-  padding: 1rem 1rem;
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
   border-top: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  background: var(--bg-surface);
-  width: 100%;
-  box-sizing: border-box;
 }
 
-/* App Main Content Area */
-.app-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: var(--bg-main);
-}
-
+/* ------------------------------------------------------------------------------
+   3. Topbar: sticky and opaque. The h1 is the page title of every view.
+      Together with the sidebar header it forms the header band: the theme's
+      brand colour with a 3px rule in the accent below.
+   ------------------------------------------------------------------------------ */
 .app-topbar {
-  height: 64px;
-  max-height: 64px;
-  box-sizing: border-box;
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2rem;
-  background: var(--bg-glass);
-  backdrop-filter: blur(16px);
   position: sticky;
   top: 0;
-  z-index: 90;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  min-height: var(--shell-header-h);
+  padding: 0 var(--sp-8);
+  background-color: var(--band-bg);
+  border-bottom: 3px solid var(--band-rule);
+}
+
+/* On the band --focus-ring vanishes (Cevi-Blau on Cevi-Blau in Klassik,
+   1:1); a white ring like the band text stays visible in every theme */
+.sidebar-header :focus-visible,
+.app-topbar :focus-visible,
+.legal-band :focus-visible {
+  outline-color: var(--on-brand);
 }
 
 .topbar-left {
   display: flex;
+  flex: 1;
   align-items: center;
-  gap: 1rem;
+  gap: var(--sp-3);
+  min-width: 0;
 }
 
+/* Hamburger (#sidebarToggleBtn): ghost icon button, shown at 1024px and below */
 .sidebar-toggle-btn {
   display: none;
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-main);
-  font-size: 1rem;
-  padding: 0.45rem 0.65rem;
-  border-radius: 6px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--band-ink-muted);
+  font-size: var(--fs-16);
+  line-height: 1;
   cursor: pointer;
+  transition: var(--transition);
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: var(--band-hover);
+  color: var(--on-brand);
 }
 
 .topbar-titles {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .topbar-page-title {
-  font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: var(--text-main);
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  overflow: hidden;
+  font-size: var(--fs-24);
+  line-height: var(--lh-24);
+  font-weight: var(--fw-bold);
+  color: var(--on-brand);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .topbar-page-subtitle {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-weight: 500;
+  overflow: hidden;
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: var(--fw-regular);
+  color: var(--band-ink-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.topbar-stats {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.topbar-badge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.35rem 0.75rem;
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-main);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.topbar-badge .text-gold {
-  color: var(--cevi-gold);
-}
-
-.app-content-area {
-  flex: 1;
-  padding: 1.75rem 2rem;
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100vh - 64px);
-}
-
-/* Responsive Navigation & Breakpoints */
-@media (max-width: 1024px) {
-  .app-sidebar {
-    position: fixed;
-    top: 0;
-    left: -290px;
-    bottom: 0;
-    width: 280px;
-    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.6);
-    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .app-sidebar.open {
-    left: 0;
-  }
-  .sidebar-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .app-topbar {
-    padding: 0 1rem;
-  }
-  .app-content-area {
-    padding: 1rem;
-  }
-  .topbar-stats {
-    display: none;
-  }
-}
-
-/* App Global Footer (Git Version, Environment, Cevi-DB Status) */
+/* ------------------------------------------------------------------------------
+   4. Global footer: one quiet 12px line. Colour is set on the footer, not on
+      .footer-item, so the .text-dim utility and the status icon colour from
+      system.js (.text-success / .text-danger) still apply.
+   ------------------------------------------------------------------------------ */
 .app-global-footer {
-  width: 100%;
-  min-height: 38px;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border-subtle);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  padding: 0.4rem 1.75rem;
-  font-size: 0.74rem;
+  gap: var(--sp-1) var(--sp-6);
+  padding: var(--sp-3) var(--sp-8);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
   color: var(--text-muted);
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  z-index: 10;
+  font-variant-numeric: tabular-nums;
 }
+
 .app-global-footer .footer-left,
 .app-global-footer .footer-center,
 .app-global-footer .footer-right {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--sp-2);
+  min-width: 0;
 }
-.footer-dot {
-  color: var(--text-dim);
+
+/* Left and right take equal room, so the centre block sits in the true middle */
+@media (min-width: 641px) {
+  .app-global-footer .footer-left,
+  .app-global-footer .footer-right {
+    flex: 1 1 0;
+  }
+
+  .app-global-footer .footer-right {
+    justify-content: flex-end;
+  }
+}
+
+/* Link to the privacy notice: footer ink, set apart by the underline that
+   every link has (variables.css) */
+.app-global-footer a {
+  color: inherit;
+}
+
+/* ------------------------------------------------------------------------------
+   5. Drawer at 1024px and below
+   The sidebar floats below the sticky topbar, so the hamburger stays reachable
+   to close it. Closed, it sits fully off-canvas (shadow included) and is
+   hidden from focus once the 200ms slide has finished; visibility only
+   switches, it does not animate.
+   ------------------------------------------------------------------------------ */
+@media (max-width: 1024px) {
+  .app-sidebar {
+    position: fixed;
+    top: var(--shell-header-h);
+    bottom: 0;
+    left: 0;
+    height: auto;
+    max-width: calc(100vw - var(--sp-12));
+    border-right: 0; /* --shadow-float carries its own hairline ring */
+    box-shadow: var(--shadow-float);
+    transform: translateX(calc(-100% - var(--sp-8)));
+    visibility: hidden;
+    transition:
+      transform var(--dur-med) var(--ease),
+      visibility 0s linear var(--dur-med);
+  }
+
+  .app-sidebar.open {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--dur-med) var(--ease);
+  }
+
+  .sidebar-toggle-btn {
+    display: inline-flex;
+  }
+
+  /* Pressed look while the drawer is open */
+  .app-layout:has(.app-sidebar.open) .sidebar-toggle-btn {
+    background-color: var(--band-hover);
+    color: var(--on-brand);
+  }
+
+  .app-topbar {
+    padding: 0 var(--sp-6);
+  }
+
+  .app-content-area {
+    padding: var(--sp-6);
+  }
+
+  .app-global-footer {
+    padding: var(--sp-3) var(--sp-6);
+  }
+}
+
+@media (max-width: 640px) {
+  .app-layout {
+    --shell-header-h: 56px; /* 18/24 title + 12/16 subtitle, 8px above and below */
+  }
+
+  .app-topbar {
+    padding: 0 var(--sp-4);
+  }
+
+  .topbar-page-title {
+    font-size: var(--fs-18);
+    line-height: var(--lh-18);
+  }
+
+  .topbar-page-subtitle {
+    font-size: var(--fs-12);
+    line-height: var(--lh-12);
+  }
+
+  .app-content-area {
+    padding: var(--sp-4);
+  }
+
+  .app-global-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--sp-3) var(--sp-4);
+  }
+}
+
+/* ------------------------------------------------------------------------------
+   6. Privacy notice (datenschutz.html), a page of its own outside the shell:
+      the header band with the logo, then one text column at 16/24.
+   ------------------------------------------------------------------------------ */
+.legal-band {
+  display: flex;
+  align-items: center;
+  padding: var(--sp-5) var(--sp-8);
+  background-color: var(--band-bg);
+  border-bottom: 3px solid var(--band-rule);
+}
+
+.legal-page {
+  max-width: 768px;
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-6) var(--sp-12);
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  color: var(--text-main);
+}
+
+.legal-page h2 {
+  margin-top: var(--sp-8);
+  color: var(--blue-ink);
+}
+
+.legal-page h3 {
+  margin-top: var(--sp-5);
+}
+
+.legal-page :is(p, ul) {
+  margin-top: var(--sp-3);
+}
+
+.legal-page ul {
+  padding-left: var(--sp-6);
+}
+
+.legal-page li + li {
+  margin-top: var(--sp-1);
+}
+
+.legal-page code {
+  font-size: var(--fs-14);
+}
+
+.legal-page .legal-meta {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
+}
+
+.legal-page .legal-back {
+  margin-top: var(--sp-8);
+}
+
+@media (max-width: 640px) {
+  .legal-band {
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .legal-page {
+    padding: var(--sp-6) var(--sp-4) var(--sp-8);
+  }
+}
+
+/* ------------------------------------------------------------------------------
+   7. Error pages (src/views/fehler.html: 401, 404, 502). One template, the server
+      keeps only the section of the status code. The page sits on the same dot
+      grid as the tree map (drawn on a canvas, the design system allows no CSS gradients); a big outlined number, a round icon over its lower
+      edge, then label, title, text and one button. The accent (number, icon,
+      label) says what kind of problem it is: blue 404, amber 401, red 502.
+   ------------------------------------------------------------------------------ */
+.error-page {
+  --accent-bg: var(--blue-soft);
+  --accent-ink: var(--blue-ink);
+  --accent-solid: var(--blue-solid);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-height: calc(100vh - 80px);
+  padding: var(--sp-8) var(--sp-4) var(--sp-12);
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  color: var(--text-main);
+}
+
+/* Dot field behind everything, drawn by fehler.js (grows and takes the accent colour near the pointer) */
+.error-dots {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.error-hero {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  text-align: center;
+}
+
+.error-page[data-code="401"] {
+  --accent-bg: var(--warn-bg);
+  --accent-ink: var(--warn-ink);
+  --accent-solid: var(--warn-ink);
+}
+
+.error-page[data-code="502"] {
+  --accent-bg: var(--red-soft);
+  --accent-ink: var(--red-ink);
+  --accent-solid: var(--red-solid);
+}
+
+/* The number is decoration: an outline in the accent, faded so it stays behind the text */
+.error-numeral {
+  font-size: clamp(120px, 26vw, 220px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: transparent;
+  -webkit-text-stroke: 3px var(--accent-solid);
+  opacity: 0.28;
+  user-select: none;
+}
+
+/* The ring in the page colour cuts the icon out of the number behind it */
+.error-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  margin: calc(-1 * var(--sp-12)) auto var(--sp-5);
+  border-radius: var(--radius-full);
+  background-color: var(--accent-bg);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 8px var(--bg-main);
+}
+
+/* 502: the ring around the icon empties until the next automatic try (fehler.js) */
+.error-ring {
+  position: absolute;
+  inset: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.error-ring-track {
+  stroke: var(--border-subtle);
+}
+
+.error-ring-fill {
+  stroke: var(--accent-solid);
+  stroke-dasharray: 100;
+  transition: stroke-dashoffset 0.5s linear;
+}
+
+.error-retry {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.error-code {
+  font-size: var(--fs-14);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.error-hero h1 {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-30);
+  line-height: var(--lh-30);
+}
+
+.error-text {
+  max-width: 460px;
+  margin: var(--sp-3) auto 0;
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  color: var(--text-muted);
+}
+
+.error-hero .error-actions {
+  margin-top: var(--sp-8);
+}
+
+.error-help {
+  margin-top: var(--sp-6);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  color: var(--text-muted);
+}
+
+/* Entrance: number fades in, icon pops, the rest rises one after another; the icon then floats slowly */
+@keyframes error-numeral-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 0.28; transform: none; }
+}
+
+@keyframes error-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes error-pop {
+  0% { opacity: 0; transform: scale(0.5); }
+  70% { transform: scale(1.08); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes error-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -6px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .error-numeral {
+    animation: error-numeral-in 0.7s ease-out both;
+  }
+
+  .error-icon {
+    animation: error-pop 0.5s 0.15s cubic-bezier(0.34, 1.4, 0.64, 1) both, error-float 4s 0.7s ease-in-out infinite;
+  }
+
+  .error-code,
+  .error-hero h1,
+  .error-text,
+  .error-hero .error-actions,
+  .error-help {
+    animation: error-rise 0.5s ease-out both;
+  }
+
+  .error-code { animation-delay: 0.25s; }
+  .error-hero h1 { animation-delay: 0.32s; }
+  .error-text { animation-delay: 0.4s; }
+  .error-hero .error-actions { animation-delay: 0.48s; }
+  .error-help { animation-delay: 0.56s; }
+}
+
+@media (max-width: 640px) {
+  .error-icon {
+    width: 72px;
+    height: 72px;
+    margin-top: calc(-1 * var(--sp-8));
+  }
+
+  .error-hero h1 {
+    font-size: var(--fs-24);
+    line-height: var(--lh-24);
+  }
+
+  .error-text {
+    font-size: var(--fs-16);
+    line-height: var(--lh-16);
+  }
+}
+
+/* ------------------------------------------------------------------------------
+   8. Login page (src/views/anmelden.html), a page of its own outside the shell:
+      the header band, a stage with the dot field of the error pages (fehler.js)
+      and the one button.
+      Visitors without a session land here.
+   ------------------------------------------------------------------------------ */
+.login-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-main);
+}
+
+.login-stage {
+  --accent-solid: var(--primary);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  flex: 1;
+  padding: var(--sp-12) var(--sp-4);
+}
+
+.login-hero {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  text-align: center;
+}
+
+.login-mark {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto var(--sp-6);
+  padding: var(--sp-2);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 8px var(--bg-main);
+}
+
+.login-eyebrow {
+  font-size: var(--fs-14);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--blue-ink);
+}
+
+.login-hero h1 {
+  margin-top: var(--sp-2);
+  font-size: clamp(var(--fs-30), 6vw, 48px);
+  line-height: 1.1;
+}
+
+.login-text {
+  max-width: 480px;
+  margin: var(--sp-4) auto 0;
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  color: var(--text-muted);
+}
+
+.login-notice {
+  max-width: 480px;
+  margin: var(--sp-5) auto 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+  background-color: var(--bad-bg);
+  color: var(--bad-ink);
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+}
+
+.login-actions {
+  margin-top: var(--sp-8);
+}
+
+.login-actions .btn {
+  height: 48px;
+  padding: 0 var(--sp-8);
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+}
+
+/* Footer at the bottom edge on a short page */
+body:has(.login-page) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+@media (max-width: 640px) {
+  .login-stage {
+    padding: var(--sp-8) var(--sp-4);
+  }
 }

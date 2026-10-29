@@ -29,79 +29,255 @@ export const COURSE_MAP_COORDS = {
   sec_winter: { x: 1740, y: 670 }
 };
 
-export const MAP_TRACK_ZONES = [
-  { label: 'Jungschar Grundausbildung', x: 60, y: 200, icon: 'fa-campground' },
-  { label: 'Scharleitung & Fuehrung', x: 1440, y: 24, icon: 'fa-sitemap' },
-  { label: 'J+S Lagerleitung & Kader', x: 1440, y: 200, icon: 'fa-award' },
-  { label: 'Sicherheit & Spezialisierung', x: 870, y: 480, icon: 'fa-shield-halved' }
-];
+// Regionale Baum-Vorschau (COURSE_NODES_BY_REGION, siehe courseTreeData.js) hat eigene Kurs-IDs ohne
+// feste Koordinate. Reiht sie per Tiefensuche ueber prerequisites/recommendedPrerequisites in Spalten
+// ein (Tiefe = Spalte-Gruppe), ergaenzt COURSE_MAP_COORDS nur um die fehlenden Ids - ueberschreibt nie
+// eine feste Koordinate. Eine Tiefe mit vielen Kursen (z.B. "alles ohne erkannten DB-Vorgaenger") wuerde
+// sonst in einer einzigen, beliebig hohen Spalte uebereinanderstehen und die feste 2360x840-Leinwand
+// sprengen (Linien liefen dann ueber den Rand hinaus und wurden abgeschnitten) - deshalb bricht eine
+// Tiefe nach MAX_ROWS Kursen in weitere Unter-Spalten um. Gibt die noetige Leinwandgroesse zurueck
+// (oder null, wenn nichts zu platzieren war), die setCanvasSize() dann anwendet.
+//
+// Eigenstaendige Zusatzkurse (Kategorie "Optionale Sonderkurse" ohne jeden Vorgaenger, z.B. Froesch-Up,
+// Level Up, NOLK) haengen an keinem anderen Kurs und wuerden sonst wie ein Folgekurs von GLK 3 wirken.
+// Sie bekommen eine eigene Reihe ganz oben im selben Canvas, durch eine groessere Luecke optisch
+// abgesetzt - alles bleibt ein Fenster, nur raeumlich getrennt statt eine zweite Flaeche daneben.
+export function layoutRegionalCoords(nodeIds, nodesById) {
+  const todo = nodeIds.filter(id => !COURSE_MAP_COORDS[id] && nodesById[id]);
+  if (!todo.length) return null;
+
+  // Zeigt ein anderer Kurs auf diesen als Vorgaenger, gehoert er zur Kette - auch wenn er selbst
+  // keinen Vorgaenger hat (z.B. GKU als Wurzel einer neu verknuepften Kette). Sonst sass er oben in
+  // der eigenstaendigen Reihe, waehrend seine Nachfolger weit unten in der Pipeline standen, und die
+  // Verbindungslinie lief quer durchs ganze Bild.
+  const referenced = new Set();
+  todo.forEach(id => {
+    const n = nodesById[id];
+    [...(n.prerequisites || []), ...(n.recommendedPrerequisites || [])].forEach(p => referenced.add(p));
+  });
+
+  const isStandalone = id => {
+    const n = nodesById[id];
+    return n.category === 'Optionale Sonderkurse' && !(n.prerequisites?.length || n.recommendedPrerequisites?.length) && !referenced.has(id);
+  };
+  const standaloneIds = todo.filter(isStandalone);
+  const pipelineIds = todo.filter(id => !isStandalone(id));
+
+  const COL_W = 270, ROW_H = NODE_HEIGHT + 20, X0 = 60, MAX_ROWS = 7;
+  const STANDALONE_GAP = 50;
+  let maxWidth = 0;
+  let pipelineY0 = 40;
+
+  if (standaloneIds.length) {
+    standaloneIds.forEach((id, i) => {
+      COURSE_MAP_COORDS[id] = { x: X0 + i * COL_W, y: 40 };
+    });
+    maxWidth = Math.max(maxWidth, X0 + standaloneIds.length * COL_W + NODE_WIDTH + 40);
+    pipelineY0 = 40 + ROW_H + STANDALONE_GAP;
+  }
+
+  const depth = {};
+  pipelineIds.forEach(id => { depth[id] = 0; });
+  for (let pass = 0; pass < 30; pass++) {
+    pipelineIds.forEach(id => {
+      const node = nodesById[id];
+      const preds = [...(node.prerequisites || []), ...(node.recommendedPrerequisites || [])];
+      preds.forEach(p => {
+        if (!(p in depth)) return; // Vorgaenger hat schon eine feste Koordinate -> nicht Teil dieser Tiefenzaehlung
+        const d = Math.min(depth[p] + 1, 25);
+        if (d > depth[id]) depth[id] = d;
+      });
+    });
+  }
+  // Sicherheitsmodule (Anerkennung js_sec_*: Berg, Winter, Wasser) stehen zusammen in einer eigenen Spalte, hinter
+  // dem tiefsten von ihnen (SiBe Wasser haengt hinter dem MF Wasser); sonst stuende es bei Coach und Expert*in
+  const isSibe = id => (nodesById[id].grantsQualifications || []).some(q => q.startsWith('js_sec_'));
+  const sibeIds = pipelineIds.filter(isSibe);
+  const sibeDepth = Math.max(0, ...sibeIds.map(id => depth[id]));
+  const byDepth = {};
+  pipelineIds.filter(id => !isSibe(id)).forEach(id => { (byDepth[depth[id]] = byDepth[depth[id]] || []).push(id); });
+
+  // Erst alle Spalten (Tiefe + Unter-Spalte) als Listen sammeln, dann an der hoechsten Spalte
+  // vertikal zentrieren, statt alle oben buendig zu beginnen - eine Spalte mit nur 2 Kursen stand
+  // sonst stur am oberen Rand, auch wenn ihr Vorgaenger (z.B. GLK 3) mittig auf der Flaeche sitzt
+  const columns = [];
+  const colDepth = [];
+  Object.keys(byDepth).map(Number).sort((a, b) => a - b).forEach(d => {
+    const ids = byDepth[d];
+    const subCols = Math.max(1, Math.ceil(ids.length / MAX_ROWS));
+    for (let s = 0; s < subCols; s++) {
+      columns.push(ids.slice(s * MAX_ROWS, (s + 1) * MAX_ROWS));
+      colDepth.push(d);
+    }
+  });
+  if (sibeIds.length) {
+    const at = colDepth.findIndex(d => d >= sibeDepth);
+    columns.splice(at < 0 ? columns.length : at, 0, ...Array.from({ length: Math.ceil(sibeIds.length / MAX_ROWS) }, (_, s) => sibeIds.slice(s * MAX_ROWS, (s + 1) * MAX_ROWS)));
+  }
+  const maxRowsUsed = columns.reduce((m, col) => Math.max(m, col.length), 0);
+
+  columns.forEach((col, colIndex) => {
+    const centerOffset = (maxRowsUsed - col.length) / 2 * ROW_H;
+    col.forEach((id, row) => {
+      COURSE_MAP_COORDS[id] = { x: X0 + colIndex * COL_W, y: pipelineY0 + centerOffset + row * ROW_H };
+    });
+  });
+
+  return {
+    width: Math.max(maxWidth, X0 + columns.length * COL_W + NODE_WIDTH + 40),
+    height: pipelineY0 + maxRowsUsed * ROW_H + 40
+  };
+}
+
+/**
+ * Kurs, auf den die Karte beim Oeffnen zentriert: der erste bereite Kurs in Kartenreihenfolge, sonst der zuletzt
+ * absolvierte. Kurse der Kette gehen vor freistehenden Zusatzkursen (Level Up, Froesch-Up), die in der Reihenfolge
+ * zuerst stehen, aber kein "aktueller Kurs" der Person sind.
+ */
+export function pickStartCourseId(nodes, nodeStates) {
+  const referenced = new Set(Object.values(nodes).flatMap(n => [...(n.prerequisites || []), ...(n.recommendedPrerequisites || [])]));
+  const ids = Object.keys(COURSE_MAP_COORDS).filter(id => nodes[id]);
+  const inChain = ids.filter(id => referenced.has(id) || nodes[id].prerequisites?.length || nodes[id].recommendedPrerequisites?.length);
+  const withStatus = status => id => nodeStates[id]?.status === status;
+  for (const list of [inChain, ids]) {
+    const hit = list.find(withStatus('AVAILABLE')) || list.findLast(withStatus('COMPLETED'));
+    if (hit) return hit;
+  }
+  return ids[0] || 'voku';
+}
+
+/** Vergroessert die feste Leinwand (Standard 2360x840) auf mindestens w x h, fuer eine Baum-Vorschau
+ *  mit mehr Platzbedarf als der handgepflegte Standardbaum. Nie kleiner als der Standard. */
+export function setCanvasSize(w, h) {
+  CANVAS_WIDTH = Math.max(2360, Math.ceil(w));
+  CANVAS_HEIGHT = Math.max(840, Math.ceil(h));
+  const canvas = document.getElementById('treeMapCanvas');
+  const svg = document.getElementById('treeSvgLines');
+  if (canvas) { canvas.style.width = CANVAS_WIDTH + 'px'; canvas.style.height = CANVAS_HEIGHT + 'px'; }
+  if (svg) { svg.style.width = CANVAS_WIDTH + 'px'; svg.style.height = CANVAS_HEIGHT + 'px'; svg.setAttribute('viewBox', `0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`); }
+}
+
+// Zieht man eine Karte ueber die bisherige Leinwandgroesse hinaus, blieb der SVG-viewBox fix -
+// die Verbindungslinie zu ihr wurde am alten Rand abgeschnitten. Waechst nur, schrumpft nie waehrend
+// des Ziehens (sonst springt die Leinwand bei jedem Pixel zurueck, sobald man wieder reinzieht).
+export function growCanvasToFit(x, y) {
+  const neededW = x + NODE_WIDTH + 40;
+  const neededH = y + NODE_HEIGHT + 40;
+  if (neededW > CANVAS_WIDTH || neededH > CANVAS_HEIGHT) {
+    setCanvasSize(Math.max(CANVAS_WIDTH, neededW), Math.max(CANVAS_HEIGHT, neededH));
+  }
+}
 
 export const mapTransform = {
   x: -250,
   y: 0,
   zoom: 0.88,
   isPanning: false,
+  pointerId: null,
   startX: 0,
   startY: 0
 };
 
-export function setupInteractiveMap() {
+const NODE_WIDTH = 220;
+const NODE_HEIGHT = 80;
+let CANVAS_WIDTH = 2360;
+let CANVAS_HEIGHT = 840;
+
+// Kurs, auf den die Startansicht zentriert (setzt tree.js ueber setupInteractiveMap)
+let startCourseId = 'voku';
+
+export function setupInteractiveMap(courseId = 'voku') {
   const viewport = document.getElementById('treeMapViewport');
   const canvas = document.getElementById('treeMapCanvas');
   const container = document.getElementById('treeCanvasWrapper');
+  startCourseId = courseId;
   if (!viewport || !canvas || window._mapEventsInitialized) return;
   window._mapEventsInitialized = true;
 
-  // Initiale Zentrierung
-  fitMapToScreen();
+  resetMapTransform();
 
-  // Mouse Drag zum Bewegen im Raum (Pan)
-  viewport.addEventListener('mousedown', (e) => {
-    if (e.button !== 0 || e.target.closest('.tree-node-card') || e.target.closest('.map-ctrl-btn')) return;
-    mapTransform.isPanning = true;
+  // Ziehen mit Maus, Finger oder Stift verschiebt die Karte, auch auf einem Kurs. Erst ab 4 px Bewegung (Finger und
+  // Stift 15 px: so weit darf ein Tipp wandern), damit Klick und Tipp den Kurs auswaehlen; Pointer Capture erst dann,
+  // sonst trifft der Klick den Kurs nicht mehr
+  viewport.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button !== 0) return;
+    mapTransform.pointerId = e.pointerId;
+    mapTransform.isPanning = false;
     mapTransform.startX = e.clientX - mapTransform.x;
     mapTransform.startY = e.clientY - mapTransform.y;
-    container?.classList.add('is-panning');
-    e.preventDefault();
   });
 
-  window.addEventListener('mousemove', (e) => {
-    if (!mapTransform.isPanning) return;
-    mapTransform.x = e.clientX - mapTransform.startX;
-    mapTransform.y = e.clientY - mapTransform.startY;
+  window.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== mapTransform.pointerId) return;
+    // Loslassen nicht mitbekommen (z.B. ueber einem Kontextmenue): Ziehen beenden
+    if (!e.buttons) return endDrag(e);
+    const x = e.clientX - mapTransform.startX;
+    const y = e.clientY - mapTransform.startY;
+    if (!mapTransform.isPanning) {
+      if (Math.hypot(x - mapTransform.x, y - mapTransform.y) <= (e.pointerType === 'mouse' ? 4 : 15)) return;
+      mapTransform.isPanning = true;
+      viewport.setPointerCapture(e.pointerId);
+      container?.classList.add('is-panning');
+    }
+    mapTransform.x = x;
+    mapTransform.y = y;
     applyMapTransform();
   });
 
-  window.addEventListener('mouseup', () => {
-    if (mapTransform.isPanning) {
-      mapTransform.isPanning = false;
-      container?.classList.remove('is-panning');
-    }
+  const endDrag = (e) => {
+    if (e.pointerId !== mapTransform.pointerId) return;
+    mapTransform.pointerId = null;
+    container?.classList.remove('is-panning');
+    // Der Klick nach dem Loslassen gehoert noch zum Ziehen (siehe unten), erst danach zuruecksetzen
+    setTimeout(() => { mapTransform.isPanning = false; });
+  };
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+
+  // Ein Finger verschiebt nur die Karte: sonst erkennt der Browser dazu eine Wischgeste, die den naechsten Tipp
+  // verschluckt. Zwei Finger zoomen weiter die Seite
+  viewport.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1 && e.cancelable) e.preventDefault();
+  }, { passive: false });
+
+  // Ein Ziehen waehlt den Kurs nicht aus, auf dem es begonnen hat; andere Klicks laufen weiter (Menues schliessen)
+  viewport.addEventListener('click', (e) => {
+    if (mapTransform.isPanning && e.target.closest('.tree-node-card')) e.stopPropagation();
+  }, true);
+
+  // Tastatur: einen fokussierten Kurs ausserhalb des Ausschnitts ganz ins Bild schieben. Der Browser wuerde
+  // sonst den Viewport scrollen, das geht nur nach rechts und unten und am Verschieben vorbei
+  viewport.addEventListener('focusin', (e) => {
+    if (!e.target.matches('.tree-node-card:focus-visible')) return;
+    viewport.scrollTo(0, 0);
+    const view = viewport.getBoundingClientRect();
+    const card = e.target.getBoundingClientRect();
+    const shift = (start, end, min, max) => Math.max(min + 24 - start, 0) + Math.min(max - 24 - end, 0);
+    mapTransform.x += shift(card.left, card.right, view.left, view.right);
+    mapTransform.y += shift(card.top, card.bottom, view.top, view.bottom);
+    applyMapTransform();
   });
 
   // Mausrad Zoom (fluessig zentriert auf Cursor)
   viewport.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-    const newZoom = Math.min(Math.max(mapTransform.zoom * zoomFactor, 0.45), 1.6);
-    
     const rect = viewport.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    mapTransform.x = mouseX - (mouseX - mapTransform.x) * (newZoom / mapTransform.zoom);
-    mapTransform.y = mouseY - (mouseY - mapTransform.y) * (newZoom / mapTransform.zoom);
-    mapTransform.zoom = newZoom;
-
-    applyMapTransform();
+    zoomAround(mapTransform.zoom * (e.deltaY < 0 ? 1.08 : 0.92), e.clientX - rect.left, e.clientY - rect.top, rect);
   }, { passive: false });
 }
 
 export function applyMapTransform() {
+  // Vor den Baumdaten zielt die Ansicht auf Kurse, die noch fehlen, und schoebe die Ladezeile aus dem Bild.
+  // setupInteractiveMap() setzt die Ansicht, sobald der Baum steht.
+  if (!window._mapEventsInitialized) return;
   const canvas = document.getElementById('treeMapCanvas');
   const zoomLabel = document.getElementById('treeZoomLabel');
+  // Zoom/Pan verschiebt Karten unter dem (unbewegten) Cursor, ohne dass pointerout feuert - ein altes
+  // Hover-Highlight bliebe sonst auf allen anderen Linien bei opacity 0.2 haengen ("Linien verschwinden")
+  highlightConnectedEdges(null);
   if (canvas) {
     canvas.style.transform = `translate(${mapTransform.x}px, ${mapTransform.y}px) scale(${mapTransform.zoom})`;
+    canvas.style.setProperty('--map-zoom', mapTransform.zoom);
   }
   if (zoomLabel) {
     zoomLabel.textContent = `${Math.round(mapTransform.zoom * 100)}%`;
@@ -109,63 +285,84 @@ export function applyMapTransform() {
 }
 
 export function zoomMap(delta) {
-  const newZoom = Math.min(Math.max(mapTransform.zoom + delta, 0.45), 1.6);
   const viewport = document.getElementById('treeMapViewport');
   const rect = viewport ? viewport.getBoundingClientRect() : { width: 1000, height: 600 };
-  const centerX = rect.width / 2;
-  const centerY = rect.height / 2;
+  zoomAround(mapTransform.zoom + delta, rect.width / 2, rect.height / 2, rect);
+}
 
-  mapTransform.x = centerX - (centerX - mapTransform.x) * (newZoom / mapTransform.zoom);
-  mapTransform.y = centerY - (centerY - mapTransform.y) * (newZoom / mapTransform.zoom);
+// Zoomt um einen Punkt im Viewport, hoechstens auf 160 %. Die untere Grenze ist der Zoom, bei dem die ganze
+// Flaeche hineinpasst, aber nie mehr als 45 %; dort steht die Flaeche in der Mitte (Uebersicht ueber den Baum)
+function zoomAround(zoom, pointX, pointY, rect) {
+  const minZoom = Math.min(0.45, fitZoom(rect));
+  if (zoom <= minZoom) {
+    centerCanvas(minZoom, rect);
+    return;
+  }
+  const newZoom = Math.min(zoom, 1.6);
+  mapTransform.x = pointX - (pointX - mapTransform.x) * (newZoom / mapTransform.zoom);
+  mapTransform.y = pointY - (pointY - mapTransform.y) * (newZoom / mapTransform.zoom);
   mapTransform.zoom = newZoom;
   applyMapTransform();
 }
 
+// Startansicht: 100 %, zentriert auf den Kurs, an dem die Person steht. Ragen die Kurse ueber den Viewport
+// hinaus, bleibt neben dem aeussersten Kurs hoechstens 24 px leere Flaeche; passen sie hinein, stehen sie in der Mitte.
 export function resetMapTransform() {
   const viewport = document.getElementById('treeMapViewport');
   const rect = viewport ? viewport.getBoundingClientRect() : { width: 1000, height: 600 };
+  const course = COURSE_MAP_COORDS[startCourseId];
+  const xs = Object.values(COURSE_MAP_COORDS).map(c => c.x);
+  const ys = Object.values(COURSE_MAP_COORDS).map(c => c.y);
+  // offset zentriert den Kurs; first/last: Rand der aeussersten Kurse auf der Flaeche
+  const place = (offset, view, first, last) => (last - first <= view
+    ? (view - first - last) / 2
+    : Math.min(Math.max(offset, view - last - 24), 24 - first));
+  viewport?.scrollTo(0, 0);
   mapTransform.zoom = 1.0;
-  mapTransform.x = (rect.width / 2) - 1250;
-  mapTransform.y = (rect.height / 2) - 300;
+  mapTransform.x = place(rect.width / 2 - course.x - NODE_WIDTH / 2, rect.width, Math.min(...xs), Math.max(...xs) + NODE_WIDTH);
+  mapTransform.y = place(rect.height / 2 - course.y - NODE_HEIGHT / 2, rect.height, Math.min(...ys), Math.max(...ys) + NODE_HEIGHT);
   applyMapTransform();
 }
 
-export function fitMapToScreen() {
-  const viewport = document.getElementById('treeMapViewport');
-  if (!viewport) return;
-  const rect = viewport.getBoundingClientRect();
-  const canvasWidth = 2360;
-  const canvasHeight = 840;
+// Zoom, bei dem die ganze Flaeche mit 20 px Rand in den Viewport passt
+function fitZoom(rect) {
+  return Math.min((rect.width - 40) / CANVAS_WIDTH, (rect.height - 40) / CANVAS_HEIGHT);
+}
 
-  const scaleX = (rect.width - 40) / canvasWidth;
-  const scaleY = (rect.height - 40) / canvasHeight;
-  const fitZoom = Math.min(Math.max(Math.min(scaleX, scaleY), 0.45), 1.0);
-
-  mapTransform.zoom = fitZoom;
-  mapTransform.x = Math.max(10, (rect.width - (canvasWidth * fitZoom)) / 2);
-  mapTransform.y = Math.max(10, (rect.height - (canvasHeight * fitZoom)) / 2);
+// Auch einen Scroll des Viewports aufheben, den der Browser selbst setzt (z.B. beim Suchen auf der Seite)
+function centerCanvas(zoom, rect) {
+  document.getElementById('treeMapViewport')?.scrollTo(0, 0);
+  mapTransform.zoom = zoom;
+  mapTransform.x = (rect.width - CANVAS_WIDTH * zoom) / 2;
+  mapTransform.y = (rect.height - CANVAS_HEIGHT * zoom) / 2;
   applyMapTransform();
 }
 
 /**
  * Zeichnet fliessende SVG Cubic Bézier-Kurven zwischen Kurs-Knoten
  */
-export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null) {
+export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null, routeIds = null) {
   const svg = document.getElementById('treeSvgLines');
   if (!svg || !treeStructure || !treeStructure.nodes) return;
 
-  const NODE_WIDTH = 220;
-  const NODE_HEIGHT = 80;
-
   const paths = [];
 
-  // Berechnung aktiver Pfad fuer Hervorhebung
+  // Pflicht-Vorgaenger als durchgezogene, empfohlene Vorstufen als gestrichelte Linie
+  const edgesOf = (node) => [
+    ...(node.prerequisites || []).map(preId => ({ preId, isRecommended: false })),
+    ...(node.recommendedPrerequisites || []).map(preId => ({ preId, isRecommended: true }))
+  ];
+
+  // Berechnung aktiver Pfad fuer Hervorhebung (inklusive empfohlener Vorstufen).
+  // routeIds (aus der Pfadberechnung) beschraenkt die Route auf diese Kurse.
   const activePathEdges = new Set();
   if (selectedTargetCourseId) {
     const collectPath = (targetId) => {
       const target = treeStructure.nodes[targetId];
-      if (!target || !target.prerequisites) return;
-      target.prerequisites.forEach(preId => {
+      if (!target) return;
+      edgesOf(target).forEach(({ preId }) => {
+        if (routeIds && !routeIds.has(preId)) return;
+        if (activePathEdges.has(`${preId}->${targetId}`)) return;
         activePathEdges.add(`${preId}->${targetId}`);
         collectPath(preId);
       });
@@ -173,15 +370,18 @@ export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null)
     collectPath(selectedTargetCourseId);
   }
 
-  Object.values(treeStructure.nodes).forEach(targetNode => {
-    if (!targetNode.prerequisites || targetNode.prerequisites.length === 0) return;
+  // Alias-Eintraege (glk, hlk, mf) tragen dieselbe ID wie ihr Kurs: jede Kante nur einmal zeichnen
+  const drawnEdges = new Set();
 
+  Object.values(treeStructure.nodes).forEach(targetNode => {
     const targetCoord = COURSE_MAP_COORDS[targetNode.id];
     if (!targetCoord) return;
 
-    targetNode.prerequisites.forEach(preId => {
+    edgesOf(targetNode).forEach(({ preId, isRecommended }) => {
       const srcCoord = COURSE_MAP_COORDS[preId];
-      if (!srcCoord) return;
+      const edgeKey = `${preId}->${targetNode.id}`;
+      if (!srcCoord || drawnEdges.has(edgeKey)) return;
+      drawnEdges.add(edgeKey);
 
       const isPathActive = activePathEdges.has(`${preId}->${targetNode.id}`);
 
@@ -203,12 +403,54 @@ export function renderTreeSvgLines(treeStructure, selectedTargetCourseId = null)
       const d = `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
 
       paths.push(`
-        <path d="${d}" 
-              class="tree-path-line ${isPathActive ? 'active-path' : ''}" 
+        <path d="${d}"
+              class="tree-path-line ${isRecommended ? 'is-recommended' : ''} ${isPathActive ? 'active-path' : ''}"
               data-edge="${preId}->${targetNode.id}" />
       `);
     });
   });
 
   svg.innerHTML = paths.join('');
+}
+
+/**
+ * Hebt beim Hover einer Karte die ganze Vorgaengerkette hervor (nicht nur die direkte Kante),
+ * draengt den Rest zurueck. id=null (z.B. beim Verlassen der Karte) loescht die Hervorhebung.
+ */
+export function highlightConnectedEdges(id, treeStructure) {
+  const svg = document.getElementById('treeSvgLines');
+  if (!svg) return;
+
+  const activeEdges = new Set();
+  const requiredQuals = new Set();
+  if (id && treeStructure?.nodes) {
+    const seen = new Set([id]);
+    const walk = nodeId => {
+      const node = treeStructure.nodes[nodeId];
+      if (!node) return;
+      (node.requiredQualifications || []).forEach(q => requiredQuals.add(q));
+      [...(node.prerequisites || []), ...(node.recommendedPrerequisites || [])].forEach(preId => {
+        activeEdges.add(`${preId}->${nodeId}`);
+        if (seen.has(preId)) return;
+        seen.add(preId);
+        walk(preId);
+      });
+    };
+    walk(id);
+  }
+
+  svg.querySelectorAll('path[data-edge]').forEach(p => {
+    const edge = p.getAttribute('data-edge') || '';
+    const connected = activeEdges.has(edge);
+    p.classList.toggle('is-hover-active', connected);
+    p.classList.toggle('is-hover-dimmed', !!id && !connected);
+  });
+
+  // Karten markieren, die eine der benoetigten Qualifikationen verleihen - auch wenn sie nicht als
+  // Vorgaenger verlinkt sind (z.B. ein Brevet, das nur ueber eine Qualifikation, nicht eine Kurskante zaehlt)
+  document.querySelectorAll('.tree-node-card').forEach(card => {
+    const node = treeStructure?.nodes?.[card.id.replace('nodeCard-', '')];
+    const grants = node?.grantsQualifications || [];
+    card.classList.toggle('is-hover-qual-source', requiredQuals.size > 0 && grants.some(q => requiredQuals.has(q)));
+  });
 }

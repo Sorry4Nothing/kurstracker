@@ -1,11 +1,20 @@
 /* ==============================================================================
-   CEVI KURSTRACKER - DESIGN SYSTEM & MODULAR STYLESHEET
-   Aesthetics: Modern Swiss Youth Movement, Glassmorphism, Deep Navy & Vibrant Accents
+   CEVI KURSTRACKER - STYLESHEET ENTRY
+   Calm interface derived from the Cevi corporate design (Cevi-Rot, Cevi-Blau,
+   neutrals, Archivo). Tokens, themes and the base layer live in
+   css/variables.css; every other file references those custom properties
+   and contains no colour literals.
+   Order: tokens, app shell, shared components, then the three views.
+   The ?v= query busts caches together with style.css?v= in index.html.
    ============================================================================== */
 
-@import 'css/variables.css';
-@import 'css/layout.css';
-@import 'css/components.css';
-@import 'css/tree.css';
-@import 'css/profile.css';
-@import 'css/planner.css';
+@import 'css/variables.css?v=23';
+@import 'css/layout.css?v=26';
+@import 'css/components.css?v=24';
+@import 'css/tree.css?v=23';
+@import 'css/profile.css?v=23';
+@import 'css/planner.css?v=24';
+@import 'css/api-output.css?v=23';
+@import 'css/settings.css?v=24';
+@import 'css/system-log.css?v=11';
+@import 'css/intro.css?v=23';

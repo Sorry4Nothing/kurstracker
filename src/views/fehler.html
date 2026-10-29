@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}} - Cevi Kurstracker</title>
+  <meta name="robots" content="noindex">
+  <meta name="color-scheme" content="dark light">
+  <script src="/js/theme-init.js"></script>
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/style.css?v=34">
+</head>
+<body>
+
+  <!-- Kopfband wie in der App: Logo und Wortmarke führen zurück zum Kurstracker -->
+  <header class="legal-band">
+    <a href="/" class="brand-link">
+      <svg class="brand-logo-svg" viewBox="0 0 160 160" width="34" height="34" aria-hidden="true">
+        <g transform="translate(4.04, 3.05) scale(0.98) translate(-320, -10)">
+          <path fill="#323394" d="M334.931,73.371c-0.181-0.641-0.267-1.301-0.327-1.85l12.602,12.581 C340.397,81.64,336.158,81.975,334.931,73.371"/>
+          <path fill="#C41333" d="M415.722,115.954c-8.831,2.554-17.685,4.158-26.022,4.703l31.227,31.223l11.095-41.367 C427.111,112.417,421.689,114.222,415.722,115.954"/>
+          <path fill="#C41333" d="M443.51,64.399c-11.379,7.401-25.311,13.781-38.275,17.489c-17.806,5.161-35.959,6.776-49.823,4.384 l-21.157-21.185l117.507-31.565L443.51,64.399"/>
+          <path fill="#323394" d="M460.756,86.589c-8.896,10.981-23.162,18.734-46.193,25.432c-23.495,6.697-46.936,6.516-59.736-0.58 c-4.496-2.516-7.312-5.601-8.392-9.293l-6.739-16.765c0.268,0.129,0.535,0.267,0.766,0.5c13.803,7.585,39.672,7.634,65.947,0.128 c21.021-6.073,43.057-18.351,54.348-30.131V86.589"/>
+          <path fill="#323394" d="M420.924,37.621l-82.082,21.879c8.453-12.008,28.283-23.847,51.221-30.49 c6.447-1.871,20.849-4.191,30.861-3.807V37.621"/>
+        </g>
+      </svg>
+      <span class="brand-title">CEVI <span class="highlight">KURSTRACKER</span></span>
+    </a>
+  </header>
+
+  <!-- Vorlage für alle Fehlerfälle: der Server behält nur den Abschnitt des Statuscodes und füllt die Platzhalter -->
+  <main class="error-page" data-code="{{CODE}}">
+    <canvas class="error-dots" aria-hidden="true"></canvas>
+    <section class="error-hero" data-error="404" aria-labelledby="error-title-404">
+      <p class="error-numeral" aria-hidden="true">404</p>
+      <div class="error-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </div>
+      <p class="error-code">Fehler 404</p>
+      <h1 id="error-title-404">Seite nicht gefunden</h1>
+      <p class="error-text">Diese Adresse gibt es im Kurstracker nicht. Vielleicht hat sich ein Link geändert oder beim Abtippen hat sich ein Fehler eingeschlichen.</p>
+      <p class="error-actions"><a class="btn btn-primary" href="/">Zum Ausbildungsbaum</a></p>
+      <p class="error-help">Du suchst einen Kurs? Im Ausbildungsbaum und im Kursangebot findest du alle Kurse.</p>
+    </section>
+
+    <section class="error-hero" data-error="401" aria-labelledby="error-title-401">
+      <p class="error-numeral" aria-hidden="true">401</p>
+      <div class="error-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      </div>
+      <p class="error-code">Fehler 401</p>
+      <h1 id="error-title-401">Du bist nicht angemeldet</h1>
+      <p class="error-text">Deine Sitzung ist abgelaufen, oder du hast dich noch nicht angemeldet. Melde dich mit deinem Konto der Cevi-DB neu an, dann geht es dort weiter, wo du warst.</p>
+      <p class="error-actions"><a class="btn btn-primary" href="{{LOGIN_URL}}">Neu anmelden</a></p>
+      <p class="error-help">Klappt die Anmeldung nicht? Schreib an <a href="mailto:cevidb@cevi.ch">cevidb@cevi.ch</a>.</p>
+    </section>
+
+    <section class="error-hero" data-error="502" aria-labelledby="error-title-502">
+      <p class="error-numeral" aria-hidden="true">502</p>
+      <div class="error-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v5M15 3v5"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></svg>
+        <svg class="error-ring" viewBox="0 0 100 100" fill="none" stroke-width="5" stroke-linecap="round"><circle class="error-ring-track" cx="50" cy="50" r="47"/><circle class="error-ring-fill" cx="50" cy="50" r="47" pathLength="100"/></svg>
+      </div>
+      <p class="error-code">Fehler 502</p>
+      <h1 id="error-title-502">Die Cevi-DB antwortet nicht</h1>
+      <p class="error-text">Der Kurstracker holt Kurse und Personendaten aus der Cevi-DB, und die ist gerade nicht erreichbar. Deine Daten sind nicht verloren. Versuche es in ein paar Minuten noch einmal.</p>
+      <p class="error-actions"><a class="btn btn-primary" href="/">Jetzt erneut versuchen</a></p>
+      <p class="error-retry" data-retry></p>
+      <p class="error-help">Bleibt der Fehler länger bestehen, melde dich bei <a href="mailto:cevidb@cevi.ch">cevidb@cevi.ch</a>.</p>
+    </section>
+  </main>
+
+  <footer class="app-global-footer">
+    <div class="footer-left"><a class="footer-item" href="/datenschutz.html">Datenschutz</a></div>
+    <div class="footer-right"><span class="footer-item">Built by Robin</span></div>
+  </footer>
+
+  <script src="/js/fehler.js" defer></script>
+</body>
+</html>
