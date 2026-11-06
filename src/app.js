@@ -304,7 +304,7 @@ function setPersonSource(req, res) {
 // -----------------------------------------------------------------------------
 
 // OAuth Login Initiation
-app.use(['/api/auth/login', '/api/auth/mock-login', '/api/auth/callback', '/api/auth/logout'], authLimiter);
+app.use(['/api/auth/login', '/api/auth/mock-login', '/api/auth/callback', '/oauth', '/api/auth/logout'], authLimiter);
 
 app.get('/api/auth/login', (req, res) => {
   const { state, challenge } = issueState();
@@ -319,8 +319,8 @@ if (ceviDbService.isPreparationMode()) {
   });
 }
 
-// OAuth 2.0 Callback von Cevi-DB (Hitobito)
-app.get('/api/auth/callback', async (req, res) => {
+// OAuth 2.0 Callback von Cevi-DB (Hitobito). /oauth ist die Redirect-URI der OAuth-Applikation auf dem Testsystem (http://localhost:8080/oauth)
+const oauthCallback = async (req, res) => {
   const { code, state, error, error_description } = req.query;
   const expectedState = req.signedCookies?.cevi_oauth_state;
   res.clearCookie('cevi_oauth_state');
@@ -366,7 +366,9 @@ app.get('/api/auth/callback', async (req, res) => {
     console.error('[OAuth Callback] Abbruch:', logSafe(err.message));
     res.redirect('/?error=callback_failed');
   }
-});
+};
+app.get('/api/auth/callback', oauthCallback);
+app.get('/oauth', oauthCallback);
 
 // Nur die Felder, die das Frontend anzeigt (#176): keine E-Mail, Adresse oder weitere Userinfo-Felder. Rollen als Namen:
 // die Cevi-DB liefert Objekte, das Demo-Profil Text.

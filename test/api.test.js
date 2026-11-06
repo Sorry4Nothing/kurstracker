@@ -1263,6 +1263,16 @@ test('OAuth-Callback: ein State ist nur einmal einlösbar, auch mit gültigem Co
   assert.equal(exchange.mock.callCount(), 1);
 });
 
+test('OAuth-Callback: /oauth (Redirect-URI des Testsystems) loggt ein wie /api/auth/callback', async (t) => {
+  const login = useLiveCeviDb(t);
+  const { state, cookie } = await startLogin();
+  const res = await request(`/oauth?code=abc&state=${state}`, { cookie });
+  assert.equal(res.headers.get('location'), '/?login=success');
+  assert.ok(setCookieLine(res, 'cevi_session_id'));
+  assert.equal((await request('/oauth?code=abc&state=falsch')).headers.get('location'), '/?error=invalid_state');
+  void login;
+});
+
 test('OAuth-Callback: Zeilenumbrüche aus der URL landen nicht im Log (#51)', async (t) => {
   const logged = [];
   t.mock.method(console, 'error', (...args) => logged.push(args.join(' ')));
