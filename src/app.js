@@ -92,6 +92,8 @@ function sendError(res, err, context) {
     console.error(logSafe(`[${context}] ${err?.stack || err?.message || err}`));
     return res.status(500).json({ error: 'Interner Serverfehler' });
   }
+  // Upstream-Fehler (502) der Cevi-DB nennen Status und Pfad: sonst bleibt unsichtbar, welcher Abruf scheitert
+  if (err.status >= 500 || err.detail) console.error(logSafe(`[${context}] ${err.detail || err.message}`));
   res.status(err.status).json({ error: String(err.message || 'Anfrage fehlgeschlagen').slice(0, 300) });
 }
 
