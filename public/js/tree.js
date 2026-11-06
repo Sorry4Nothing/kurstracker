@@ -87,6 +87,7 @@ export async function loadCourseTree() {
       query ? fetch('/api/tree/structure') : null
     ]);
 
+    if (!evalRes.ok) throw await responseError(evalRes);
     treeStructure = await structRes.json();
     standardStructure = standardRes ? await standardRes.json() : treeStructure;
     currentTreeEvaluation = await evalRes.json();

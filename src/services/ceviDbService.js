@@ -132,6 +132,13 @@ export class CeviDbService {
       if (!response.ok) {
         const error = new Error(`Cevi-DB Abruf fehlgeschlagen (${response.status}): ${apiPath}`);
         error.status = response.status === 401 ? 401 : 502;
+        // 403: die Cevi-DB gibt dem Kurstracker diese Daten nicht frei (Scope der OAuth-Applikation fehlt). Keine Störung, also kein 502;
+        // die Meldung für Leitende nennt keinen Pfad, der Pfad steht nur im Log (detail)
+        if (response.status === 403) {
+          error.detail = error.message;
+          error.status = 403;
+          error.message = 'Die Cevi-DB gibt diese Daten dem Kurstracker noch nicht frei (fehlende Freigabe der OAuth-Applikation).';
+        }
         throw error;
       }
 

@@ -1263,6 +1263,30 @@ test('OAuth-Callback: ein State ist nur einmal einlösbar, auch mit gültigem Co
   assert.equal(exchange.mock.callCount(), 1);
 });
 
+test('OAuth-Callback: /oauth (Redirect-URI des Testsystems) loggt ein wie /api/auth/callback', async (t) => {
+  const login = useLiveCeviDb(t);
+  const { state, cookie } = await startLogin();
+  const res = await request(`/oauth?code=abc&state=${state}`, { cookie });
+  assert.equal(res.headers.get('location'), '/?login=success');
+  assert.ok(setCookieLine(res, 'cevi_session_id'));
+  assert.equal((await request('/oauth?code=abc&state=falsch')).headers.get('location'), '/?error=invalid_state');
+  void login;
+});
+
+test('Cevi-DB 403 (Scope der OAuth-Applikation fehlt): 403 mit Meldung ohne Pfad, kein 502', async (t) => {
+  const login = useLiveCeviDb(t);
+  const cookie = cookiePair(await login({ id: 'p_7', first_name: 'Tim', roles: ['Mitglied'] }));
+  t.mock.method(globalThis, 'fetch', async () => new Response('{}', { status: 403 }));
+  const logged = [];
+  t.mock.method(console, 'error', (...args) => logged.push(args.join(' ')));
+  const res = await request('/api/user/history', { cookie });
+  assert.equal(res.status, 403);
+  const { error } = await res.json();
+  assert.match(error, /noch nicht frei/);
+  assert.ok(!error.includes('/api/'), 'Pfad in der Meldung');
+  assert.ok(logged.some(line => line.includes('/api/event_participations')), 'Pfad fehlt im Log');
+});
+
 test('OAuth-Callback: Zeilenumbrüche aus der URL landen nicht im Log (#51)', async (t) => {
   const logged = [];
   t.mock.method(console, 'error', (...args) => logged.push(args.join(' ')));
